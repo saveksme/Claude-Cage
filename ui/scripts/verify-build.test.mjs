@@ -11,7 +11,7 @@ test("build verification rejects corrupted or missing frontend resources", async
       const directory = await mkdtemp(join(tmpdir(), "cage-web-integrity-"));
       try {
         await mkdir(join(directory, "assets"));
-        const html = '<div id="root"></div><script type="module" src="/assets/main.js"></script><link rel="stylesheet" href="/assets/main.css">';
+        const html = '<html lang="ru"><div id="root"></div><script type="module" src="/assets/main.js"></script><link rel="stylesheet" href="/assets/main.css">';
         await writeFile(join(directory, "index.html"), html);
         await writeFile(join(directory, "mobile.html"), problem === "missing entry" ? '<div id="root"></div>' : html);
         if (problem !== "missing script") await writeFile(join(directory, "assets/main.js"), problem === "zero JS" ? Buffer.alloc(100) : problem === "invalid JS" ? "export const =;" : "export const valid = true;");
@@ -26,4 +26,19 @@ test("build verification rejects corrupted or missing frontend resources", async
       } finally { await rm(directory, { recursive: true, force: true }); }
     });
   }
+});
+
+test("build verification rejects Chinese interface text", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "cage-web-russian-"));
+  try {
+    await mkdir(join(directory, "assets"));
+    const html = '<html lang="ru"><div id="root"></div><script type="module" src="/assets/main.js"></script>';
+    await writeFile(join(directory, "index.html"), html);
+    await writeFile(join(directory, "mobile.html"), html);
+    await writeFile(join(directory, "assets/main.js"), 'export const label = "设置";');
+    await assert.rejects(verifyBuild(directory), /Chinese UI text/);
+    await writeFile(join(directory, "assets/main.js"), 'export const label = "Настройки";');
+    await writeFile(join(directory, "index.html"), html.replace('lang="ru"', 'lang="zh-CN"'));
+    await assert.rejects(verifyBuild(directory), /Russian document language/);
+  } finally { await rm(directory, { recursive: true, force: true }); }
 });

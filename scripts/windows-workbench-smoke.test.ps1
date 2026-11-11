@@ -60,11 +60,15 @@ try {
             Assert-SmokeContract (-not $text.Contains($private)) "Private smoke field leaked: $private"
         }
     } finally { $child.Dispose() }
-    [IO.File]::WriteAllText($report, '{"success":true,"nativeBridgeReady":true}')
+    [IO.File]::WriteAllText($report, '{"success":true,"nativeBridgeReady":true,"russianUI":true}')
     Assert-WindowsWorkbenchReport -ExitCode 0 -Report $report
     $rejected = $false
     try { Assert-WindowsWorkbenchReport -ExitCode 17 -Report $report } catch { $rejected = $true }
     Assert-SmokeContract $rejected 'Nonzero child exit was accepted because its report said success.'
+    [IO.File]::WriteAllText($report, '{"success":true,"nativeBridgeReady":true,"russianUI":false}')
+    $rejected = $false
+    try { Assert-WindowsWorkbenchReport -ExitCode 0 -Report $report } catch { $rejected = $true }
+    Assert-SmokeContract $rejected 'Chinese or non-Russian workbench text passed localization acceptance.'
     $app = Join-Path $directory 'app'
     New-Item -ItemType Directory -Path (Join-Path $app 'resources') -Force | Out-Null
     [IO.File]::WriteAllText((Join-Path $app 'Cage.exe'), 'native fixture')

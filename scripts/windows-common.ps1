@@ -64,7 +64,7 @@ function Assert-WindowsWorkbenchReport {
     # Log only these already-bounded fields, even when the process failed. Do
     # not print launch entries, page URLs, account data or the raw report.
     Write-Host ('Cage smoke diagnostic: ' + ($safe | ConvertTo-Json -Depth 6 -Compress))
-    if ($ExitCode -ne 0 -or $result['success'] -ne $true -or $result['nativeBridgeReady'] -ne $true) {
+    if ($ExitCode -ne 0 -or $result['success'] -ne $true -or $result['nativeBridgeReady'] -ne $true -or $result['russianUI'] -ne $true) {
         throw "Cage workbench/bridge acceptance failed ($ExitCode), phase $($safe.phase): $($safe.nativeStatus). Diagnostics: $Report"
     }
 }

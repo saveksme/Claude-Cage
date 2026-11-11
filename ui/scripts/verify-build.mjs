@@ -20,6 +20,7 @@ export async function verifyBuild(directory = defaultDirectory) {
           const parsed = spawnSync(process.execPath, ["--check", "--input-type=module"], { input: bytes, encoding: "utf8" });
           if (parsed.error) throw parsed.error;
           if (parsed.status !== 0) throw new Error(`Invalid JavaScript build resource: ${name}\n${parsed.stderr}`);
+          if (/\p{Script=Han}/u.test(bytes.toString("utf8"))) throw new Error(`Chinese UI text in build resource: ${name}`);
         }
       }
       files[name] = createHash("sha256").update(bytes).digest("hex");
@@ -30,6 +31,7 @@ export async function verifyBuild(directory = defaultDirectory) {
     const html = await readFile(join(directory, entry), "utf8");
     const scripts = [...html.matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["']/gi)];
     if (!scripts.length) throw new Error(`Missing entry script: ${entry}`);
+    if (!/<html\b[^>]*\blang=["']ru["']/i.test(html)) throw new Error(`Russian document language missing: ${entry}`);
     for (const match of html.matchAll(/<(?:script|link)\b[^>]*\b(?:src|href)=["']([^"']+)["']/gi)) {
       const url = new URL(match[1], "http://cage.local/" + entry);
       if (url.origin !== "http://cage.local") throw new Error(`External build resource: ${match[1]}`);
