@@ -45,12 +45,12 @@ try {
   const unexpected = [];
   page.on("request", request => { if (new URL(request.url()).origin !== display.url) unexpected.push(request.url()); });
   await page.reload();
-  await page.getByRole("button", { name: "打开浏览器", exact: true }).click();
-  await page.getByText("正在连接画面", { exact: true }).waitFor({ state: "hidden" });
+  await page.getByRole("button", { name: "Открыть браузер", exact: true }).click();
+  await page.getByText("Подключение к экрану", { exact: true }).waitFor({ state: "hidden" });
   const canvas = page.locator(".remote-canvas canvas");
   await canvas.waitFor();
   await page.waitForFunction(() => document.querySelector('[role="tab"] .tab-favicon')?.naturalWidth === 32);
-  await page.getByRole("button", { name: "搜索标签页", exact: true }).click();
+  await page.getByRole("button", { name: "Поиск вкладок", exact: true }).click();
   assert.equal(await page.locator(".all-tabs-results .tab-favicon").count(), 1);
   await page.keyboard.press("Escape");
 
@@ -59,10 +59,10 @@ try {
   await settle();
   assert.deepEqual(writes, [], "ordinary clicks must not authorize RFB clipboard writes");
   await copy("first", "复制按钮的文字🙂");
-  await page.getByText("已复制到本机", { exact: true }).waitFor();
+  await page.getByText("Скопировано на этот компьютер", { exact: true }).waitFor();
   assert.deepEqual(writes, ["复制按钮的文字🙂"]);
 
-  await page.getByRole("textbox", { name: "网页地址或搜索" }).click();
+  await page.getByRole("textbox", { name: "Адрес страницы или поисковый запрос" }).click();
   await copy("first", "late local input");
   await settle();
   assert.equal(writes.length, 1);
@@ -71,9 +71,9 @@ try {
   await copy("first", "late previous tab");
   await settle();
   assert.equal(writes.length, 1);
-  await copy("second", "当前标签");
+  await copy("second", "Текущая вкладка");
   await settle();
-  assert.equal(writes.at(-1), "当前标签");
+  assert.equal(writes.at(-1), "Текущая вкладка");
   const oldContext = copyContext();
   await page.getByRole("tab", { name: "First site", exact: true }).click();
   await clickCanvas();
@@ -93,12 +93,12 @@ try {
   state.tabs[0].favicon = "https://third-party.test/icon.png";
   await sendState();
   assert.equal(await page.getByRole("tab", { name: "First site", exact: true }).locator("img").count(), 0);
-  await page.getByRole("button", { name: "工作台", exact: true }).click();
+  await page.getByRole("button", { name: "Рабочая среда", exact: true }).click();
   await copy("second", "hidden view");
   await settle();
   assert.equal(writes.length, 2);
-  await page.getByRole("button", { name: "打开浏览器", exact: true }).click();
-  await page.getByText("正在连接画面", { exact: true }).waitFor({ state: "hidden" });
+  await page.getByRole("button", { name: "Открыть браузер", exact: true }).click();
+  await page.getByText("Подключение к экрану", { exact: true }).waitFor({ state: "hidden" });
   await clickCanvas();
   await copy("second", "late copy after reconnect", oldContext);
   await settle();

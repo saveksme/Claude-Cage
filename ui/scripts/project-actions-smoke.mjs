@@ -25,32 +25,32 @@ try {
       Object.assign(state.status, { ready: true, vm_running: true, projects: [projectA, projectB], workspace: projectA });
       state.settings.workspace = projectA;
       await page.reload();
-      await page.getByRole("region", { name: "项目 beta" }).waitFor();
+      await page.getByRole("region", { name: "Проект beta" }).waitFor();
       const header = page.locator("header.terminal-chrome");
       const checkHeader = async () => {
-        assert.equal(await header.getByRole("button", { name: "打开文件", exact: true }).count(), 0);
-        assert.equal(await header.getByRole("button", { name: "新建终端", exact: true }).count(), 0);
+        assert.equal(await header.getByRole("button", { name: "Открыть файл", exact: true }).count(), 0);
+        assert.equal(await header.getByRole("button", { name: "Новый терминал", exact: true }).count(), 0);
       };
       await checkHeader();
-      await page.getByRole("button", { name: "打开 alpha 的编辑器" }).click();
-      await page.getByRole("tab", { name: "文件 · alpha" }).waitFor();
+      await page.getByRole("button", { name: "Открыть редактор проекта alpha" }).click();
+      await page.getByRole("tab", { name: "Файл · alpha" }).waitFor();
       assert.equal(state.tabs.find(tab => tab.kind === "editor").workspace, projectA);
-      await page.getByRole("button", { name: "在 beta 新建终端" }).click();
-      await page.getByRole("menuitem", { name: "普通终端" }).click();
-      await page.getByRole("tab", { name: "终端 1" }).waitFor();
+      await page.getByRole("button", { name: "Создать терминал в проекте beta" }).click();
+      await page.getByRole("menuitem", { name: "Обычный терминал" }).click();
+      await page.getByRole("tab", { name: "Терминал 1" }).waitFor();
       assert.equal(state.terminals[0].workspace, projectB);
       await checkHeader();
-      await page.getByRole("button", { name: "收起侧栏" }).click();
+      await page.getByRole("button", { name: "Свернуть боковую панель" }).click();
       await page.keyboard.press(`${modifier}+Shift+Enter`);
-      await page.getByRole("menuitem", { name: "普通终端" }).click();
-      await page.waitForFunction(() => document.querySelector("header.terminal-chrome .current-title")?.textContent === "终端 2");
+      await page.getByRole("menuitem", { name: "Обычный терминал" }).click();
+      await page.waitForFunction(() => document.querySelector("header.terminal-chrome .current-title")?.textContent === "Терминал 2");
       assert.equal(state.terminals[1].workspace, projectB);
       await page.evaluate(() => window.cageNativeAction("newTerminal"));
-      await page.getByRole("menuitem", { name: "Claude 终端" }).waitFor();
+      await page.getByRole("menuitem", { name: "Терминал Claude" }).waitFor();
       await page.keyboard.press("Escape");
       assert.equal(await page.locator(":focus").getAttribute("title"), projectB);
       assert.deepEqual(errors, []);
-      console.log(`PASS ${platform}: 项目入口、标题栏和收起侧栏后的快捷键`);
+      console.log(`PASS ${platform}: вход в проект, заголовок и сочетания после сворачивания боковой панели`);
     } finally {
       await browser.close();
     }

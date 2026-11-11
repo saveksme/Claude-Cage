@@ -15,11 +15,11 @@ page.on("console", (message) => {
   if (message.type() === "error") browserErrors.push(message.text());
 });
 try {
-  await page.getByRole("button", { name: "启动 Cage 环境", exact: true }).click();
-  await page.getByRole("heading", { name: "Cage 环境已就绪", exact: true }).waitFor();
-  await page.getByRole("button", { name: "打开浏览器", exact: true }).click();
+  await page.getByRole("button", { name: "Запустить среду Cage", exact: true }).click();
+  await page.getByRole("heading", { name: "Среда Cage готова", exact: true }).waitFor();
+  await page.getByRole("button", { name: "Открыть браузер", exact: true }).click();
   await page.waitForFunction(() => Boolean(document.querySelector(".remote-canvas canvas")));
-  await page.getByText("正在连接画面", { exact: true }).waitFor({ state: "hidden" });
+  await page.getByText("Подключение к экрану", { exact: true }).waitFor({ state: "hidden" });
   assert.ok(report.connections > 0);
   const deadline = Date.now() + 3000;
   while (report.frames < 5 && Date.now() < deadline)
@@ -28,7 +28,7 @@ try {
   const originalTabs = structuredClone(state.tabs);
   const before = report.frames;
   await page.waitForFunction(() => document.querySelector(".remote-canvas canvas")?.width > 0);
-  await page.getByRole("button", { name: "工作台", exact: true }).click();
+  await page.getByRole("button", { name: "Рабочая среда", exact: true }).click();
   // Bounded observation proves frames stop, rather than only inspecting CSS.
   await new Promise((resolve) => setTimeout(resolve, 500));
   const hiddenStart = report.frames;
@@ -40,8 +40,8 @@ try {
     assert.ok(report.closed > 0, "display connection was not closed");
   }
   assert.deepEqual(state.tabs, originalTabs, "hiding the display changed guest tabs");
-  await page.getByRole("button", { name: "打开浏览器", exact: true }).click();
-  await page.getByText("正在连接画面", { exact: true }).waitFor({ state: "hidden" });
+  await page.getByRole("button", { name: "Открыть браузер", exact: true }).click();
+  await page.getByText("Подключение к экрану", { exact: true }).waitFor({ state: "hidden" });
   await page.waitForFunction(() => document.querySelector(".remote-canvas canvas")?.width > 0);
   const resumed = report.frames;
   await new Promise((resolve) => setTimeout(resolve, 250));
@@ -59,7 +59,7 @@ try {
       window.cageWindowVisible = true;
       window.dispatchEvent(new Event("cage-window-visibility"));
     });
-    await page.getByText("正在连接画面", { exact: true }).waitFor({ state: "hidden" });
+    await page.getByText("Подключение к экрану", { exact: true }).waitFor({ state: "hidden" });
     await new Promise((resolve) => setTimeout(resolve, 250));
     assert.ok(report.frames > paused, "native window visibility did not resume frames");
   }
@@ -75,7 +75,7 @@ try {
     while ((Date.now() - started) / 1000 < soakSeconds) {
       const beforeResume = report.frames;
       await page.evaluate(() => { window.cageWindowVisible = true; window.dispatchEvent(new Event("cage-window-visibility")); });
-      await page.getByText("正在连接画面", { exact: true }).waitFor({ state: "hidden" });
+      await page.getByText("Подключение к экрану", { exact: true }).waitFor({ state: "hidden" });
       await new Promise((resolve) => setTimeout(resolve, 1000));
       assert.ok(report.frames > beforeResume, "soak: visible display did not resume frames");
       await page.evaluate(() => { window.cageWindowVisible = false; window.dispatchEvent(new Event("cage-window-visibility")); });

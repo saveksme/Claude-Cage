@@ -6,10 +6,10 @@ const output = process.env.CAGE_TEST_CAPTURE || "/tmp/cage-sidebar-session-runni
 await mkdir(output, {recursive:true});
 for (const platform of ["darwin", "windows", "linux"]) {
   const sessions = [
-    {id:"external",title:"其他窗口中的会话",running:true},
-    {id:"owned",title:"Cage 中已打开的会话",running:true},
-    {id:"waiting",title:"等待打开的会话"},
-    {id:"available",title:"可以接续的会话"},
+    {id:"external",title:"Сеанс в другом окне",running:true},
+    {id:"owned",title:"Сеанс, открытый в Cage",running:true},
+    {id:"waiting",title:"Сеанс, ожидающий открытия"},
+    {id:"available",title:"Сеанс, который можно продолжить"},
   ];
   const releases = [], opens = [];
   let behavior = "hold", state;
@@ -30,7 +30,7 @@ for (const platform of ["darwin", "windows", "linux"]) {
         opens.push(session.id);
         const mode = behavior;
         if (mode === "hold") await new Promise(resolve=>releases.push(resolve));
-        if (mode === "error") return route.fulfill({status:409,contentType:"text/plain; charset=utf-8",body:"原会话仍在其他窗口运行，请先退出原会话"});
+        if (mode === "error") return route.fulfill({status:409,contentType:"text/plain; charset=utf-8",body:"Исходный сеанс всё ещё выполняется в другом окне; сначала выйдите из него"});
         const terminal = {id:"terminal-"+session.id,kind:"claude",workspace:session.workspace,title:session.title,cli_session_id:session.id};
         state.terminals.push(terminal);
         return route.fulfill({json:{desktop_terminal_id:terminal.id}});
@@ -47,8 +47,8 @@ for (const platform of ["darwin", "windows", "linux"]) {
     await external.waitFor();
     await owned.waitFor();
     assert.equal(await external.isDisabled(),true,"external running history must be disabled before clicking");
-    await external.getByRole("img",{name:"其他窗口运行中",exact:true}).waitFor();
-    assert.match(await external.getAttribute("title"),/退出原会话/);
+    await external.getByRole("img",{name:"Работает в другом окне",exact:true}).waitFor();
+    assert.match(await external.getAttribute("title"),/Исходный сеанс всё ещё выполняется/);
     const box = await external.boundingBox();
     await page.mouse.click(box.x+box.width/2,box.y+box.height/2);
     assert.deepEqual(opens,[],"disabled external session sent an open request");
@@ -60,7 +60,7 @@ for (const platform of ["darwin", "windows", "linux"]) {
     await page.locator(".sidebar-scroll").screenshot({path:`${output}/${platform}-initial.png`});
 
     await waiting.click();
-    await waiting.getByRole("img",{name:"正在打开会话",exact:true}).waitFor();
+    await waiting.getByRole("img",{name:"Открытие сеанса",exact:true}).waitFor();
     assert.equal(await waiting.isDisabled(),true);
     assert.equal(await available.isEnabled(),true,"unrelated history flickered disabled");
     assert.equal(await owned.isEnabled(),true);
@@ -70,7 +70,7 @@ for (const platform of ["darwin", "windows", "linux"]) {
     behavior = "error";
     await available.focus();
     await page.keyboard.press("Enter");
-    const failure = page.getByRole("alert").filter({hasText:"原会话仍在其他窗口运行"});
+    const failure = page.getByRole("alert").filter({hasText:"Исходный сеанс всё ещё выполняется"});
     await failure.waitFor();
     assert.equal(await waiting.isEnabled(),true,"cancelled request kept its row disabled");
     assert.equal(await available.isEnabled(),true,"failed open kept its row disabled");
@@ -81,8 +81,8 @@ for (const platform of ["darwin", "windows", "linux"]) {
     // Exit the external process, then refresh using the production list event.
     sessions[0].running = false;
     await page.evaluate(()=>window.dispatchEvent(new Event("cage-cli-sessions-changed")));
-    await page.waitForFunction(()=>document.querySelector('[aria-label="其他窗口中的会话"]')?.disabled === false);
-    assert.equal(await external.getByRole("img",{name:"其他窗口运行中"}).count(),0);
+    await page.waitForFunction(()=>document.querySelector('[aria-label="Сеанс в другом окне"]')?.disabled === false);
+    assert.equal(await external.getByRole("img",{name:"Работает в другом окне"}).count(),0);
     behavior = "success";
     await external.click();
     await page.getByRole("tab",{name:sessions[0].title,exact:true}).waitFor();
@@ -92,9 +92,9 @@ for (const platform of ["darwin", "windows", "linux"]) {
     behavior = "hold";
     await page.clock.install();
     await available.click();
-    await available.getByRole("img",{name:"正在打开会话",exact:true}).waitFor();
+    await available.getByRole("img",{name:"Открытие сеанса",exact:true}).waitFor();
     await page.clock.fastForward(60001);
-    await page.getByRole("alert").filter({hasText:"打开会话超时，历史已保留"}).waitFor();
+    await page.getByRole("alert").filter({hasText:"Истекло время ожидания открытия сеанса; история сохранена"}).waitFor();
     assert.equal(await available.isEnabled(),true);
     assert.deepEqual(errors,[]);
     await page.locator(".sidebar-scroll").screenshot({path:`${output}/${platform}-timeout.png`});

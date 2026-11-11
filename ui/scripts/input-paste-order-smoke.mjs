@@ -36,7 +36,7 @@ async function delaySync() {
 }
 try {
   await page.getByRole("button", { name: "Claude Desktop", exact: true }).click();
-  await page.getByText("正在连接画面", { exact: true }).waitFor({ state: "hidden" });
+  await page.getByText("Подключение к экрану", { exact: true }).waitFor({ state: "hidden" });
   await page.waitForFunction(() => window.cageSharedClipboardActive === true);
   await page.locator(".remote-canvas canvas").click({ position: { x: 40, y: 40 } });
   display.stats.keys.length = 0;
@@ -57,7 +57,7 @@ try {
   context = "b".repeat(32);
   await page.keyboard.press("Enter");
   await page.evaluate(() => window.releaseSync());
-  await page.getByText("粘贴位置已切换，请回到原输入位置重试", { exact: true }).waitFor();
+  await page.getByText("Позиция вставки переключилась. Вернитесь в исходную позицию и повторите.", { exact: true }).waitFor();
   assert(!display.stats.keys.some(key => key.symbol === 118 || key.symbol === 0xff0d));
   assert.deepEqual(errors, []);
   console.log(JSON.stringify({ result: "PASS", checks: ["shared clipboard gate reserves the real RFB queue", "paste precedes Enter", "focus change cancels paste and queued Enter"], wire: ordered }));

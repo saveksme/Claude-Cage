@@ -64,7 +64,7 @@ sys.stdout.buffer.write(b.getvalue())`], { maxBuffer: 1 << 20, stdio: ['ignore',
   await api('/__privacy-test', { sessionId, method: 'Runtime.evaluate', params: { expression: `chrome.management.setEnabled(${JSON.stringify(helper.id)}, false)`, userGesture: true } }).catch(() => {});
   await waitFor(async () => { try { return Array.isArray((await api('/extensions', { mode: 'list' })).items); } catch { return false; } }, 'built-in browser controller recovers after native extension disable');
   checks.push('built-in browser component is protected by controller recovery');
-  await assert.rejects(api('/internal-page', { mode: 'arbitrary' }), /内部页面无效/);
+  await assert.rejects(api('/internal-page', { mode: 'arbitrary' }), /Недействительная внутренняя страница/);
   await assert.rejects(fixture.uploadExtension(Buffer.from('invalid zip')));
   console.log(JSON.stringify({ passed: true, checks }, null, 2));
 } finally { await fixture.close(); }

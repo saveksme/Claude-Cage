@@ -29,14 +29,14 @@ try {
     await route.fulfill({status:200,contentType:"application/json",body:process.env.CAGE_TEST_MOBILE_LEGACY_SESSION});
   });
   await page.goto(entry);
-  await page.getByRole("dialog", {name:"工作区侧栏"}).getByRole("button", {name:/ 新建会话$/}).first().click();
-  await page.getByRole("dialog", {name:"工作区侧栏"}).waitFor({state:"hidden"});
-  const message = page.getByRole("textbox", {name:"消息"});
+  await page.getByRole("dialog", {name:"Боковая панель рабочей области"}).getByRole("button", {name:/^Новый сеанс в /}).first().click();
+  await page.getByRole("dialog", {name:"Боковая панель рабочей области"}).waitFor({state:"hidden"});
+  const message = page.getByRole("textbox", {name:"Сообщение"});
   await message.fill("initial mobile prompt");
-  await page.getByRole("button", {name:"发送",exact:true}).click();
-  const approve = page.getByRole("button",{name:"允许一次"});
+  await page.getByRole("button", {name:"Отправить",exact:true}).click();
+  const approve = page.getByRole("button",{name:"Разрешить один раз"});
   await approve.waitFor();
-  assert.match(await page.getByLabel("完整工具参数").innerText(), /mobile-approved\.txt/);
+  assert.match(await page.getByLabel("Полные параметры инструмента").innerText(), /mobile-approved\.txt/);
   await assert.rejects(readFile(process.env.CAGE_TEST_MOBILE_MARKER), {code:"ENOENT"});
   const out = process.env.CAGE_TEST_MOBILE_CAPTURE;
   if(out) {
@@ -56,19 +56,19 @@ try {
     else await route.continue();
   });
   await approve.click();
-  await page.getByRole("alert").getByRole("button", {name:"重新读取"}).waitFor();
+  await page.getByRole("alert").getByRole("button", {name:"Прочитать заново"}).waitFor();
   await page.unroute(sessionRequests);
-  await page.getByText("主机仍在等待这次审批。请核对参数后再次选择。", {exact:true}).waitFor();
+  await page.getByText("Хост всё ещё ожидает подтверждения. Проверьте параметры и выберите снова.", {exact:true}).waitFor();
   await assert.rejects(readFile(process.env.CAGE_TEST_MOBILE_MARKER), {code:"ENOENT"});
   await approve.click();
   await page.getByText("isolated tool completed", {exact:true}).waitFor();
   const tools = page.locator(".tool-history");
   await tools.locator("summary").click();
   await tools.getByText("Bash", {exact:true}).waitFor();
-  await tools.getByText("已完成", {exact:true}).waitFor();
+  await tools.getByText("Завершено", {exact:true}).waitFor();
   assert.equal(await readFile(process.env.CAGE_TEST_MOBILE_MARKER,"utf8"),"approved");
   await message.fill("follow-up");
-  await page.getByRole("button", {name:"发送",exact:true}).click();
+  await page.getByRole("button", {name:"Отправить",exact:true}).click();
   await page.getByText("isolated continuation",{exact:true}).waitFor();
   if(out) await page.screenshot({path:path.join(out,engine+"-cli-result.png")});
 } catch(error) {

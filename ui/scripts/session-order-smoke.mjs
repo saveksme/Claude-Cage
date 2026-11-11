@@ -6,9 +6,9 @@ const engine = process.env.CAGE_TEST_BROWSER || "chromium";
 const output = process.env.CAGE_TEST_CAPTURE || "/tmp/cage-session-order";
 let state, opens = 0;
 const sessions = [
-  { id:"order-idle", title:"已打开的空闲会话", updated_at:"2026-11-07T10:00:00Z" },
-  { id:"order-active", title:"正在执行的会话", active:true, updated_at:"2026-11-07T09:00:00Z" },
-  { id:"order-saved", title:"保存的会话", updated_at:"2026-11-07T08:00:00Z" },
+  { id:"order-idle", title:"Открытый свободный сеанс", updated_at:"2026-11-07T10:00:00Z" },
+  { id:"order-active", title:"Выполняющийся сеанс", active:true, updated_at:"2026-11-07T09:00:00Z" },
+  { id:"order-saved", title:"Сохранённый сеанс", updated_at:"2026-11-07T08:00:00Z" },
 ];
 const fixture = await createWorkbench({ url: process.env.CAGE_UI_URL || "http://127.0.0.1:5217",
   cliRequest: async (route, path) => {
@@ -30,12 +30,12 @@ try {
   sessions.forEach(session => {session.workspace = state.settings.workspace;});
   state.status.ready = state.status.vm_running = true;
   state.terminals = [{id:"idle", workspace:state.settings.workspace, title:sessions[0].title, cli_session_id:sessions[0].id}];
-  const project = page.getByRole("region",{name:"项目 默认工作区",exact:true});
+  const project = page.getByRole("region",{name:"Проект Рабочая область по умолчанию",exact:true});
   const order = () => project.locator(".sidebar-tab").evaluateAll(rows => rows.map(row => row.querySelector(":scope > button").textContent));
-  const saved = project.getByRole("button",{name:"保存的会话",exact:true});
+  const saved = project.getByRole("button",{name:"Сохранённый сеанс",exact:true});
   await saved.waitFor();
   assert.deepEqual(await order(),[sessions[1].title,sessions[0].title,sessions[2].title]);
-  await project.getByRole("img",{name:"会话正在运行"}).waitFor();
+  await project.getByRole("img",{name:"Сеанс выполняется"}).waitFor();
   await mkdir(output,{recursive:true});
   await page.screenshot({path:`${output}/${engine}-active.png`});
   const phoneContext = await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,userAgent:"CageMobile/1"});
@@ -43,12 +43,12 @@ try {
   await phone.route("**/api/**", async route => {
     const pathname = new URL(route.request().url()).pathname;
     return route.fulfill({json:pathname.endsWith("/projects")
-      ? {host:"隔离测试",ready:true,shared_sessions:true,projects:[{path:state.settings.workspace,name:"默认工作区"}]}
+      ? {host:"Изолированный тест",ready:true,shared_sessions:true,projects:[{path:state.settings.workspace,name:"Рабочая область по умолчанию"}]}
       : {sessions}});
   });
   await phone.goto((process.env.CAGE_UI_URL || "http://127.0.0.1:5217")+"/mobile.html");
-  const drawer = phone.getByRole("dialog",{name:"工作区侧栏"});
-  await drawer.getByRole("img",{name:"会话正在运行"}).waitFor();
+  const drawer = phone.getByRole("dialog",{name:"Боковая панель рабочей области"});
+  await drawer.getByRole("img",{name:"Сеанс выполняется"}).waitFor();
   assert.equal(await drawer.locator(".session-select").first().getAttribute("aria-label"),sessions[1].title);
   await phoneContext.close();
   const target = project.getByRole("button",{name:sessions[1].title,exact:true});
@@ -64,7 +64,7 @@ try {
   assert.deepEqual(await order(),[sessions[2].title,sessions[1].title,sessions[0].title],"click changed order");
   sessions[1].active = false;
   await page.evaluate(() => window.dispatchEvent(new Event("cage-cli-sessions-changed")));
-  await project.getByRole("img",{name:"会话正在运行"}).waitFor({state:"hidden"});
+  await project.getByRole("img",{name:"Сеанс выполняется"}).waitFor({state:"hidden"});
   assert.deepEqual(await order(),[sessions[2].title,sessions[1].title,sessions[0].title],"activity changed manual order");
   await page.reload();
   await project.getByRole("tab",{name:sessions[2].title,exact:true}).waitFor();

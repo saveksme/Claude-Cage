@@ -25,13 +25,13 @@ const { page, browser, errors } = await createWorkbench({
   },
 });
 try {
-  const actions = page.getByRole("group", { name: `${fixture.title} 的操作`, exact: true, includeHidden: true });
+  const actions = page.getByRole("group", { name: `Действия для ${fixture.title}`, exact: true, includeHidden: true });
   await page.locator(".sidebar-tab").filter({ has: actions }).hover();
-  await actions.getByRole("button", { name: "归档", exact: true }).hover();
-  await actions.locator(".terminal-action-label").filter({ hasText: /^归档$/ }).click();
-  const dialog = page.getByRole("dialog", { name: "归档这段会话？", exact: true });
-  await dialog.getByRole("button", { name: "归档会话", exact: true }).click();
-  const pending = dialog.getByRole("button", { name: "正在归档…", exact: true });
+  await actions.getByRole("button", { name: "Архивировать", exact: true }).hover();
+  await actions.locator(".terminal-action-label").filter({ hasText: /Архивировать/ }).click();
+  const dialog = page.getByRole("dialog", { name: "Заархивировать этот сеанс?", exact: true });
+  await dialog.getByRole("button", { name: "Заархивировать сеанс", exact: true }).click();
+  const pending = dialog.getByRole("button", { name: "Архивация…", exact: true });
   await pending.waitFor();
   assert.equal(await pending.isDisabled(), true);
   await page.keyboard.press("Enter");
@@ -43,7 +43,7 @@ try {
   // Reload fetches the durable catalog again through the real backend.
   const reloadedSessions = page.waitForResponse(response => new URL(response.url()).pathname === "/api/cli/sessions");
   await page.reload();
-  await page.getByRole("button", { name: "打开浏览器", exact: true }).waitFor();
+  await page.getByRole("button", { name: "Открыть браузер", exact: true }).waitFor();
   await reloadedSessions;
   assert.equal(await actions.count(), 0);
   assert.deepEqual(errors, []);

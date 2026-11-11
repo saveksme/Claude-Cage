@@ -9,14 +9,14 @@ await fs.mkdir(output, { recursive: true });
 const { browser, page, state, errors } = await createWorkbench();
 const checks = [];
 const showAppearance = async () => {
-  await page.getByRole("button", { name: /^设置/ }).click();
-  await page.getByRole("button", { name: "外观", exact: true }).click();
-  await page.getByRole("heading", { name: "外观", exact: true }).waitFor();
+  await page.getByRole("button", { name: /Настройки/ }).click();
+  await page.getByRole("button", { name: "Внешний вид", exact: true }).click();
+  await page.getByRole("heading", { name: "Внешний вид", exact: true }).waitFor();
 };
 const saved = () =>
   page
     .getByRole("status")
-    .filter({ hasText: /更改自动保存|已同步 Codex 外观/ })
+    .filter({ hasText: /Изменения сохраняются автоматически|Внешний вид Codex синхронизирован/ })
     .waitFor();
 const shot = async (name) => {
   await page.locator(".settings-content").evaluate((el) => el.scrollTo(0, 0));
@@ -29,24 +29,24 @@ try {
   await page.emulateMedia({ colorScheme: "light" });
   await showAppearance();
   await page
-    .getByRole("button", { name: "从本机 Codex 同步", exact: true })
+    .getByRole("button", { name: "Синхронизировать с Codex на этом компьютере", exact: true })
     .click();
   await page
     .getByRole("status")
-    .filter({ hasText: "已同步 Codex 外观" })
+    .filter({ hasText: "Внешний вид Codex синхронизирован" })
     .waitFor();
   assert.equal(state.appearance.lightTheme.preset, "solarized");
   assert.equal(state.appearance.darkTheme.preset, "ayu");
   assert.equal(
-    await page.getByLabel("界面字号", { exact: true }).inputValue(),
+    await page.getByLabel("Размер шрифта интерфейса", { exact: true }).inputValue(),
     "16",
   );
   assert.equal(
-    await page.getByLabel("代码字号", { exact: true }).inputValue(),
+    await page.getByLabel("Размер шрифта кода", { exact: true }).inputValue(),
     "13",
   );
   await shot("appearance-light");
-  await page.getByRole("button", { name: "深色", exact: true }).click();
+  await page.getByRole("button", { name: "Тёмная", exact: true }).click();
   await saved();
   assert.equal(
     await page.evaluate(() => document.documentElement.dataset.theme),
@@ -59,7 +59,7 @@ try {
     "#10141c",
   );
   await shot("appearance-dark");
-  await page.getByRole("button", { name: "跟随系统", exact: true }).click();
+  await page.getByRole("button", { name: "Как в системе", exact: true }).click();
   await saved();
   await page.emulateMedia({ colorScheme: "light" });
   await page.waitForFunction(
@@ -69,66 +69,66 @@ try {
   await page.waitForFunction(
     () => document.documentElement.dataset.theme === "dark",
   );
-  checks.push("导入本机设置、明暗主题独立保存、跟随系统实时切换、16/13 字号");
+  checks.push("Импорт настроек этого компьютера, независимое сохранение светлой и тёмной темы, переключение вслед за системой в реальном времени, размеры шрифта 16/13");
   await page
-    .getByRole("region", { name: "深色主题", exact: true })
-    .getByRole("button", { name: "自定义", exact: true })
+    .getByRole("region", { name: "Тёмная тема", exact: true })
+    .getByRole("button", { name: "Своя", exact: true })
     .click();
-  await page.getByLabel("深色主题代码字体", { exact: true }).fill("Menlo");
+  await page.getByLabel("Тёмная тема: шрифт кода", { exact: true }).fill("Menlo");
   await saved();
-  await page.getByLabel("深色主题半透明侧栏", { exact: true }).uncheck();
+  await page.getByLabel("Тёмная тема: полупрозрачная боковая панель", { exact: true }).uncheck();
   await saved();
   assert.equal(
     await page.evaluate(() => document.documentElement.dataset.translucent),
     "false",
   );
-  await page.getByRole("switch", { name: "使用指针光标", exact: true }).check();
+  await page.getByRole("switch", { name: "Курсор-указатель", exact: true }).check();
   await saved();
   assert.equal(
     await page
-      .getByRole("button", { name: "深色", exact: true })
+      .getByRole("button", { name: "Тёмная", exact: true })
       .evaluate((el) => getComputedStyle(el).cursor),
     "pointer",
   );
-  await chooseInline(page.getByLabel("减少动态效果", { exact: true }), "on");
+  await chooseInline(page.getByLabel("Уменьшить анимацию", { exact: true }), "on");
   await saved();
   assert.equal(
     await page.evaluate(() => document.documentElement.dataset.reducedMotion),
     "true",
   );
   state.failAppearance = true;
-  await page.getByLabel("代码字号", { exact: true }).fill("15");
+  await page.getByLabel("Размер шрифта кода", { exact: true }).fill("15");
   await page
     .getByRole("alert")
-    .filter({ hasText: "外观设置未能保存" })
+    .filter({ hasText: "Не удалось сохранить настройки оформления" })
     .waitFor();
   assert.equal(
-    await page.getByLabel("代码字号", { exact: true }).inputValue(),
+    await page.getByLabel("Размер шрифта кода", { exact: true }).inputValue(),
     "15",
   );
   assert.equal(state.appearance.codeFontSize, 13);
   state.failAppearance = false;
-  await page.getByRole("button", { name: "重试保存", exact: true }).click();
+  await page.getByRole("button", { name: "Повторить сохранение", exact: true }).click();
   await saved();
-  await page.getByRole("button", { name: "浅色", exact: true }).click();
-  await page.getByRole("button", { name: "深色", exact: true }).click();
-  await page.getByRole("button", { name: "跟随系统", exact: true }).click();
+  await page.getByRole("button", { name: "Светлая", exact: true }).click();
+  await page.getByRole("button", { name: "Тёмная", exact: true }).click();
+  await page.getByRole("button", { name: "Как в системе", exact: true }).click();
   await saved();
   await page.reload();
   await showAppearance();
   assert.equal(
-    await page.getByLabel("代码字号", { exact: true }).inputValue(),
+    await page.getByLabel("Размер шрифта кода", { exact: true }).inputValue(),
     "15",
   );
   assert.equal(
     await page
-      .getByRole("button", { name: "跟随系统", exact: true })
+      .getByRole("button", { name: "Как в системе", exact: true })
       .getAttribute("aria-pressed"),
     "true",
   );
   assert.equal(state.appearance.darkTheme.fonts.code, "Menlo");
   checks.push(
-    "自定义字体/半透明/指针/动态效果、失败保留输入与重试、快速切换最后写入胜出、刷新读回",
+    "Свои шрифты/полупрозрачность/курсор/анимация, ввод сохраняется при ошибке и повторяется, при быстром переключении побеждает последняя запись, чтение после обновления",
   );
   await page.setViewportSize({ width: 820, height: 558 });
   await shot("appearance-minimum");
@@ -138,19 +138,19 @@ try {
     ),
     false,
   );
-  await page.getByRole("button", { name: "返回工作台", exact: true }).click();
-  await page.getByRole("button", { name: "启动 Cage 环境", exact: true }).click();
+  await page.getByRole("button", { name: "Вернуться в рабочую среду", exact: true }).click();
+  await page.getByRole("button", { name: "Запустить среду Cage", exact: true }).click();
   await page
-    .getByRole("button", { name: "新建终端", exact: true })
+    .getByRole("button", { name: "Новый терминал", exact: true })
     .first()
     .click();
-  await page.getByRole("menuitem", { name: "普通终端", exact: true }).click();
-  await page.getByRole("tab", { name: "终端 1", exact: true }).waitFor();
+  await page.getByRole("menuitem", { name: "Обычный терминал", exact: true }).click();
+  await page.getByRole("tab", { name: "Терминал 1", exact: true }).waitFor();
   const count = state.terminalConnections;
   await showAppearance();
-  await page.getByRole("button", { name: "浅色", exact: true }).click();
+  await page.getByRole("button", { name: "Светлая", exact: true }).click();
   await saved();
-  await page.getByRole("button", { name: "返回工作台", exact: true }).click();
+  await page.getByRole("button", { name: "Вернуться в рабочую среду", exact: true }).click();
   assert.equal(state.terminalConnections, count);
   assert.equal(
     await page
@@ -170,7 +170,7 @@ try {
     animations: "disabled",
   });
   checks.push(
-    "820px 设置可滚动且无横向溢出、切换外观保留终端连接、未调用环境设置接口",
+    "Настройки прокручиваются при 820px без горизонтального переполнения, смена внешнего вида сохраняет соединение терминала, интерфейс настроек среды не вызывался",
   );
   assert.deepEqual(errors, []);
   await fs.writeFile(
@@ -179,7 +179,7 @@ try {
       {
         passed: true,
         checks,
-        scope: "隔离控制接口；源配置导入和写盘另用真实服务验证",
+        scope: "Изолированный интерфейс управления; импорт исходной конфигурации и запись на диск проверяются отдельно реальным сервисом",
       },
       null,
       2,

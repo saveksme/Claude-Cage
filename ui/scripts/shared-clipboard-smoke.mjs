@@ -27,7 +27,7 @@ try {
   state.status.ready = state.status.vm_running = true;
   await page.reload();
   await page.getByRole("button",{ name:"Claude Desktop", exact:true }).click();
-  await page.getByText("正在连接画面",{ exact:true }).waitFor({ state:"hidden" });
+  await page.getByText("Подключение к экрану",{ exact:true }).waitFor({ state:"hidden" });
   await page.waitForFunction(() => window.cageSharedClipboardActive === true);
   assert.equal(display.stats.clipboardUpdates.at(-1).text,"initial host text");
 
@@ -47,14 +47,14 @@ try {
   assert.equal(display.stats.clipboardUpdates.at(-1).text,"new host copy");
   assert.equal(state.requests.some(request => request.path === "/input/image"),false,"synchronized paste uses the actual guest clipboard");
 
-  await page.getByRole("button",{ name:"工作台", exact:true }).click();
+  await page.getByRole("button",{ name:"Рабочая среда", exact:true }).click();
   await page.getByRole("region",{ name:"Claude Desktop", exact:true }).waitFor({ state:"hidden" });
   display.sharedClipboard({ text:"guest background copy" });
   await waitFor(() => clipboard.text === "guest background copy");
   assert.equal(display.stats.clipboardConnections,1,"hiding a canvas retains the shared clipboard");
 
-  await page.getByRole("button", { name: "新建终端", exact: true }).first().click();
-  await page.getByRole("menuitem", { name: "普通终端", exact: true }).click();
+  await page.getByRole("button", { name: "Новый терминал", exact: true }).first().click();
+  await page.getByRole("menuitem", { name: "Обычный терминал", exact: true }).click();
   await page.waitForFunction(() => document.querySelector(".xterm-rows")?.textContent.includes("Terminal"));
   await page.locator(".xterm-helper-textarea").focus();
   const terminalCopy = "Claude 终端复制 → 共享剪贴板";

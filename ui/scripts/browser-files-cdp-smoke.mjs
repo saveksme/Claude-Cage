@@ -37,9 +37,9 @@ const server = http.createServer(async (request, response) => {
     return;
   }
   response.setHeader("Content-Type", "text/html;charset=utf-8");
-  response.end(`<label>上传文件<input type="file" multiple></label><p id="names"></p><div id="dropzone" contenteditable="true" style="height:160px">拖入附件</div><button>发送附件</button><a href="/download">下载测试视频</a><script>
-  const zone=document.querySelector('#dropzone'); zone.ondragover=e=>e.preventDefault(); zone.ondrop=async e=>{e.preventDefault(); for(const file of e.dataTransfer.files) await fetch('/received?name='+encodeURIComponent(file.name),{method:'POST',body:file}); zone.textContent='附件完成'}; const input=document.querySelector('input');input.onchange=()=>document.querySelector('#names').textContent=Array.from(input.files).map(f=>f.name).join(',');
-  document.querySelector('button').onclick=async()=>{for(const file of input.files)await fetch('/received?name='+encodeURIComponent(file.name),{method:'POST',body:file});document.querySelector('button').textContent='发送完成'};
+  response.end(`<label>Загрузить файлы<input type="file" multiple></label><p id="names"></p><div id="dropzone" contenteditable="true" style="height:160px">Перетащите вложения</div><button>Отправить вложения</button><a href="/download">Скачать тестовое видео</a><script>
+  const zone=document.querySelector('#dropzone'); zone.ondragover=e=>e.preventDefault(); zone.ondrop=async e=>{e.preventDefault(); for(const file of e.dataTransfer.files) await fetch('/received?name='+encodeURIComponent(file.name),{method:'POST',body:file}); zone.textContent='Вложения готовы'}; const input=document.querySelector('input');input.onchange=()=>document.querySelector('#names').textContent=Array.from(input.files).map(f=>f.name).join(',');
+  document.querySelector('button').onclick=async()=>{for(const file of input.files)await fetch('/received?name='+encodeURIComponent(file.name),{method:'POST',body:file});document.querySelector('button').textContent='Отправка завершена'};
   </script>`);
 });
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -74,29 +74,29 @@ try {
   await cdp.send("Page.enable");
   await cdp.send("Page.setInterceptFileChooserDialog", { enabled: true });
   await page.goto(`http://127.0.0.1:${server.address().port}`);
-  await page.getByLabel("上传文件").click();
+  await page.getByLabel("Загрузить файлы").click();
   await waitFor(() => uploads.snapshot().length === 1);
   let request = uploads.snapshot()[0];
   await uploads.receive(
     request.id,
-    "参考视频.mp4",
+    "справочное-видео.mp4",
     Readable.from([bytes.subarray(0, 3000), bytes.subarray(3000)]),
   );
   await uploads.receive(
     request.id,
-    "参考文档.txt",
+    "справочный-документ.txt",
     Readable.from([Buffer.from("多文件上传\n中文🙂")]),
   );
   await uploads.finish(request.id);
   await page
     .locator("#names")
-    .filter({ hasText: "参考视频.mp4,参考文档.txt" })
+    .filter({ hasText: "справочное-видео.mp4,справочный-документ.txt" })
     .waitFor();
-  await page.getByRole("button", { name: "发送附件" }).click();
-  await page.getByRole("button", { name: "发送完成" }).waitFor();
+  await page.getByRole("button", { name: "Отправить вложения" }).click();
+  await page.getByRole("button", { name: "Отправка завершена" }).waitFor();
   assert.deepEqual(received[0].bytes, bytes);
   assert.equal(received[1].bytes.toString(), "多文件上传\n中文🙂");
-  await page.getByLabel("上传文件").click();
+  await page.getByLabel("Загрузить файлы").click();
   await waitFor(() => uploads.snapshot().length === 1);
   request = uploads.snapshot()[0];
   uploads.cancel(request.id);
@@ -105,23 +105,23 @@ try {
     2,
     "cancel must retain the prior selection",
   );
-  await page.getByLabel("上传文件").click();
+  await page.getByLabel("Загрузить файлы").click();
   await waitFor(() => uploads.snapshot().length === 1);
   request = uploads.snapshot()[0];
   await page.reload();
-  await assert.rejects(uploads.finish(request.id), /关闭/);
+  await assert.rejects(uploads.finish(request.id), /Закрыть/);
 
   for (const kind of ["drop", "paste"]) {
     await page.locator("#dropzone").focus();
     const box = await page.locator("#dropzone").boundingBox();
     const viewport = page.viewportSize();
     const batch = uploads.start("tab-1", "session-1", { kind, x: (box.x + box.width / 2) / viewport.width, y: (box.y + box.height / 2) / viewport.height });
-    await uploads.receive(batch.id, `原视频-${kind}.mp4`, Readable.from([bytes]));
-    await uploads.receive(batch.id, `中文-${kind}.txt`, Readable.from([Buffer.from("保留原文件🙂")]));
+    await uploads.receive(batch.id, `исходное-видео-${kind}.mp4`, Readable.from([bytes]));
+    await uploads.receive(batch.id, `кириллица-${kind}.txt`, Readable.from([Buffer.from("保留原文件🙂")]));
     await uploads.finish(batch.id);
     await waitFor(() => received.length === (kind === "drop" ? 4 : 6));
     assert.deepEqual(received.at(-2).bytes, bytes);
-    assert.equal(received.at(-2).name, `原视频-${kind}.mp4`);
+    assert.equal(received.at(-2).name, `исходное-видео-${kind}.mp4`);
     assert.equal(received.at(-1).bytes.toString(), "保留原文件🙂");
   }
 
@@ -147,7 +147,7 @@ try {
     browserContextId: targetInfo.browserContextId,
     eventsEnabled: true,
   });
-  await page.getByRole("link", { name: "下载测试视频" }).click();
+  await page.getByRole("link", { name: "Скачать тестовое видео" }).click();
   await waitFor(() => downloads.snapshot()[0]?.state === "saved");
   assert.deepEqual(await readFile(downloads.snapshot()[0].path), bytes);
   assert.deepEqual(errors, []);

@@ -33,9 +33,9 @@ try {
   state.status.vm_running = state.status.ready = true;
   await page.reload();
   await page.getByRole("button", { name: "Claude Desktop", exact: true }).click();
-  await page.getByRole("button", { name: "下载并安装", exact: true }).waitFor();
+  await page.getByRole("button", { name: "Скачать и установить", exact: true }).waitFor();
   await waitFor(() => requests >= 3);
-  await page.getByRole("button", { name: "刷新 Claude Desktop 状态", exact: true }).click();
+  await page.getByRole("button", { name: "Обновить состояние Claude Desktop", exact: true }).click();
   assert.equal(maximum, 1, "slow Desktop status reads must never overlap");
   await visible(false);
   await visible(true);
@@ -48,7 +48,7 @@ try {
   assert.equal(requests, hiddenCount, "hidden windows must stop Desktop status polling");
   await visible(true);
   await waitFor(() => requests > hiddenCount);
-  await page.getByRole("button", { name: "工作台", exact: true }).click();
+  await page.getByRole("button", { name: "Рабочая среда", exact: true }).click();
   await waitFor(() => pending === 0);
   const closedCount = requests;
   await new Promise((resolve) => setTimeout(resolve, 240));

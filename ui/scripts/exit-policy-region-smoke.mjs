@@ -14,20 +14,20 @@ try {
     timezone: "Asia/Tokyo", checked_at: new Date().toISOString(),
   } }));
   const openSettings = async () => {
-    await page.getByRole("button", { name: /^设置/ }).click();
-    await page.getByRole("button", { name: "网络与代理", exact: true }).click();
+    await page.getByRole("button", { name: /Настройки/ }).click();
+    await page.getByRole("button", { name: "Сеть и прокси", exact: true }).click();
   };
   await openSettings();
-  await page.getByText("中国大陆出口禁止放行；静态 IP 和不限地区也必须确认出口国家。", { exact: true }).waitFor();
-  const picker = page.getByRole("combobox", { name: "动态 IP 的允许范围", exact: true });
+  await page.getByText("Выход через материковый Китай запрещён; для статического IP и режима «любой регион» также нужно подтвердить страну выхода.", { exact: true }).waitFor();
+  const picker = page.getByRole("combobox", { name: "Допустимый диапазон динамического IP", exact: true });
   const layoutTop = locator => locator.evaluate(element => {
     let top = element.getBoundingClientRect().top;
     for (let parent = element.parentElement; parent; parent = parent.parentElement) top += parent.scrollTop;
     return top;
   });
-  const country = page.getByLabel("允许的国家／地区代码", { exact: true });
+  const country = page.getByLabel("Код разрешённой страны/региона", { exact: true });
   await country.click();
-  assert.equal(await page.getByRole("option", { name: "中国", exact: true }).count(), 0, "mainland must not be offered as an allowed exit country");
+  assert.equal(await page.getByRole("option", { name: "Китай", exact: true }).count(), 0, "mainland must not be offered as an allowed exit country");
   await country.press("Escape");
   const before = await layoutTop(country);
   await picker.click();
@@ -39,15 +39,15 @@ try {
   assert.ok(list.height > 0, "options must remain visible");
   await picker.press("ArrowDown");
   await picker.press("Enter");
-  await page.getByLabel("允许的城市", { exact: true }).waitFor({ state: "hidden" });
+  await page.getByLabel("Разрешённый город", { exact: true }).waitFor({ state: "hidden" });
   assert.equal(await picker.getAttribute("value"), "region");
-  assert.equal(await page.getByLabel("所属州／省", { exact: true }).inputValue(), "Kanagawa");
-  await page.getByRole("button", { name: "检测当前出口", exact: true }).click();
+  assert.equal(await page.getByLabel("Регион", { exact: true }).inputValue(), "Kanagawa");
+  await page.getByRole("button", { name: "Проверить текущий выход", exact: true }).click();
   await page.getByText("Japan · Kanagawa · Kawasaki", { exact: true }).waitFor();
-  await page.getByRole("button", { name: "用检测结果填写", exact: true }).click();
+  await page.getByRole("button", { name: "Заполнить по результату проверки", exact: true }).click();
   await page.screenshot({ path: fileURLToPath(new URL("region-settings.png", output)), fullPage: true });
-  await page.getByRole("button", { name: "保存设置", exact: true }).click();
-  await page.getByRole("heading", { name: "网络与代理", exact: true }).waitFor({ state: "hidden" });
+  await page.getByRole("button", { name: "Сохранить настройки", exact: true }).click();
+  await page.getByRole("heading", { name: "Сеть и прокси", exact: true }).waitFor({ state: "hidden" });
   assert.equal(state.settings.exit_policy.scope, "region");
   assert.equal(state.settings.exit_policy.region, "Kanagawa");
   assert.equal(state.settings.exit_policy.country_code, "JP");
@@ -55,15 +55,15 @@ try {
   await page.reload();
   await openSettings();
   assert.equal(await picker.getAttribute("value"), "region");
-  assert.equal(await page.getByLabel("所属州／省", { exact: true }).inputValue(), "Kanagawa");
+  assert.equal(await page.getByLabel("Регион", { exact: true }).inputValue(), "Kanagawa");
   await chooseInline(picker, "city");
-  assert.equal(await page.getByLabel("允许的城市", { exact: true }).inputValue(), "Yokohama");
+  assert.equal(await page.getByLabel("Разрешённый город", { exact: true }).inputValue(), "Yokohama");
   await picker.click();
   await picker.press("Escape");
   assert.equal(await picker.getAttribute("aria-expanded"), "false");
   await chooseInline(picker, "any");
-  assert.match(await picker.textContent(), /中国大陆除外/);
-  await page.getByText(/命中大陆网段、定位为中国大陆、无法确认出口地区/).waitFor();
+  assert.match(await picker.textContent(), /кроме материкового Китая/);
+  await page.getByText(/попадании в материковые диапазоны, определении материкового Китая, невозможности подтвердить регион выхода/).waitFor();
   assert.deepEqual(errors, []);
   console.log("PASS: inline mouse/keyboard expansion, region binding, city preservation, save and reload");
 } finally { await browser.close(); }

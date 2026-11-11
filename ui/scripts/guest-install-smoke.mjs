@@ -16,8 +16,8 @@ for (const [id, name, platform] of [["macos", "macOS", "darwin"], ["windows-11",
     },
   });
   try {
-    const picker = page.getByRole("combobox", { name: "客户机系统" });
-    const storage = page.getByRole("button", { name: "选择环境存储位置" });
+    const picker = page.getByRole("combobox", { name: "Гостевая система" });
+    const storage = page.getByRole("button", { name: "Выбрать место хранения среды" });
     const storageBefore = await storage.boundingBox();
     await picker.click();
     const option = page.getByRole("option", { name, exact: true });
@@ -27,15 +27,15 @@ for (const [id, name, platform] of [["macos", "macOS", "darwin"], ["windows-11",
     await picker.press("Escape");
     assert.equal((await storage.boundingBox()).y, storageBefore.y);
     await picker.press("Enter"); await picker.press("End"); await picker.press("Enter");
-    const button = page.getByRole("button", { name: "安装客户机" });
+    const button = page.getByRole("button", { name: "Установить гостевую систему" });
     if (platform === "darwin") {
       assert.ok(await button.isEnabled());
-      assert.equal(await page.getByLabel("客机账户密码",{exact:true}).count(),0);
+      assert.equal(await page.getByLabel("Пароль аккаунта гостевой системы",{exact:true}).count(),0);
     } else {
       assert.ok(await button.isDisabled());
-      await page.getByRole("button", { name: "选择本机 ISO" }).click();
+      await page.getByRole("button", { name: "Выбрать локальный ISO" }).click();
       await page.getByText("C:\\media\\Windows11.iso", { exact: true }).waitFor();
-      await page.getByLabel("ISO 的 SHA-256").fill("a".repeat(64));
+      await page.getByLabel("SHA-256 ISO-образа").fill("a".repeat(64));
       assert.ok(await button.isDisabled());
       await page.getByRole("checkbox").check();
     }

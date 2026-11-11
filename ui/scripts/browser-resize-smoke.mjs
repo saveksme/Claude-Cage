@@ -15,7 +15,7 @@ try {
   state.tabs = [{ id: "page", kind: "web", title: "Resize", url: "https://example.test" }];
   state.active = "page";
   await page.reload();
-  await page.getByRole("button", { name: "打开浏览器", exact: true }).click();
+  await page.getByRole("button", { name: "Открыть браузер", exact: true }).click();
   const canvas = page.locator(".browser-lane .remote-canvas canvas");
   const pixel = () => canvas.evaluate(c => [...c.getContext("2d").getImageData(c.width - 1, c.height - 1, 1, 1).data]);
   await page.waitForFunction(() => {

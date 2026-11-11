@@ -12,8 +12,8 @@ await page.addInitScript(() => {
     close() {}
   };
 });
-const back = page.getByRole("button", { name: "后退", exact: true });
-const forward = page.getByRole("button", { name: "前进", exact: true });
+const back = page.getByRole("button", { name: "Назад", exact: true });
+const forward = page.getByRole("button", { name: "Вперёд", exact: true });
 const send = (snapshot) => page.evaluate(snapshot => {
   window.navigationEvents.onmessage({ data: JSON.stringify(snapshot) });
 }, { tabs: state.tabs, active: state.active, ...snapshot });
@@ -30,7 +30,7 @@ try {
   ];
   state.active = "first";
   await page.reload();
-  await page.getByRole("button", { name: "打开浏览器", exact: true }).click();
+  await page.getByRole("button", { name: "Открыть браузер", exact: true }).click();
   await send({ back: false, forward: false });
   assert.equal(await back.isDisabled(), true);
   assert.equal(await forward.isDisabled(), true);

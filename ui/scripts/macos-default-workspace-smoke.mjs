@@ -6,7 +6,7 @@ import { createWorkbench } from "./workbench-fixture.mjs";
 
 const output = process.env.CAGE_WORKSPACE_QA_OUTPUT || await mkdtemp(join(tmpdir(), "cage-default-workspace-ui-"));
 await mkdir(output, { recursive: true });
-const notice = "此历史会话仍使用原来的客机目录，文件保留在虚拟 Mac 内。要使用与主机共享的默认工作区，请从默认工作区新建会话。";
+const notice = "Этот исторический сеанс по-прежнему использует исходный каталог гостевой системы, файлы остаются внутри виртуального Mac. Чтобы использовать рабочее пространство по умолчанию, общее с хостом, создайте новый сеанс из рабочего пространства по умолчанию.";
 let allowed = false;
 let screenAllowed = false, frameReads = 0, frameReadsAtClick = 0;
 const actions = [];
@@ -24,7 +24,7 @@ const fixture = await createWorkbench({
     });
     state.account.guest_system = state.status.guest_system = "macos";
     state.status.vm_running = state.status.ready = true;
-    state.status.project_error = "请在虚拟 Mac 的项目授权窗口中选中此项目，然后重新打开";
+    state.status.project_error = "Выберите этот проект в окне авторизации проекта виртуального Mac и откройте его заново";
     state.status.project_errors = [{ path: state.settings.workspace, message: state.status.project_error }];
     await page.route("**/api/projects/open", async route => {
       actions.push(route.request().postDataJSON());
@@ -54,49 +54,49 @@ const fixture = await createWorkbench({
       return route.fulfill({ json: { maintenance_version: 1 } });
     });
     await page.route("**/api/cli/sessions/*/account", route => route.fulfill({ json: { supported: false, candidates: [], session: {} } }));
-    await page.routeWebSocket("**/api/terminals/**", socket => socket.send(Buffer.from("隔离测试终端\r\n/Users/cage/.local/share/cage/workspace $ ")));
+    await page.routeWebSocket("**/api/terminals/**", socket => socket.send(Buffer.from("Изолированный тестовый терминал\r\n/Users/cage/.local/share/cage/workspace $ ")));
   },
 });
 const { page, state, browser, errors } = fixture;
 try {
-  await page.getByRole("button", { name: "重新连接项目", exact: true }).click();
-  const project = page.getByRole("dialog", { name: "打开项目", exact: true });
+  await page.getByRole("button", { name: "Переподключить проект", exact: true }).click();
+  const project = page.getByRole("dialog", { name: "Открыть проект", exact: true });
   await project.waitFor();
-  assert.equal(await project.getByRole("textbox", { name: "新项目文件夹", exact: true }).inputValue(), state.settings.workspace);
-  await project.getByRole("button", { name: "打开项目", exact: true }).click();
-  const permission = page.getByRole("dialog", { name: "允许客机访问所选项目", exact: true });
+  assert.equal(await project.getByRole("textbox", { name: "Папка нового проекта", exact: true }).inputValue(), state.settings.workspace);
+  await project.getByRole("button", { name: "Открыть проект", exact: true }).click();
+  const permission = page.getByRole("dialog", { name: "Разрешить гостевой системе доступ к выбранному проекту", exact: true });
   await permission.waitFor();
   await permission.getByText(state.settings.workspace, { exact: true }).waitFor();
-  await permission.getByRole("status").filter({ hasText: "屏幕与系统音频录制" }).waitFor();
+  await permission.getByRole("status").filter({ hasText: "Запись экрана и аудио системы" }).waitFor();
   await page.screenshot({ path: join(output, "default-workspace-approval.png"), animations: "disabled" });
-  await permission.getByRole("button", { name: "打开客机授权设置", exact: true }).click();
-  const recovery = page.getByRole("dialog", { name: "恢复客机系统权限", exact: true });
+  await permission.getByRole("button", { name: "Открыть настройки авторизации гостевой системы", exact: true }).click();
+  const recovery = page.getByRole("dialog", { name: "Восстановить разрешения гостевой системы", exact: true });
   await recovery.getByRole("img").waitFor();
   assert.equal(maintenance.find(request => request.action === "open").maintenance, "screen");
-  await recovery.getByRole("button", { name: "返回工作台", exact: true }).click();
+  await recovery.getByRole("button", { name: "Вернуться в рабочую среду", exact: true }).click();
   await recovery.waitFor({ state: "detached" });
   screenAllowed = true;
   await permission.getByRole("img").click();
-  const inputError = permission.getByRole("alert").filter({ hasText: "辅助功能" });
+  const inputError = permission.getByRole("alert").filter({ hasText: "Универсальный доступ" });
   await inputError.waitFor();
   await permission.getByRole("img").waitFor();
   assert.ok(frameReads > frameReadsAtClick, "next guest frame was fetched");
   assert.ok(await inputError.isVisible(), "polling must retain the failed click");
-  await permission.getByRole("button", { name: "打开客机授权设置", exact: true }).click();
+  await permission.getByRole("button", { name: "Открыть настройки авторизации гостевой системы", exact: true }).click();
   await recovery.getByRole("img").waitFor();
   assert.equal(maintenance.filter(request => request.action === "open").at(-1).maintenance, "input");
-  await recovery.getByRole("button", { name: "返回工作台", exact: true }).click();
+  await recovery.getByRole("button", { name: "Вернуться в рабочую среду", exact: true }).click();
   await recovery.waitFor({ state: "detached" });
   allowed = true;
-  await permission.getByRole("button", { name: "验证授权", exact: true }).click();
+  await permission.getByRole("button", { name: "Проверить авторизацию", exact: true }).click();
   await permission.waitFor({ state: "hidden" });
   assert.equal(actions.length, 2);
   assert.ok(actions.every(item => item.workspace === state.settings.workspace));
 
-  state.terminals = [{ id: "legacy-default", kind: "claude", title: "历史默认会话", workspace: state.settings.workspace,
+  state.terminals = [{ id: "legacy-default", kind: "claude", title: "Исторический сеанс по умолчанию", workspace: state.settings.workspace,
     cli_session_id: "01234567-1234-4234-8234-0123456789ab", workspace_notice: notice, closed: true }];
   await page.reload();
-  await page.getByRole("tab", { name: "历史默认会话", exact: true }).click();
+  await page.getByRole("tab", { name: "Исторический сеанс по умолчанию", exact: true }).click();
   await page.getByRole("status").filter({ hasText: notice }).waitFor();
   await page.screenshot({ path: join(output, "default-workspace-legacy-notice.png"), animations: "disabled" });
   assert.deepEqual(errors, []);
@@ -113,7 +113,7 @@ try {
       state.account.guest_system = "macos";
       Object.assign(state.status, {
         guest_system: "macos", ready: true, vm_running: true,
-        job: { kind: "safety", running: true, message: "正在检查客机网络" },
+        job: { kind: "safety", running: true, message: "Проверка сети гостевой системы" },
         safety: { gate: { mode: "open", until: new Date(Date.now() + 3600000).toISOString() } },
         project_errors: [{ path: state.status.environment_directory, recovery: "project-approval" }],
       });
@@ -128,7 +128,7 @@ try {
       await page.route("**/api/macos/project-approval", route => {
         const q = route.request().postDataJSON();
         if (!grant || q.grant !== grant) return route.fulfill({
-          status: 409, headers: { "Content-Type": "text/plain; charset=utf-8", "X-Cage-Recovery": "project-approval-ended" }, body: "项目授权请求已失效，请重新请求授权。",
+          status: 409, headers: { "Content-Type": "text/plain; charset=utf-8", "X-Cage-Recovery": "project-approval-ended" }, body: "Запрос авторизации проекта устарел; запросите авторизацию заново.",
         });
         if (q.action === "frame") return route.fulfill({ json: { image, window: 1, pid: 2, nonce: grant } });
         if (q.action === "click") { assert.equal(q.nonce, grant); approved = true; }
@@ -138,20 +138,20 @@ try {
     },
   });
   try {
-    const region = f.page.getByRole("region", { name: "默认工作区访问" });
-    const open = region.getByRole("button", { name: "查看并授权" });
-    const dialog = f.page.getByRole("dialog", { name: "允许客机访问所选项目" });
-    const enter = f.page.getByRole("button", { name: "进入工作台", exact: true });
+    const region = f.page.getByRole("region", { name: "Завершение проверок установки" });
+    const open = region.getByRole("button", { name: "Открыть авторизацию рабочей области" });
+    const dialog = f.page.getByRole("dialog", { name: "Разрешить гостевой системе доступ к выбранному проекту" });
+    const enter = f.page.getByRole("button", { name: "Войти в рабочую среду", exact: true });
     await open.waitFor();
     await region.getByText(f.state.status.environment_directory, { exact: true }).waitFor();
     assert.equal(await dialog.count(), 0);
     assert.equal(generation, 0, "polling must not open the guest dialog");
     await open.click();
-    await dialog.getByText("当前客机操作结束后，会显示项目授权窗口。").waitFor();
+    await dialog.getByText("Окно авторизации проекта появится после завершения текущей операции в гостевой системе.").waitFor();
     assert.equal(generation, 0);
     f.state.status.job.running = false;
     await dialog.getByRole("img").waitFor();
-    await dialog.getByRole("button", { name: "取消", exact: true }).click();
+    await dialog.getByRole("button", { name: "Отмена", exact: true }).click();
     await dialog.waitFor({ state: "hidden" });
     assert.equal(grant, "");
     await enter.waitFor();
@@ -159,15 +159,15 @@ try {
     await open.click();
     await dialog.getByRole("img").waitFor();
     grant = "";
-    await dialog.getByRole("button", { name: "重新请求授权" }).click();
+    await dialog.getByRole("button", { name: "Запросить авторизацию заново" }).click();
     await dialog.getByRole("img").waitFor();
     assert.equal(generation, 3);
-    await dialog.getByRole("button", { name: "验证授权" }).click();
+    await dialog.getByRole("button", { name: "Проверить авторизацию" }).click();
     assert.equal(approved, false, "verification must not approve a pending project");
     await dialog.getByRole("img").click();
     await dialog.waitFor({ state: "hidden" });
     await enter.click();
-    await f.page.getByRole("complementary", { name: "项目与终端" }).waitFor();
+    await f.page.getByRole("complementary", { name: "Проекты и терминалы" }).waitFor();
     assert.deepEqual(f.errors, []);
     console.log("PASS macOS initialization: default project approval, cancellation, expiry, renewal, verification and workbench entry");
   } finally { await f.browser.close(); }

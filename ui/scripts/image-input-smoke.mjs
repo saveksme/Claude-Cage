@@ -25,7 +25,7 @@ await page.route("**/api/input/image", async (route) => {
   });
   await route.fulfill(
     fail
-      ? { status: 502, contentType: "text/plain; charset=utf-8", body: "测试：图片传递失败" }
+      ? { status: 502, contentType: "text/plain; charset=utf-8", body: "Тест: передача изображения не удалась" }
       : {
           json: {
             path: "/home/cage/.local/share/cage/attachments/image-test.png",
@@ -39,7 +39,7 @@ await page.routeWebSocket("**/api/terminals/**", (socket) => {
   socket.onMessage((data) => messages.push(JSON.parse(data)));
   socket.send(Buffer.from("\x1b[?2004hImage input acceptance\r\n$ "));
 });
-const html = `<div id="remote" style="height:220px"></div><input id="local" aria-label="本机输入框"><div id="terminal" style="height:400px"></div><div id="status" role="status"></div>`;
+const html = `<div id="remote" style="height:220px"></div><input id="local" aria-label="Поле ввода этого компьютера"><div id="terminal" style="height:400px"></div><div id="status" role="status"></div>`;
 await page.route("**/image-input-test", (route) =>
   route.fulfill({ contentType: "text/html", body: html }),
 );
@@ -142,7 +142,7 @@ try {
     };
     rfb.focus();
   });
-  await imageEvent("[aria-label='Cage 网页输入']", "paste");
+  await imageEvent("[aria-label='Ввод на странице Cage']", "paste");
   await poll(() => received.length === 1);
   await page.evaluate(() => probe.rfb.sendKey(0xff0d, "Enter", true));
   assert.deepEqual(await page.evaluate(() => probe.order), []);
@@ -157,9 +157,9 @@ try {
   await imageEvent("#remote", "drop");
   await poll(() => received.length === 2);
   release();
-  await page.getByRole("status").filter({ hasText: "已传递" }).waitFor();
+  await page.getByRole("status").filter({ hasText: "Передано" }).waitFor();
   await imageEvent("#remote", "drop", false);
-  await page.getByRole("status").filter({ hasText: "请选择 PNG" }).waitFor();
+  await page.getByRole("status").filter({ hasText: "Выберите изображение PNG" }).waitFor();
   assert.equal(received.length, 2);
   await page.locator("#local").focus();
   await imageEvent("#local", "paste");
@@ -221,7 +221,7 @@ try {
   await poll(() => received.length === 4);
   await page.keyboard.press("Enter");
   release();
-  await page.getByRole("status").filter({ hasText: "图片传递失败" }).waitFor();
+  await page.getByRole("status").filter({ hasText: "Передача изображения не удалась" }).waitFor();
   assert.equal(
     messages.filter((m) => m.type === "input").length,
     2,

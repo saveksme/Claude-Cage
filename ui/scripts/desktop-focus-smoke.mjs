@@ -21,7 +21,7 @@ try {
   state.status.vm_running = true;
   state.status.ready = true;
   await page.reload();
-  await page.getByRole("button", { name: "打开浏览器", exact: true }).click();
+  await page.getByRole("button", { name: "Открыть браузер", exact: true }).click();
   await page.waitForFunction(() => Boolean(window.testBrowserEvents?.onmessage));
   const notify = (desktopFocus) => page.evaluate((desktopFocus) => {
     window.testBrowserEvents.onmessage({ data: JSON.stringify({
@@ -30,9 +30,9 @@ try {
   }, desktopFocus);
   await notify(true);
   await page.getByRole("region", { name: "Claude Desktop", exact: true }).waitFor();
-  await page.getByRole("button", { name: "关闭应用", exact: true }).waitFor();
+  await page.getByRole("button", { name: "Закрыть приложение", exact: true }).waitFor();
   assert.equal(state.requests.some((r) => r.path === "/claude-desktop/start"), false);
-  await page.getByRole("button", { name: "打开浏览器", exact: true }).click();
+  await page.getByRole("button", { name: "Открыть браузер", exact: true }).click();
   await notify(false);
   await page.getByRole("region", { name: "Claude Desktop", exact: true }).waitFor({ state: "hidden" });
   await notify(true);

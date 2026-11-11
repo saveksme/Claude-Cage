@@ -48,7 +48,7 @@ try {
     });
   });
   await page.goto(config.url);
-  const nav = page.getByRole("navigation", { name: "主导航" });
+  const nav = page.getByRole("navigation", { name: "Основная навигация" });
   await nav
     .getByRole("button", { name: "Claude Desktop", exact: true })
     .click();

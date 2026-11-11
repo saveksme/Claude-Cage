@@ -8,7 +8,7 @@ for (const [platform, id] of [["darwin","macos"], ["windows","windows-11"], ["li
       async beforeNavigate(page, state) {
         state.status.local_vm_storage = true;
         await page.route("**/api/environment/guest-systems", route => route.fulfill({
-          json:{fresh, available:false, system:fresh ? id : null, reason:"此构建缺少原生客户机安装组件"},
+          json:{fresh, available:false, system:fresh ? id : null, reason:"В этой сборке отсутствует компонент установки нативной гостевой системы"},
         }));
       },
     });
@@ -19,7 +19,7 @@ for (const [platform, id] of [["darwin","macos"], ["windows","windows-11"], ["li
         await region.waitFor();
         if (id) {
           const picker = region.getByRole("combobox");
-          const storage = page.getByRole("button",{name:"选择环境存储位置"});
+          const storage = page.getByRole("button",{name:"Выбрать место хранения среды"});
           const initialY = (await storage.boundingBox()).y;
           await picker.click();
           const option = page.getByRole("option").last();
@@ -31,7 +31,7 @@ for (const [platform, id] of [["darwin","macos"], ["windows","windows-11"], ["li
         }
       } else await region.waitFor({state:"hidden"});
       const submitted = page.waitForRequest(req => req.url().endsWith("/api/start") && req.method()==="POST");
-      await page.getByRole("button",{name:"启动 Cage 环境",exact:true}).click();
+      await page.getByRole("button",{name:"Запустить среду Cage",exact:true}).click();
       assert.deepEqual((await submitted).postDataJSON(), fresh ? {guest_system:"debian-13"} : {});
       assert.deepEqual(errors,[]);
     } finally { await browser.close(); }

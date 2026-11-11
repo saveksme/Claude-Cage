@@ -68,14 +68,14 @@ async function measure(directory, baseline) {
   try {
     const page = await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:1,isMobile:true,hasTouch:true,userAgent:"CageMobile/1"});
     await page.goto("http://127.0.0.1:"+host.address().port);
-    await page.getByRole("button",{name:"浏览器",exact:true}).click();
-    const address = page.getByRole("textbox",{name:"远程网页地址"});
+    await page.getByRole("button",{name:"Браузер",exact:true}).click();
+    const address = page.getByRole("textbox",{name:"Адрес удалённой страницы"});
     await address.fill("http://scroll.example:"+site.address().port);
     await address.press("Enter");
     for(let i=0; i<80 && !pageReady; i++) await delay(100);
     assert.ok(pageReady,"remote Chromium did not load the local page");
     await delay(550);
-    const stage = page.getByRole("img",{name:"远程浏览器画面"});
+    const stage = page.getByRole("img",{name:"Изображение удалённого браузера"});
     const rect = await stage.boundingBox();
     const start = async type => {
       await page.evaluate(type => {

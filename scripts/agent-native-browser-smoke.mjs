@@ -103,7 +103,7 @@ try {
     operations.push({ action: request.action, operation: request.operation, connection_id: request.connection_id });
     if (request.action === 'accountDevice') {
       if (request.operation === 'status') return { supported: true, biometric_available: true, device_status: { automatic: 'disabled', biometric: 'disabled' } };
-      throw new Error('请完成 Touch ID 用户验证（操作系统桥验收替身）。');
+      throw new Error('Завершите проверку пользователя Touch ID (заглушка приёмки моста ОС).');
     }
     if (request.action === 'refreshSession') {
       const url = await entry();
@@ -121,7 +121,7 @@ try {
   });
   await page.goto(await entry());
   await page.locator('.app').waitFor({ timeout: 20000 });
-  await page.getByRole('complementary', { name: '项目与终端' }).waitFor();
+  await page.getByRole('complementary', { name: 'Проекты и терминалы' }).waitFor();
   const boot = await page.evaluate(() => Number(sessionStorage.getItem('agent-native-browser-boots')));
   const origin = new URL(page.url()).origin;
   const ordinaryClaim = await context.request.get(`${origin}/api/agent/native?consumer=window`, { headers: { 'X-Cage-Connection': 'local' } });
@@ -136,7 +136,7 @@ try {
   assert.equal(saved.result.reload_required, true);
   await page.waitForFunction(previous => Number(sessionStorage.getItem('agent-native-browser-boots')) > previous, boot);
   await page.locator('.app.sidebar-collapsed').waitFor();
-  assert.equal(await page.getByRole('complementary', { name: '项目与终端' }).count(), 0, 'The real workbench did not apply sidebar state after reload.');
+  assert.equal(await page.getByRole('complementary', { name: 'Проекты и терминалы' }).count(), 0, 'The real workbench did not apply sidebar state after reload.');
   assert.deepEqual(await page.evaluate(() => ({ sidebar: localStorage.getItem('cage-sidebar-collapsed'), layout: localStorage.getItem('cage-browser-tab-layout'), audio: localStorage.getItem('cage.audio') })), { sidebar: 'true', layout: '"vertical"', audio: '{"muted":true,"volume":0.25}' });
 
   const read = await completed(await submit({ action: 'clientPreferences', operation: 'get' }));
@@ -146,7 +146,7 @@ try {
 
   const biometric = await completed(await submit({ action: 'accountDevice', operation: 'enable', kind: 'biometric' }));
   assert.equal(biometric.status, 'failed');
-  assert.match(biometric.error, /请完成 Touch ID 用户验证/);
+  assert.match(biometric.error, /Завершите проверку пользователя Touch ID/);
   assert.equal(operations.filter(item => item.action === 'accountDevice' && item.operation === 'enable').length, 1, 'The failed biometric action was repeated.');
 
   const refreshed = await completed(await submit({ action: 'refreshSession' }));
@@ -159,11 +159,11 @@ try {
 
   const restored = await completed(await submit({ action: 'clientPreferences', operation: 'set', values: { 'cage-sidebar-collapsed': 'false' } }));
   assert.equal(restored.status, 'completed');
-  await page.getByRole('complementary', { name: '项目与终端' }).waitFor();
+  await page.getByRole('complementary', { name: 'Проекты и терминалы' }).waitFor();
   assert.equal(await page.locator('.app.sidebar-collapsed').count(), 0);
   // The reverse direction uses the real user control, then the Agent reads
   // the same stored state rather than a separate Agent-only preference.
-  await page.getByRole('button', { name: '收起侧栏', exact: true }).click();
+  await page.getByRole('button', { name: 'Свернуть боковую панель', exact: true }).click();
   await page.locator('.app.sidebar-collapsed').waitFor();
   const userChanged = await completed(await submit({ action: 'clientPreferences', operation: 'get' }));
   assert.equal(userChanged.status, 'completed');

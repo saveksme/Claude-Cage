@@ -35,10 +35,10 @@ await page.route("**/api/claude-desktop**", async (route) => {
     id: "desktop-" + actions.length,
     kind: "claude-desktop-" + action,
     running: false,
-    message: "已完成",
+    message: "Завершено",
   };
   if (action === "install" && failInstall)
-    job.error = "测试：安装源暂时不可用，请重试";
+    job.error = "Тест: источник установки временно недоступен; повторите";
   else if (action === "install")
     Object.assign(desktop, { installed: true, version: "4.4212.0" });
   else if (action === "start") desktop.running = true;
@@ -58,7 +58,7 @@ try {
   await page
     .getByRole("button", { name: "Claude Desktop", exact: true })
     .click();
-  await page.getByRole("button", { name: "下载并安装", exact: true }).waitFor();
+  await page.getByRole("button", { name: "Скачать и установить", exact: true }).waitFor();
   assert.deepEqual(
     actions,
     [],
@@ -67,15 +67,15 @@ try {
   await page.screenshot({
     path: fileURLToPath(new URL("desktop-install.png", output)),
   });
-  await page.getByRole("button", { name: "下载并安装", exact: true }).click();
+  await page.getByRole("button", { name: "Скачать и установить", exact: true }).click();
   await page
     .getByRole("alert")
-    .filter({ hasText: "安装源暂时不可用" })
+    .filter({ hasText: "источник установки временно недоступен" })
     .waitFor();
   assert.equal(desktop.installed, false);
   failInstall = false;
-  await page.getByRole("button", { name: "下载并安装", exact: true }).click();
-  await page.getByRole("button", { name: "关闭应用", exact: true }).waitFor();
+  await page.getByRole("button", { name: "Скачать и установить", exact: true }).click();
+  await page.getByRole("button", { name: "Закрыть приложение", exact: true }).waitFor();
   assert.deepEqual(actions, ["install", "install", "start"]);
   const desktopToolbar = page.locator(".claude-desktop-toolbar");
   const sendBrowserState = (focus) => page.evaluate((snapshot) => {
@@ -95,8 +95,8 @@ try {
   state.tabs.push({ ...loginTab, id: "desktop-login-poll" });
   state.active = "desktop-login-poll";
   await desktopToolbar.waitFor({ state: "hidden" });
-  assert.equal(await page.getByRole("textbox", { name: "网页地址或搜索" }).inputValue(), loginTab.url);
-  await page.getByRole("button", { name: "打开浏览器", exact: true }).click();
+  assert.equal(await page.getByRole("textbox", { name: "Адрес страницы или поисковый запрос" }).inputValue(), loginTab.url);
+  await page.getByRole("button", { name: "Открыть браузер", exact: true }).click();
   assert.equal(
     desktop.running,
     true,
@@ -105,44 +105,44 @@ try {
   await page
     .getByRole("button", { name: "Claude Desktop", exact: true })
     .click();
-  await page.getByRole("button", { name: "关闭应用", exact: true }).click();
+  await page.getByRole("button", { name: "Закрыть приложение", exact: true }).click();
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "关闭应用", exact: true })
+    .getByRole("button", { name: "Закрыть приложение", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "打开 Claude Desktop", exact: true })
+    .getByRole("button", { name: "Открыть Claude Desktop", exact: true })
     .waitFor();
   assert.equal(desktop.running, false);
   const stoppedActions = actions.length;
-  await page.getByRole("button", { name: "刷新 Claude Desktop 状态" }).click();
+  await page.getByRole("button", { name: "Обновить состояние Claude Desktop" }).click();
   assert.equal(
     actions.length,
     stoppedActions,
     "refresh must not reopen a stopped app",
   );
-  await page.getByRole("button", { name: /^设置/ }).click();
+  await page.getByRole("button", { name: /Настройки/ }).click();
   await page
-    .getByLabel("Claude 终端启动命令", { exact: true })
+    .getByLabel("Команда запуска терминала Claude", { exact: true })
     .fill("claude --continue --model sonnet");
-  await page.getByRole("button", { name: "保存设置", exact: true }).click();
+  await page.getByRole("button", { name: "Сохранить настройки", exact: true }).click();
   await page
-    .getByLabel("Claude 终端启动命令", { exact: true })
+    .getByLabel("Команда запуска терминала Claude", { exact: true })
     .waitFor({ state: "hidden" });
   assert.equal(
     state.settings.claude_terminal_command,
     "claude --continue --model sonnet",
   );
-  await page.getByRole("button", { name: /^在 .* 新建终端$/ }).click();
+  await page.getByRole("button", { name: /^Создать терминал в проекте / }).click();
   await page
     .getByRole("menu")
-    .getByRole("menuitem", { name: "Claude 终端", exact: true })
+    .getByRole("menuitem", { name: "Терминал Claude", exact: true })
     .waitFor();
   await page.screenshot({
     path: fileURLToPath(new URL("terminal-choice.png", output)),
   });
   await page
-    .getByRole("menuitem", { name: "Claude 终端", exact: true })
+    .getByRole("menuitem", { name: "Терминал Claude", exact: true })
     .click();
   const terminalRequests = () =>
     state.requests.filter(
@@ -155,14 +155,14 @@ try {
   );
   const before = terminalRequests().length;
   await page.reload();
-  await page.getByRole("button", { name: /^在 .* 新建终端$/ }).waitFor();
+  await page.getByRole("button", { name: /^Создать терминал в проекте / }).waitFor();
   assert.equal(
     terminalRequests().length,
     before,
     "reconnect must not relaunch Claude",
   );
-  await page.getByRole("button", { name: /^在 .* 新建终端$/ }).click();
-  await page.getByRole("menuitem", { name: "普通终端", exact: true }).click();
+  await page.getByRole("button", { name: /^Создать терминал в проекте / }).click();
+  await page.getByRole("menuitem", { name: "Обычный терминал", exact: true }).click();
   assert.equal(terminalRequests().at(-1).body.kind, "shell");
   await page.setViewportSize({ width: 820, height: 558 });
   await page

@@ -17,8 +17,8 @@ const { browser, page, state, errors } = await createWorkbench({
     state.status.ready = state.status.vm_running = true;
     state.status.guest_system = state.account.guest_system = "macos";
     state.tabs = [
-      { id: "input-one", kind: "web", title: "输入测试一", url: "https://one.example.test" },
-      { id: "input-two", kind: "web", title: "输入测试二", url: "https://two.example.test" },
+      { id: "input-one", kind: "web", title: "Тест ввода 1", url: "https://one.example.test" },
+      { id: "input-two", kind: "web", title: "Тест ввода 2", url: "https://two.example.test" },
     ];
     state.active = "input-one";
     await page.route("**/api/browser/tabs", route => route.fulfill({ json: {
@@ -50,8 +50,8 @@ async function until(predicate) {
   assert(predicate(), "expected private clipboard operation did not arrive");
 }
 try {
-  await page.getByRole("button", { name: "打开浏览器", exact: true }).click();
-  await page.getByText("正在连接画面", { exact: true }).waitFor({ state: "hidden" });
+  await page.getByRole("button", { name: "Открыть браузер", exact: true }).click();
+  await page.getByText("Подключение к экрану", { exact: true }).waitFor({ state: "hidden" });
   await page.waitForFunction(() => window.cageSharedClipboardActive === true);
   const canvas = page.locator(".browser-lane .remote-canvas canvas");
   await canvas.click({ position: { x: 40, y: 40 } });
@@ -94,7 +94,7 @@ try {
 
   await page.keyboard.press("Meta+v");
   await until(() => reads.length === 2);
-  await page.getByRole("tab", { name: "输入测试二", exact: true }).click();
+  await page.getByRole("tab", { name: "Тест ввода 2", exact: true }).click();
   await until(() => state.active === "input-two");
   reads[1]({ png });
   await until(() => cancelled.some(item => item.context === prepared[1].context));
@@ -112,7 +112,7 @@ try {
   assert(delivered.slice(1).every(item => item.body.id === "input-two"));
 
   await page.evaluate(() => { window.pasteIntent.length = 0; });
-  await page.getByLabel("Cage 网页输入").evaluate((element, encoded) => {
+  await page.getByLabel("Ввод на странице Cage").evaluate((element, encoded) => {
     const data = new DataTransfer();
     data.items.add(new File([Uint8Array.from(atob(encoded), value => value.charCodeAt(0))], "screenshot.png", { type: "image/png" }));
     element.dispatchEvent(new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData: data }));

@@ -32,9 +32,9 @@ try {
     };
     new MutationObserver(check).observe(document.body, { attributes: true, childList: true, subtree: true });
   });
-  await page.getByRole("button", { name: "新建终端", exact: true }).first().click();
-  await page.getByRole("menuitem", { name: "Claude 终端", exact: true }).click();
-  await page.getByText("正在准备 Claude 会话…", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Новый терминал", exact: true }).first().click();
+  await page.getByRole("menuitem", { name: "Терминал Claude", exact: true }).click();
+  await page.getByText("Подготовка сеанса Claude…", { exact: true }).waitFor();
   await page.locator(".terminal-host").waitFor({ state: "visible" });
   await page.waitForFunction(() => document.querySelector(".xterm-rows")?.textContent.includes("Claude Code"));
   const text = output.replace(/\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g, "").replace(/\s/g, "");

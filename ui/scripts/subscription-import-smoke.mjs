@@ -43,35 +43,35 @@ try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(launch.url);
-  await page.getByLabel("用户名", { exact: true }).fill("订阅验证");
-  await page.getByLabel("设置密码", { exact: true }).fill("isolated-subscription-qa-password");
-  await page.getByLabel("确认密码", { exact: true }).fill("isolated-subscription-qa-password");
-  await page.getByRole("button", { name: "创建本地账户", exact: true }).click();
+  await page.getByLabel("Имя пользователя", { exact: true }).fill("subscription-qa");
+  await page.getByLabel("Задать пароль", { exact: true }).fill("isolated-subscription-qa-password");
+  await page.getByLabel("Подтвердите пароль", { exact: true }).fill("isolated-subscription-qa-password");
+  await page.getByRole("button", { name: "Создать локальный аккаунт", exact: true }).click();
   const enter = async () => {
-    await page.getByRole("button", { name: /^设置/ }).click();
-    await page.getByRole("button", { name: "网络与代理", exact: true }).click();
-    await page.getByRole("heading", { name: "内置代理", exact: true }).waitFor();
-    await page.getByRole("tab", { name: "订阅", exact: true }).click();
+    await page.getByRole("button", { name: /Настройки/ }).click();
+    await page.getByRole("button", { name: "Сеть и прокси", exact: true }).click();
+    await page.getByRole("heading", { name: "Встроенный прокси", exact: true }).waitFor();
+    await page.getByRole("tab", { name: "Подписки", exact: true }).click();
   };
   const importYAML = async (name, content) => {
-    await page.getByRole("button", { name: "添加来源", exact: true }).click();
-    await page.getByRole("button", { name: "本地 YAML", exact: true }).click();
-    await page.getByLabel("来源名称", { exact: true }).fill(name);
-    await page.getByLabel("节点 YAML", { exact: true }).fill(content);
-    await page.getByRole("button", { name: "导入并验证", exact: true }).click();
+    await page.getByRole("button", { name: "Добавить источник", exact: true }).click();
+    await page.getByRole("button", { name: "Локальный YAML", exact: true }).click();
+    await page.getByLabel("Название источника", { exact: true }).fill(name);
+    await page.getByLabel("YAML узлов", { exact: true }).fill(content);
+    await page.getByRole("button", { name: "Импортировать и проверить", exact: true }).click();
     await page.locator(".proxy-progress").waitFor({ state: "hidden" });
   };
   await enter();
   const pin = "ab".repeat(32);
   const mixed = `proxies:
- - {name: 普通节点, type: socks5, server: 127.0.0.1, port: 1080}
- - {name: 端口跳跃节点, type: hysteria2, server: example.com, port: 35000, password: private-password, mport: 35000-39000, pinSHA256: "${pin}"}
- - {name: VLESS扩展参数, type: vless, server: example.com, port: 443, uuid: 00000000-0000-4000-8000-000000000000, tls: true, udp: true, xudp: true, future-option: private-field-value, reality-opts: {public-key: CQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA, short-id: "0123456789abcdef", support-x25519mlkem768: true}}
- - {name: 不兼容节点, type: socks5, server: example.com, port: 1080, INTERFACE_NAME: private-field-value}
- - {name: 依赖不兼容节点, type: http, server: example.com, port: 8080, dialer-proxy: 不兼容节点}
+ - {name: Обычный узел, type: socks5, server: 127.0.0.1, port: 1080}
+ - {name: Узел с прыжком порта, type: hysteria2, server: example.com, port: 35000, password: private-password, mport: 35000-39000, pinSHA256: "${pin}"}
+ - {name: Расширенные параметры VLESS, type: vless, server: example.com, port: 443, uuid: 00000000-0000-4000-8000-000000000000, tls: true, udp: true, xudp: true, future-option: private-field-value, reality-opts: {public-key: CQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA, short-id: "0123456789abcdef", support-x25519mlkem768: true}}
+ - {name: Несовместимый узел, type: socks5, server: example.com, port: 1080, INTERFACE_NAME: private-field-value}
+ - {name: Зависит от несовместимого узла, type: http, server: example.com, port: 8080, dialer-proxy: Несовместимый узел}
 `;
-  await importYAML("兼容性验证", mixed);
-  await page.locator(".proxy-notice").filter({ hasText: "已导入 3 个节点，跳过 2 个" }).waitFor();
+  await importYAML("Проверка совместимости", mixed);
+  await page.locator(".proxy-notice").filter({ hasText: "Импортировано узлов: 3, пропущено: 2" }).waitFor();
   const state = () => page.evaluate(() => fetch("/api/proxy").then((response) => response.json()));
   const imported = await state();
   assert.equal(imported.sources[0].nodes.length, 3);
@@ -88,8 +88,8 @@ try {
   for (const secret of [pin, "private-password", "private-field-value", stored.auth]) {
     assert.ok(!JSON.stringify(imported).includes(secret), "Public import status leaked a field value");
   }
-  await importYAML("第二来源", "proxies: [{name: 备用节点, type: http, server: 127.0.0.1, port: 8080}]");
-  await page.locator(".proxy-notice").filter({ hasText: "已导入 1 个节点，跳过 0 个" }).waitFor();
+  await importYAML("Второй источник", "proxies: [{name: Резервный узел, type: http, server: 127.0.0.1, port: 8080}]");
+  await page.locator(".proxy-notice").filter({ hasText: "Импортировано узлов: 1, пропущено: 0" }).waitFor();
   const details = page.locator(".proxy-source-skipped").first();
   const summary = details.locator("summary");
   const secondSource = page.locator(".proxy-source").nth(1);
@@ -98,8 +98,8 @@ try {
   await summary.scrollIntoViewIfNeeded();
   const before = await relativeY();
   await summary.click();
-  await details.getByText(/节点不能引用本机文件、网络接口或额外路由/).waitFor();
-  await details.getByText(/代理链必须引用同一来源中成功导入/).waitFor();
+  await details.getByText(/Узел не может ссылаться на локальные файлы, сетевые интерфейсы или дополнительные маршруты/).waitFor();
+  await details.getByText(/Цепочка прокси должна ссылаться на успешно импортированные/).waitFor();
   assert.ok((await relativeY()) > before + 30, "Expanded reasons did not push the next source down");
   await page.locator(".settings-content").evaluate((element) => { element.scrollTop = 0; });
   await page.screenshot({ path: path.join(output, "partial-import.png") });
@@ -110,15 +110,15 @@ try {
   await page.reload();
   await enter();
   await page.locator(".proxy-source-skipped summary").click();
-  await page.locator(".proxy-source-skipped").getByText(/节点不能引用本机文件、网络接口或额外路由/).waitFor();
+  await page.locator(".proxy-source-skipped").getByText(/Узел не может ссылаться на локальные файлы, сетевые интерфейсы или дополнительные маршруты/).waitFor();
   assert.equal((await state()).sources[0].skipped.length, 2, "Reload lost the import report");
   await page.setViewportSize({ width: 760, height: 1000 });
   const bounds = await page.locator(".proxy-source").first().boundingBox();
   assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= 760, "Import report overflowed the narrow viewport");
   await page.screenshot({ path: path.join(output, "narrow.png") });
   await page.setViewportSize({ width: 1280, height: 1000 });
-  await importYAML("全部不兼容", "proxies: [{name: 证书参数无效, type: hysteria2, server: example.com, port: 443, password: private-password, pinSHA256: private-pin}]");
-  await page.getByRole("alert").filter({ hasText: "没有可导入的节点" }).waitFor();
+  await importYAML("Все несовместимы", "proxies: [{name: Неверные параметры сертификата, type: hysteria2, server: example.com, port: 443, password: private-password, pinSHA256: private-pin}]");
+  await page.getByRole("alert").filter({ hasText: "Нет узлов для импорта" }).waitFor();
   assert.equal((await state()).sources.length, 2, "Failed import changed existing sources");
   assert.ok(!(await page.getByRole("alert").innerText()).includes("private-pin"));
   await page.screenshot({ path: path.join(output, "all-skipped.png") });

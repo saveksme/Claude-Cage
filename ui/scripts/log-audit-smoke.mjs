@@ -11,7 +11,7 @@ for (const platform of ["darwin", "windows"]) {
     nativeRequest: async body => {
       if (body.action !== "appUpdate") return null;
       calls.push(body.operation);
-      return { phase: proxyReady ? "current" : "waiting", message: proxyReady ? "已是最新版本" : "所选代理未运行，更新检查将在代理就绪后重试", retryAt: "" };
+      return { phase: proxyReady ? "current" : "waiting", message: proxyReady ? "Уже установлена последняя версия в текущем канале обновлений" : "Выбранный прокси не запущен; проверка обновлений повторится, когда прокси будет готов", retryAt: "" };
     },
   });
   try {
@@ -36,7 +36,7 @@ try {
   let broken = true;
   let polls = 0;
   await page.exposeFunction("filePollCountForTest", () => polls);
-  const failure = "Claude Desktop 的文件服务已经退出，请重新打开应用";
+  const failure = "Файловая служба Claude Desktop завершилась. Снова откройте Claude Desktop из Cage.";
   await page.route("**/api/input/files/desktop/requests", route => {
     polls++;
     return broken ? route.fulfill({ status: 503, contentType: "text/plain", body: failure })
@@ -59,14 +59,14 @@ try {
   await page.waitForFunction(async previous => await window.filePollCountForTest() > previous, recovered);
   assert.ok(polls > recovered, "normal polling cadence returns after recovery");
 
-  await page.getByRole("button", { name: "打开浏览器", exact: true }).click();
-  const trigger = page.getByRole("button", { name: "浏览器下载", exact: true });
+  await page.getByRole("button", { name: "Открыть браузер", exact: true }).click();
+  const trigger = page.getByRole("button", { name: "Загрузки браузера", exact: true });
   for (let round = 0; round < 4; round++) {
     await trigger.click();
-    await page.getByRole("dialog", { name: "下载文件", exact: true }).waitFor();
-    await page.getByRole("button", { name: "工作台", exact: true }).click();
+    await page.getByRole("dialog", { name: "Скачать файл", exact: true }).waitFor();
+    await page.getByRole("button", { name: "Рабочая среда", exact: true }).click();
     await page.setViewportSize({ width: 950 + round * 25, height: 720 });
-    await page.getByRole("button", { name: "打开浏览器", exact: true }).click();
+    await page.getByRole("button", { name: "Открыть браузер", exact: true }).click();
   }
   assert.deepEqual(fixture.errors, [], "closing panels and resizing must not leave null-reference callbacks");
   console.log("PASS: file polling reports failures, backs off, recovers, and panel teardown remains safe");

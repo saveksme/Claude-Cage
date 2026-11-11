@@ -24,14 +24,14 @@ try {
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ acceptDownloads: true, viewport: { width: 1280, height: 900 } });
   await page.goto(entry.url);
-  await page.getByRole("heading", { name: "注册 Cage 账户", exact: true }).waitFor();
-  await page.getByLabel("用户名", { exact: true }).fill("diagnostics_qa");
-  await page.getByLabel("设置密码", { exact: true }).fill("Test-only-password-8712");
-  await page.getByLabel("确认密码", { exact: true }).fill("Test-only-password-8712");
-  await page.getByRole("button", { name: "创建本地账户", exact: true }).click();
-  await page.getByRole("button", { name: "设置", exact: true }).click();
-  await page.getByRole("button", { name: "环境与恢复", exact: true }).click();
-  await page.getByRole("heading", { name: "日志与诊断" }).waitFor();
+  await page.getByRole("heading", { name: "Регистрация аккаунта Cage", exact: true }).waitFor();
+  await page.getByLabel("Имя пользователя", { exact: true }).fill("diagnostics_qa");
+  await page.getByLabel("Задать пароль", { exact: true }).fill("Test-only-password-8712");
+  await page.getByLabel("Подтвердите пароль", { exact: true }).fill("Test-only-password-8712");
+  await page.getByRole("button", { name: "Создать локальный аккаунт", exact: true }).click();
+  await page.getByRole("button", { name: "Настройки", exact: true }).click();
+  await page.getByRole("button", { name: "Среда и восстановление", exact: true }).click();
+  await page.getByRole("heading", { name: "Журналы и диагностика" }).waitFor();
   // Exercise browser event handlers, the actual authenticated endpoint and disk.
   const reports = Promise.all(["diagnostic-ui-sentinel", "diagnostic-rejection-sentinel"].map(marker =>
     page.waitForResponse(response => response.url().endsWith("/api/diagnostics/events") && response.request().postData()?.includes(marker) && response.ok())));
@@ -41,9 +41,9 @@ try {
   });
   await reports;
   const downloaded = page.waitForEvent("download");
-  await page.getByRole("button", { name: "导出诊断包", exact: true }).click();
+  await page.getByRole("button", { name: "Экспорт диагностики", exact: true }).click();
   await (await downloaded).saveAs(path.join(root, "browser.zip"));
-  await page.getByRole("status").filter({ hasText: "诊断包已下载" }).waitFor();
+  await page.getByRole("status").filter({ hasText: "Пакет диагностики загружен" }).waitFor();
   await page.screenshot({ path: path.join(reportDirectory, "settings.png") });
   // Native hosts use the same CLI command after their save picker completes.
   const nativeOutput = path.join(root, "native.zip");

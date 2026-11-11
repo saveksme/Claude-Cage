@@ -26,9 +26,9 @@ const { browser, page, state, errors } = await createWorkbench({
 });
 const checks = [];
 const open = async () => {
-  await page.getByRole("button", { name: /^设置/ }).click();
-  await page.getByRole("button", { name: "外观", exact: true }).click();
-  await page.getByRole("heading", { name: "外观", exact: true }).waitFor();
+  await page.getByRole("button", { name: /Настройки/ }).click();
+  await page.getByRole("button", { name: "Внешний вид", exact: true }).click();
+  await page.getByRole("heading", { name: "Внешний вид", exact: true }).waitFor();
   await page.locator(".appearance-fields").evaluate((el) => {
     if (el.disabled) throw new Error("appearance still loading");
   });
@@ -36,7 +36,7 @@ const open = async () => {
 const saved = async () => {
   await page
     .locator(".appearance-save-state")
-    .filter({ hasText: /更改自动保存|已同步 Codex 外观/ })
+    .filter({ hasText: /Изменения сохраняются автоматически|Внешний вид Codex синхронизирован/ })
     .waitFor();
 };
 const edit = async (label, value) => {
@@ -45,7 +45,7 @@ const edit = async (label, value) => {
   await input.press("Enter");
   await saved();
 };
-const light = () => page.getByRole("region", { name: "浅色主题", exact: true });
+const light = () => page.getByRole("region", { name: "Светлая тема", exact: true });
 const color = (key) =>
   page.evaluate(
     (key) => getComputedStyle(document.documentElement).getPropertyValue(key),
@@ -61,148 +61,148 @@ try {
   await page.emulateMedia({ colorScheme: "light" });
   await open();
   await shot("themes-light");
-  await edit("浅色主题背景", "#fdf6e3");
-  await light().getByRole("button", { name: "自定义", exact: true }).click();
-  await light().getByText("界面与层级", { exact: true }).click();
-  await edit("浅色主题面板背景", "#e8dec3");
+  await edit("Светлая тема · Фон", "#fdf6e3");
+  await light().getByRole("button", { name: "Своя", exact: true }).click();
+  await light().getByText("Интерфейс и уровни", { exact: true }).click();
+  await edit("Светлая тема · Фон панели", "#e8dec3");
   assert.equal(await color("--chrome"), "#e8dec3");
-  await light().getByText("按钮与交互", { exact: true }).click();
-  await edit("浅色主题主按钮背景", "#426b52");
-  await edit("浅色主题主按钮文字", "#ffffff");
+  await light().getByText("Кнопки и взаимодействие", { exact: true }).click();
+  await edit("Светлая тема · Фон основной кнопки", "#426b52");
+  await edit("Светлая тема · Текст основной кнопки", "#ffffff");
   assert.equal(await color("--button"), "#426b52");
-  await light().getByText("终端", { exact: true }).click();
-  await edit("浅色主题终端背景", "#101820");
-  await light().getByText("终端 ANSI 配色", { exact: true }).click();
-  await edit("浅色主题终端红色", "#f08080");
+  await light().getByText("Терминал", { exact: true }).click();
+  await edit("Светлая тема · терминал · Фон", "#101820");
+  await light().getByText("Цвета ANSI терминала", { exact: true }).click();
+  await edit("Светлая тема · терминал · Красный", "#f08080");
   await shot("themes-colors");
   const originalChrome = state.appearance.lightTheme.colors.chrome;
-  await page.getByLabel("浅色主题面板背景", { exact: true }).fill("#oops");
-  await page.getByLabel("浅色主题面板背景", { exact: true }).press("Tab");
+  await page.getByLabel("Светлая тема · Фон панели", { exact: true }).fill("#oops");
+  await page.getByLabel("Светлая тема · Фон панели", { exact: true }).press("Tab");
   assert.equal(state.appearance.lightTheme.colors.chrome, originalChrome);
-  await page.getByLabel("浅色主题面板背景", { exact: true }).press("Escape");
-  checks.push("基础色和元素色即时生效、终端和 ANSI 独立覆盖、无效 HEX 不提交");
-  await page.getByLabel("主题名称", { exact: true }).fill("森林日光");
-  await page.getByRole("button", { name: "另存为主题", exact: true }).click();
-  await page.getByRole("status").filter({ hasText: "主题已保存" }).waitFor();
+  await page.getByLabel("Светлая тема · Фон панели", { exact: true }).press("Escape");
+  checks.push("Базовые и элементы применяются сразу, терминал и ANSI переопределяются отдельно, недопустимый HEX не отправляется");
+  await page.getByLabel("Название темы", { exact: true }).fill("Лесной дневной свет");
+  await page.getByRole("button", { name: "Сохранить как тему", exact: true }).click();
+  await page.getByRole("status").filter({ hasText: "Тема сохранена" }).waitFor();
   assert.equal(state.appearance.customThemes.length, 1);
   const savedTheme = structuredClone(state.appearance.customThemes[0]);
-  await edit("浅色主题背景", "#eeeeee");
+  await edit("Светлая тема · Фон", "#eeeeee");
   await page
-    .getByRole("button", { name: "恢复已保存配色", exact: true })
+    .getByRole("button", { name: "Вернуть сохранённую палитру", exact: true })
     .click();
   await saved();
   assert.equal(state.appearance.lightTheme.surface, "#fdf6e3");
-  await page.getByRole("button", { name: "导出主题", exact: true }).click();
-  await page.getByRole("status").filter({ hasText: "主题已导出" }).waitFor();
+  await page.getByRole("button", { name: "Экспорт темы", exact: true }).click();
+  await page.getByRole("status").filter({ hasText: "Тема экспортирована" }).waitFor();
   assert.ok(sameTheme(parseThemeDocument(exported.text), savedTheme));
-  assert.equal(exported.filename, "森林日光.cage-theme.json");
+  assert.equal(exported.filename, "Лесной дневной свет.cage-theme.json");
   cancelExport = true;
-  await page.getByRole("button", { name: "导出主题", exact: true }).click();
+  await page.getByRole("button", { name: "Экспорт темы", exact: true }).click();
   await page.waitForFunction(
     () =>
       !Array.from(document.querySelectorAll("button")).find(
-        (button) => button.textContent === "导出主题",
+        (button) => button.textContent === "Экспорт темы",
       )?.disabled,
   );
   assert.equal(
-    await page.getByRole("status").filter({ hasText: "主题已导出" }).count(),
+    await page.getByRole("status").filter({ hasText: "Тема экспортирована" }).count(),
     0,
   );
   cancelExport = false;
   const original = JSON.stringify(state.appearance);
   imported = "";
-  await page.getByRole("button", { name: "导入主题", exact: true }).click();
+  await page.getByRole("button", { name: "Импорт темы", exact: true }).click();
   assert.equal(JSON.stringify(state.appearance), original);
   imported = '{"format":"cage-theme","version":2}';
-  await page.getByRole("button", { name: "导入主题", exact: true }).click();
+  await page.getByRole("button", { name: "Импорт темы", exact: true }).click();
   await page
     .getByRole("alert")
-    .filter({ hasText: "不支持的主题格式或版本" })
+    .filter({ hasText: "Неподдерживаемый формат или версия темы" })
     .waitFor();
   assert.equal(JSON.stringify(state.appearance), original);
   imported = exported.text;
-  await page.getByRole("button", { name: "导入主题", exact: true }).click();
+  await page.getByRole("button", { name: "Импорт темы", exact: true }).click();
   await page
     .getByRole("status")
-    .filter({ hasText: "主题已导入并应用" })
+    .filter({ hasText: "Тема импортирована и применена" })
     .waitFor();
   assert.equal(state.appearance.customThemes.length, 2);
   assert.ok(sameTheme(state.appearance, savedTheme));
   checks.push(
-    "命名保存、切换还原、原生导出内容、同名导入不覆盖、取消和无效文件保留设置",
+    "Сохранение с именем, восстановление при переключении, содержимое нативного экспорта, импорт с тем же именем не перезаписывает, отмена и недопустимый файл сохраняют настройки",
   );
   const second = state.appearance.customThemes[1];
-  await edit("浅色主题背景", "#f5efdd");
-  await page.getByLabel("主题名称", { exact: true }).fill("森林日光 II");
-  await page.getByRole("button", { name: "更新此主题", exact: true }).click();
-  await page.getByRole("status").filter({ hasText: "主题已保存" }).waitFor();
+  await edit("Светлая тема · Фон", "#f5efdd");
+  await page.getByLabel("Название темы", { exact: true }).fill("Лесной дневной свет II");
+  await page.getByRole("button", { name: "Обновить эту тему", exact: true }).click();
+  await page.getByRole("status").filter({ hasText: "Тема сохранена" }).waitFor();
   assert.equal(state.appearance.customThemes[1].id, second.id);
-  assert.equal(state.appearance.customThemes[1].name, "森林日光 II");
-  assert.equal(state.appearance.customThemes[0].name, "森林日光");
+  assert.equal(state.appearance.customThemes[1].name, "Лесной дневной свет II");
+  assert.equal(state.appearance.customThemes[0].name, "Лесной дневной свет");
   state.failAppearance = true;
-  await page.getByLabel("浅色主题背景", { exact: true }).fill("#fafafa");
-  await page.getByLabel("浅色主题背景", { exact: true }).press("Enter");
+  await page.getByLabel("Светлая тема · Фон", { exact: true }).fill("#fafafa");
+  await page.getByLabel("Светлая тема · Фон", { exact: true }).press("Enter");
   await page
     .getByRole("alert")
-    .filter({ hasText: "外观设置未能保存" })
+    .filter({ hasText: "Не удалось сохранить настройки оформления" })
     .waitFor();
   assert.equal(await color("--paper"), "#fafafa");
   assert.equal(state.appearance.lightTheme.surface, "#f5efdd");
   state.failAppearance = false;
-  await page.getByRole("button", { name: "重试保存", exact: true }).click();
+  await page.getByRole("button", { name: "Повторить сохранение", exact: true }).click();
   await saved();
   await page.reload();
   await open();
   assert.equal(state.appearance.customThemes.length, 2);
   assert.equal(
-    await page.getByLabel("浅色主题背景", { exact: true }).inputValue(),
+    await page.getByLabel("Светлая тема · Фон", { exact: true }).inputValue(),
     "#fafafa",
   );
   await chooseInline(page
-    .getByLabel("已保存的主题", { exact: true }), second.id);
+    .getByLabel("Сохранённые темы", { exact: true }), second.id);
   await saved();
   assert.equal(
-    await page.getByLabel("浅色主题背景", { exact: true }).inputValue(),
+    await page.getByLabel("Светлая тема · Фон", { exact: true }).inputValue(),
     "#f5efdd",
   );
   // Codex sync must preserve the user's library.
   await page
-    .getByRole("button", { name: "从本机 Codex 同步", exact: true })
+    .getByRole("button", { name: "Синхронизировать с Codex на этом компьютере", exact: true })
     .click();
   await saved();
   assert.equal(state.appearance.customThemes.length, 2);
   await chooseInline(page
-    .getByLabel("已保存的主题", { exact: true }), second.id);
+    .getByLabel("Сохранённые темы", { exact: true }), second.id);
   await saved();
   page.once("dialog", (dialog) => dialog.dismiss());
-  await page.getByRole("button", { name: "删除", exact: true }).click();
+  await page.getByRole("button", { name: "Удалить", exact: true }).click();
   assert.equal(state.appearance.customThemes.length, 2);
   page.once("dialog", (dialog) => dialog.accept());
-  await page.getByRole("button", { name: "删除", exact: true }).click();
+  await page.getByRole("button", { name: "Удалить", exact: true }).click();
   await saved();
   assert.equal(state.appearance.customThemes.length, 1);
   assert.equal(state.appearance.lightTheme.surface, "#f5efdd");
   checks.push(
-    "更新主题、失败保留预览并重试、刷新读回、Codex 同步保留主题库、删除确认和保留当前配色",
+    "Обновление темы, предпросмотр сохраняется при ошибке и повторяется, чтение после обновления, синхронизация Codex сохраняет библиотеку тем, подтверждение удаления и сохранение текущей палитры",
   );
   // Exercise the actual browser file input and download fallback as well.
   await page.evaluate(() => {
     delete window.webkit;
   });
   const downloadEvent = page.waitForEvent("download");
-  await page.getByRole("button", { name: "导出主题", exact: true }).click();
+  await page.getByRole("button", { name: "Экспорт темы", exact: true }).click();
   const download = await downloadEvent;
   const path = output + "browser-export.cage-theme.json";
   await download.saveAs(path);
   const data = parseThemeDocument(await fs.readFile(path, "utf8"));
   assert.ok(sameTheme(data, state.appearance));
-  await page.getByLabel("选择主题文件", { exact: true }).setInputFiles(path);
+  await page.getByLabel("Выбрать файл темы", { exact: true }).setInputFiles(path);
   await page
     .getByRole("status")
-    .filter({ hasText: "主题已导入并应用" })
+    .filter({ hasText: "Тема импортирована и применена" })
     .waitFor();
   assert.equal(state.appearance.customThemes.length, 2);
-  await page.getByRole("button", { name: "深色", exact: true }).click();
+  await page.getByRole("button", { name: "Тёмная", exact: true }).click();
   await saved();
   await page.locator(".settings-content").evaluate((el) => el.scrollTo(0, 0));
   await shot("themes-dark");
@@ -214,25 +214,25 @@ try {
     ),
     false,
   );
-  await light().getByRole("button", { name: "自定义", exact: true }).click();
-  await light().getByText("界面与层级", { exact: true }).click();
-  const row = page.getByLabel("浅色主题面板背景", { exact: true });
+  await light().getByRole("button", { name: "Своя", exact: true }).click();
+  await light().getByText("Интерфейс и уровни", { exact: true }).click();
+  const row = page.getByLabel("Светлая тема · Фон панели", { exact: true });
   await row.scrollIntoViewIfNeeded();
   await shot("themes-minimum-colors");
   const bounds = await row.boundingBox();
   assert.ok(bounds.x + bounds.width <= 820);
-  await page.getByRole("button", { name: "浅色", exact: true }).click();
+  await page.getByRole("button", { name: "Светлая", exact: true }).click();
   await saved();
-  await page.getByRole("button", { name: "返回工作台", exact: true }).click();
+  await page.getByRole("button", { name: "Вернуться в рабочую среду", exact: true }).click();
   await page
-    .getByRole("button", { name: "启动 Cage 环境", exact: true })
+    .getByRole("button", { name: "Запустить среду Cage", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "新建终端", exact: true })
+    .getByRole("button", { name: "Новый терминал", exact: true })
     .first()
     .click();
-  await page.getByRole("menuitem", { name: "普通终端", exact: true }).click();
-  await page.getByRole("tab", { name: "终端 1", exact: true }).waitFor();
+  await page.getByRole("menuitem", { name: "Обычный терминал", exact: true }).click();
+  await page.getByRole("tab", { name: "Терминал 1", exact: true }).waitFor();
   await page.waitForFunction(() =>
     [...document.querySelectorAll(".xterm-scrollable-element")].some(
       (el) => getComputedStyle(el).backgroundColor === "rgb(16, 24, 32)",
@@ -241,10 +241,10 @@ try {
   await shot("themes-terminal");
   const connections = state.terminalConnections;
   await open();
-  await light().getByRole("button", { name: "自定义", exact: true }).click();
-  await light().getByText("终端", { exact: true }).click();
-  await edit("浅色主题终端背景", "#202830");
-  await page.getByRole("button", { name: "返回工作台", exact: true }).click();
+  await light().getByRole("button", { name: "Своя", exact: true }).click();
+  await light().getByText("Терминал", { exact: true }).click();
+  await edit("Светлая тема · терминал · Фон", "#202830");
+  await page.getByRole("button", { name: "Вернуться в рабочую среду", exact: true }).click();
   await page.waitForFunction(() =>
     [...document.querySelectorAll(".xterm-scrollable-element")].some(
       (el) => getComputedStyle(el).backgroundColor === "rgb(32, 40, 48)",
@@ -252,7 +252,7 @@ try {
   );
   assert.equal(state.terminalConnections, connections);
   checks.push(
-    "浏览器文件上传与下载往返、浅深色与 820px 无溢出、已有终端实时改色且不重连",
+    "Загрузка и скачивание файлов браузера, светлая и тёмная темы без переполнения при 820px, существующий терминал меняет цвета без переподключения",
   );
   assert.deepEqual(errors, []);
   assert.ok(
@@ -266,7 +266,7 @@ try {
       {
         passed: true,
         checks,
-        scope: "真实前端与 xterm，隔离控制接口；Go 写盘与原生编译另验",
+        scope: "Настоящий фронтенд и xterm, изолированный интерфейс управления; запись Go и нативная сборка проверяются отдельно",
       },
       null,
       2,

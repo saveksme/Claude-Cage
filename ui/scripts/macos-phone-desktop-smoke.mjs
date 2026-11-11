@@ -28,7 +28,7 @@ try {
   await page.route("**/api/**", route => {
     const request = route.request(), path = new URL(request.url()).pathname;
     const input = request.postDataJSON();
-    if (path.endsWith("/projects")) return route.fulfill({ json: { host: "隔离测试虚拟 Mac", ready: true, projects: [] } });
+    if (path.endsWith("/projects")) return route.fulfill({ json: { host: "Изолированный тестовый виртуальный Mac", ready: true, projects: [] } });
     if (path.endsWith("/sessions")) return route.fulfill({ json: { sessions: [] } });
     if (!path.startsWith("/api/mobile/desktop/")) return route.fulfill({ status: 404 });
     const operation = path.split("/").at(-1);
@@ -38,7 +38,7 @@ try {
       frame = { ...input, image, document: "mac-window-geometry", focus: "", shared: true, window: "desktop",
         content_width: 900, content_height: 600, login_supported: false, pixel_ratio_supported: true, requested_pixel_ratio: input.pixel_ratio || 1 };
     }
-    if (locked) return route.fulfill({ status: 410, contentType: "text/plain; charset=utf-8", body: "Claude Desktop 会话已结束，请重新打开" });
+    if (locked) return route.fulfill({ status: 410, contentType: "text/plain; charset=utf-8", body: "Claude Desktop : Сеанс завершён; откройте снова" });
     if (operation === "action") {
       actions.push(input);
       if (input.type === "resize") Object.assign(frame, { width: input.width, height: input.height, requested_pixel_ratio: input.pixel_ratio });
@@ -48,32 +48,32 @@ try {
     return route.fulfill({ json: operation === "frame" ? frame : { id: frame.id } });
   });
   await page.goto((process.env.CAGE_UI_URL || "http://127.0.0.1:5298") + "/mobile.html");
-  await page.getByRole("dialog", { name: "工作区侧栏" }).getByRole("button", { name: "Claude Desktop", exact: true }).click();
-  const screen = page.getByRole("img", { name: "远程 Desktop 画面", exact: true });
+  await page.getByRole("dialog", { name: "Боковая панель рабочей области" }).getByRole("button", { name: "Claude Desktop", exact: true }).click();
+  const screen = page.getByRole("img", { name: "Изображение удалённого Desktop", exact: true });
   await screen.waitFor();
-  await page.getByText(/请在电脑的 Cage 中完成 Claude Desktop 登录/).waitFor();
-  assert.equal(await page.getByRole("button", { name: "登录窗口", exact: true }).count(), 0);
-  const keyboard = page.getByRole("button", { name: "输入文字", exact: true });
+  await page.getByText(/выполните его в Claude Desktop через Cage на компьютере/).waitFor();
+  assert.equal(await page.getByRole("button", { name: "Окно входа", exact: true }).count(), 0);
+  const keyboard = page.getByRole("button", { name: "Ввести текст", exact: true });
   assert.ok(await keyboard.isDisabled());
   await screen.tap();
   await keyboard.click();
   const tap = actions.find(action => action.type === "tap");
   assert.ok(Math.abs(tap.x - 450) <= 2 && Math.abs(tap.y - 300) <= 2, JSON.stringify(tap));
-  const field = page.getByLabel("待插入文字");
+  const field = page.getByLabel("Текст для вставки");
   await field.fill("中".repeat(2731));
-  assert.ok(await page.getByRole("button", { name: "插入文字" }).isDisabled());
-  await page.getByRole("alert").getByText(/单次输入最多 8192 字节/).waitFor();
+  assert.ok(await page.getByRole("button", { name: "Вставить текст" }).isDisabled());
+  await page.getByRole("alert").getByText(/За один раз можно ввести не более 8192 байт/).waitFor();
   const text = "中".repeat(2730) + "ab";
   await field.fill(text);
-  await page.getByRole("button", { name: "插入文字" }).click();
-  await page.waitForFunction(() => document.querySelector('[aria-label="待插入文字"]')?.value === "");
+  await page.getByRole("button", { name: "Вставить текст" }).click();
+  await page.waitForFunction(() => document.querySelector('[aria-label="Текст для вставки"]')?.value === "");
   assert.equal(actions.filter(action => action.type === "text").at(-1).text, text);
-  await page.getByRole("button", { name: "收起输入框" }).click();
+  await page.getByRole("button", { name: "Свернуть поле ввода" }).click();
   await page.screenshot({ path: join(output, "macos-phone-desktop.png") });
   locked = true;
-  await page.getByRole("button", { name: "重新打开", exact: true }).waitFor();
+  await page.getByRole("button", { name: "Открыть заново", exact: true }).waitFor();
   assert.equal(await screen.count(), 0);
-  await page.getByRole("button", { name: "重新打开", exact: true }).click();
+  await page.getByRole("button", { name: "Открыть заново", exact: true }).click();
   await screen.waitFor();
   assert.ok(await keyboard.isDisabled());
   assert.deepEqual(errors, []);
@@ -81,23 +81,23 @@ try {
   let opens = 0, frameReads = 0, opened;
   await retryPage.route("**/api/**", route => {
     const path = new URL(route.request().url()).pathname;
-    if (path.endsWith("/projects")) return route.fulfill({ json: { host: "隔离测试虚拟 Mac", ready: true, projects: [] } });
+    if (path.endsWith("/projects")) return route.fulfill({ json: { host: "Изолированный тестовый виртуальный Mac", ready: true, projects: [] } });
     if (path.endsWith("/sessions")) return route.fulfill({ json: { sessions: [] } });
     if (path.endsWith("/open")) { opened = route.request().postDataJSON(); opens++; return route.fulfill({ json: { id: opened.id } }); }
     if (path.endsWith("/frame")) {
-      if (opens === 1) return route.fulfill({ status: ++frameReads === 1 ? 425 : 503, body: "客机浏览器尚未就绪" });
+      if (opens === 1) return route.fulfill({ status: ++frameReads === 1 ? 425 : 503, body: "Браузер гостевой системы ещё не готов" });
       return route.fulfill({ json: { ...opened, image, document: "browser-page", url: "about:blank" } });
     }
     return route.fulfill({ status: 404 });
   });
   await retryPage.goto((process.env.CAGE_UI_URL || "http://127.0.0.1:5298") + "/mobile.html");
-  await retryPage.getByRole("dialog", { name: "工作区侧栏" }).getByRole("button", { name: "浏览器", exact: true }).click();
-  await retryPage.getByText("正在启动远程浏览器…", { exact: true }).waitFor();
-  const reopen = retryPage.getByRole("button", { name: "重新打开", exact: true });
+  await retryPage.getByRole("dialog", { name: "Боковая панель рабочей области" }).getByRole("button", { name: "Браузер", exact: true }).click();
+  await retryPage.getByText("Запуск удалённого браузера…", { exact: true }).waitFor();
+  const reopen = retryPage.getByRole("button", { name: "Открыть заново", exact: true });
   await reopen.waitFor();
-  assert.equal(await retryPage.getByRole("button", { name: "重新读取画面", exact: true }).count(), 0);
+  assert.equal(await retryPage.getByRole("button", { name: "Прочитать изображение заново", exact: true }).count(), 0);
   await reopen.click();
-  await retryPage.getByRole("img", { name: "远程浏览器画面" }).waitFor();
+  await retryPage.getByRole("img", { name: "Изображение удалённого браузера" }).waitFor();
   assert.equal(opens, 2);
   assert.equal(frameReads, 2);
   const result = { passed: true, engine, actions: actions.map(({ text, ...action }) => ({ ...action, ...(text ? { textBytes: new TextEncoder().encode(text).length } : {}) })),

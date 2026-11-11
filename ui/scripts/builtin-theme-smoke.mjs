@@ -24,18 +24,18 @@ const { browser, page, state, errors } = await createWorkbench({
 });
 const checks = [];
 const open = async () => {
-  await page.getByRole("button", { name: /^设置/ }).click();
-  await page.getByRole("button", { name: "外观", exact: true }).click();
-  await page.getByRole("heading", { name: "外观", exact: true }).waitFor();
+  await page.getByRole("button", { name: /Настройки/ }).click();
+  await page.getByRole("button", { name: "Внешний вид", exact: true }).click();
+  await page.getByRole("heading", { name: "Внешний вид", exact: true }).waitFor();
 };
 const saved = () =>
   page
     .locator(".appearance-save-state")
-    .filter({ hasText: "更改自动保存，即时生效" })
+    .filter({ hasText: "Изменения сохраняются автоматически и применяются сразу" })
     .waitFor();
 const select = async (variant, id) => {
   await chooseInline(page
-    .getByLabel((variant === "light" ? "浅色" : "深色") + "主题预设", {
+    .getByLabel((variant === "light" ? "Светлая" : "Тёмная") + "Тема: шаблон", {
       exact: true,
     }), id);
   await saved();
@@ -52,7 +52,7 @@ try {
   await open();
   for (const variant of ["light", "dark"]) {
     const picker = page.getByLabel(
-      (variant === "light" ? "浅色" : "深色") + "主题预设",
+      (variant === "light" ? "Светлая" : "Тёмная") + "Тема: шаблон",
       { exact: true },
     );
     await picker.click();
@@ -83,16 +83,16 @@ try {
     "rgb(248, 248, 248)",
   );
   await shot("vscode-modern-light");
-  await page.getByRole("button", { name: "深色", exact: true }).click();
+  await page.getByRole("button", { name: "Тёмная", exact: true }).click();
   await saved();
   await shot("vscode-modern-dark");
   await select("light", "sepia");
   await select("dark", "night");
-  await page.getByRole("button", { name: "浅色", exact: true }).click();
+  await page.getByRole("button", { name: "Светлая", exact: true }).click();
   await saved();
   await shot("reading-sepia");
   checks.push(
-    `真实下拉选取全部 ${Object.keys(presets.light).length + Object.keys(presets.dark).length} 套配色，四组分类、界面及终端色板完整应用`,
+    `Все ${Object.keys(presets.light).length + Object.keys(presets.dark).length} палитры выбираются через настоящий список, четыре группы, интерфейс и палитра терминала применяются полностью`,
   );
   await select("light", "color-vision");
   await select("dark", "color-vision");
@@ -100,9 +100,9 @@ try {
     await page.evaluate(() => document.documentElement.dataset.translucent),
     "false",
   );
-  for (const label of ["浅色主题状态配色预览", "深色主题状态配色预览"]) {
+  for (const label of ["Светлая тема: предпросмотр цветов состояний", "Тёмная тема: предпросмотр цветов состояний"]) {
     const preview = page.getByLabel(label, { exact: true });
-    for (const text of ["成功", "警告", "错误"])
+    for (const text of ["Успех", "Предупреждение", "Ошибка"])
       await preview.getByText(text, { exact: true }).waitFor();
     assert.equal(await preview.locator("svg").count(), 3);
   }
@@ -119,13 +119,13 @@ try {
     "#a63b00",
   );
   await shot("color-vision-light");
-  await page.getByRole("button", { name: "深色", exact: true }).click();
+  await page.getByRole("button", { name: "Тёмная", exact: true }).click();
   await saved();
   await shot("color-vision-dark");
   await select("light", "high-contrast");
   await select("dark", "high-contrast");
   await shot("high-contrast-dark");
-  await page.getByRole("button", { name: "浅色", exact: true }).click();
+  await page.getByRole("button", { name: "Светлая", exact: true }).click();
   await saved();
   await shot("high-contrast-light");
   // Switching away must clear accessibility colors as well as earlier user overrides.
@@ -134,12 +134,12 @@ try {
   assert.equal(state.appearance.lightTheme.terminal.green, "#426e37");
   await select("light", "color-vision");
   await select("dark", "color-vision");
-  await page.getByLabel("主题名称", { exact: true }).fill("我的蓝橙搭配");
-  await page.getByRole("button", { name: "另存为主题", exact: true }).click();
-  await page.getByRole("status").filter({ hasText: "主题已保存" }).waitFor();
+  await page.getByLabel("Название темы", { exact: true }).fill("Моя сине-оранжевая палитра");
+  await page.getByRole("button", { name: "Сохранить как тему", exact: true }).click();
+  await page.getByRole("status").filter({ hasText: "Тема сохранена" }).waitFor();
   const snapshot = structuredClone(state.appearance);
-  await page.getByRole("button", { name: "导出主题", exact: true }).click();
-  await page.getByRole("status").filter({ hasText: "主题已导出" }).waitFor();
+  await page.getByRole("button", { name: "Экспорт темы", exact: true }).click();
+  await page.getByRole("status").filter({ hasText: "Тема экспортирована" }).waitFor();
   assert.ok(sameTheme(parseThemeDocument(exported.text), snapshot));
   await fs.writeFile(
     output + "accessible-export.cage-theme.json",
@@ -148,16 +148,16 @@ try {
   await page.reload();
   await open();
   assert.equal(
-    await page.getByLabel("浅色主题预设", { exact: true }).getAttribute("value"),
+    await page.getByLabel("Светлая тема: шаблон", { exact: true }).getAttribute("value"),
     "color-vision",
   );
   assert.equal(
-    await page.getByLabel("已保存的主题", { exact: true }).getAttribute("value"),
+    await page.getByLabel("Сохранённые темы", { exact: true }).getAttribute("value"),
     state.appearance.customThemes[0].id,
   );
   assert.ok(sameTheme(state.appearance, snapshot));
   checks.push(
-    "蓝橙状态图标与文字、高对比不透明窗口、跨预设清除旧覆盖、命名保存/导出/刷新读回",
+    "Сине-оранжевые значки состояния и текст, непрозрачное окно высокой контрастности, старые переопределения очищаются между пресетами, сохранение с именем/экспорт/чтение после обновления",
   );
   await page.setViewportSize({ width: 820, height: 558 });
   await shot("builtin-minimum");
@@ -167,16 +167,16 @@ try {
     ),
     false,
   );
-  await page.getByRole("button", { name: "返回工作台", exact: true }).click();
+  await page.getByRole("button", { name: "Вернуться в рабочую среду", exact: true }).click();
   await page
-    .getByRole("button", { name: "启动 Cage 环境", exact: true })
+    .getByRole("button", { name: "Запустить среду Cage", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "新建终端", exact: true })
+    .getByRole("button", { name: "Новый терминал", exact: true })
     .first()
     .click();
-  await page.getByRole("menuitem", { name: "普通终端", exact: true }).click();
-  await page.getByRole("tab", { name: "终端 1", exact: true }).waitFor();
+  await page.getByRole("menuitem", { name: "Обычный терминал", exact: true }).click();
+  await page.getByRole("tab", { name: "Терминал 1", exact: true }).waitFor();
   await page.waitForFunction(
     () =>
       getComputedStyle(document.querySelector(".xterm-scrollable-element"))
@@ -185,9 +185,9 @@ try {
   const connections = state.terminalConnections;
   await open();
   await select("light", "high-contrast");
-  await page.getByRole("button", { name: "深色", exact: true }).click();
+  await page.getByRole("button", { name: "Тёмная", exact: true }).click();
   await saved();
-  await page.getByRole("button", { name: "返回工作台", exact: true }).click();
+  await page.getByRole("button", { name: "Вернуться в рабочую среду", exact: true }).click();
   await page.waitForFunction(
     () =>
       getComputedStyle(document.querySelector(".xterm-scrollable-element"))
@@ -199,7 +199,7 @@ try {
     path: output + "terminal-color-vision.png",
     animations: "disabled",
   });
-  checks.push("820px 无横向溢出；明暗切换实时更新已有终端，连接保持");
+  checks.push("При 820px нет горизонтального переполнения; переключение светлой и тёмной темы обновляет существующий терминал, соединение сохраняется");
   assert.deepEqual(errors, []);
   assert.ok(
     !state.requests.some(
@@ -212,7 +212,7 @@ try {
     light: Object.keys(presets.light).length,
     dark: Object.keys(presets.dark).length,
     checks,
-    scope: "真实前端、xterm 和隔离 API；不连接日常 VM",
+    scope: "Настоящий фронтенд, xterm и изолированный API; повседневная VM не подключается",
   };
   await fs.writeFile(output + "result.json", JSON.stringify(result, null, 2));
   console.log(JSON.stringify(result));

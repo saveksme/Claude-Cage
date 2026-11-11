@@ -15,7 +15,7 @@ try {
   await page.route("**/remote-input-smoke", (route) =>
     route.fulfill({
       contentType: "text/html; charset=utf-8",
-      body: '<div id="remote"><canvas tabindex="-1"></canvas></div><input aria-label="本机地址栏">',
+      body: '<div id="remote"><canvas tabindex="-1"></canvas></div><input aria-label="Адресная строка этого компьютера">',
     }),
   );
   await page.goto(origin + "/remote-input-smoke");
@@ -138,7 +138,7 @@ try {
     };
     rfb.focus();
   });
-  const target = page.getByLabel("Cage 网页输入");
+  const target = page.getByLabel("Ввод на странице Cage");
   const keys = () =>
     page.evaluate(() =>
       probe.packets.filter(p => p[0] !== 248).map((p) => {
@@ -316,7 +316,7 @@ try {
   );
   await dispatch("compositionend", { data: "" });
   await clear();
-  await page.getByLabel("本机地址栏").fill("本机文字");
+  await page.getByLabel("Адресная строка этого компьютера").fill("Текст с этого компьютера");
   assert.deepEqual(await keys(), []);
   await page.evaluate(() => probe.rfb.focus());
   await page.keyboard.press("Meta+f");
@@ -391,7 +391,7 @@ try {
   assert.deepEqual((await page.evaluate(() => probe.compositions)).map(({mode})=>mode), ["begin","update","commit"]);
   assert.deepEqual(await texts(), ["？"], "native direct punctuation is committed exactly once");
   assert.deepEqual((await keys()).map(({sym})=>sym), [63,63], "native ASCII punctuation keeps the key path without needing a DOM default action");
-  await page.getByLabel("本机地址栏").focus();
+  await page.getByLabel("Адресная строка этого компьютера").focus();
   await page.waitForFunction(() => probe.nativeRequests.some(value => value.operation === "deactivate"));
   await clear();
   await page.evaluate(() => {

@@ -27,10 +27,10 @@ for (const platform of ["darwin", "windows", "linux"]) {
       socket.send(Buffer.from(warning.slice(22)));
     });
     await page.reload();
-    await page.getByRole("button", { name: "启动 Cage 环境", exact: true }).click();
-    await page.getByRole("button", { name: "新建终端", exact: true }).first().click();
+    await page.getByRole("button", { name: "Запустить среду Cage", exact: true }).click();
+    await page.getByRole("button", { name: "Новый терминал", exact: true }).first().click();
     await page.getByRole("menuitem", { name: /Claude/ }).first().click();
-    await page.getByText("正在准备 Claude 会话…", { exact: true }).waitFor();
+    await page.getByText("Подготовка сеанса Claude…", { exact: true }).waitFor();
     await page.waitForFunction(() => document.querySelector(".xterm-rows")?.textContent.includes("Loading development channels"));
     assert.equal(await page.locator(".terminal-host").isVisible(), false);
     await page.evaluate(() => {
@@ -56,17 +56,17 @@ for (const platform of ["darwin", "windows", "linux"]) {
     // A new attachment can be waiting for login. It must become interactive
     // without channel readiness, and the user can reveal it immediately.
     terminalSocket.close();
-    await page.getByRole("button", { name: "重新连接", exact: true }).click();
-    await page.getByText("正在准备 Claude 会话…", { exact: true }).waitFor();
+    await page.getByRole("button", { name: "Переподключиться", exact: true }).click();
+    await page.getByText("Подготовка сеанса Claude…", { exact: true }).waitFor();
     terminalSocket.send(Buffer.from("\x1b[2J\x1b[HSelect login method\r\n1. Claude account"));
     await page.clock.fastForward(8100);
     await page.clock.resume();
     await page.locator(".terminal-host").waitFor({ state: "visible" });
     assert.ok((await page.locator(".xterm-rows").textContent()).includes("Select login method"));
     terminalSocket.close();
-    await page.getByRole("button", { name: "重新连接", exact: true }).click();
-    await page.getByText("正在准备 Claude 会话…", { exact: true }).waitFor();
-    await page.getByRole("button", { name: "显示启动过程", exact: true }).click();
+    await page.getByRole("button", { name: "Переподключиться", exact: true }).click();
+    await page.getByText("Подготовка сеанса Claude…", { exact: true }).waitFor();
+    await page.getByRole("button", { name: "Показать процесс запуска", exact: true }).click();
     await page.locator(".terminal-host").waitFor({ state: "visible" });
     assert.deepEqual(fixture.errors, []);
     console.log(`PASS: ${platform} hides split confirmation output, waits for repaint, restores focus, and exposes stalled/login output`);

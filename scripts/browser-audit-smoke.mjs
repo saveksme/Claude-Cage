@@ -130,7 +130,7 @@ try {
   }
   await assert.rejects(
     auditBrowser(cdp, excluded, false, "Invalid/Timezone"),
-    /浏览器(?:配置)?诊断未完成/,
+    /Диагностика конфигурации браузера не завершена/,
   );
   await clean();
   // The guest's existing diagnostic endpoint exercises navigation and fetch.
@@ -142,7 +142,7 @@ try {
   } catch (error) {
     // The diagnostic endpoint is only served during network verification.
     // Outside that window, verify cleanup of the failed navigation as well.
-    assert.match(error.message, /诊断页面无法连接|诊断页面尚未就绪|Timeout: Page.navigate/);
+    assert.match(error.message, /Диагностическая страница недоступна|Диагностическая страница ещё не готова/);
   }
   await clean();
   console.log(

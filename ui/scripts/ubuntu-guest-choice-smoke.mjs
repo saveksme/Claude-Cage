@@ -19,8 +19,8 @@ for (const [platform, system] of [["darwin", "macos"], ["windows", "windows-11"]
   });
   try {
     const { page } = fixture;
-    const picker = page.getByRole("combobox", { name: "客户机系统" });
-    const storage = page.getByRole("button", { name: "选择环境存储位置" });
+    const picker = page.getByRole("combobox", { name: "Гостевая система" });
+    const storage = page.getByRole("button", { name: "Выбрать место хранения среды" });
     await picker.waitFor();
     const initial = await storage.boundingBox();
     await picker.click();
@@ -37,10 +37,10 @@ for (const [platform, system] of [["darwin", "macos"], ["windows", "windows-11"]
     await picker.press("Enter");
     await picker.click();
     await option.click();
-    await page.getByText("从 Ubuntu 官方源下载 Ubuntu 22.04 LTS 镜像", { exact: false }).waitFor();
-    assert.equal(await page.getByLabel("ISO 的 SHA-256").count(), 0);
-    assert.equal(await page.getByRole("button", { name: "选择本机 ISO" }).count(), 0);
-    const install = page.getByRole("button", { name: "安装客户机", exact: true });
+    await page.getByText("Образ Ubuntu 22.04 LTS загружается из официального источника Ubuntu", { exact: false }).waitFor();
+    assert.equal(await page.getByLabel("SHA-256 ISO-образа").count(), 0);
+    assert.equal(await page.getByRole("button", { name: "Выбрать локальный ISO" }).count(), 0);
+    const install = page.getByRole("button", { name: "Установить гостевую систему", exact: true });
     assert.equal(await install.isEnabled(), true);
     await Promise.all([page.waitForResponse(response => response.url().endsWith("/api/start")), install.click()]);
     assert.equal(submitted.guest_system, "ubuntu-22.04");
@@ -63,11 +63,11 @@ for (const [platform, system] of [["darwin", "macos"], ["windows", "windows-11"]
     },
   });
   try {
-    const picker = fixture.page.getByRole("combobox", { name: "客户机系统" });
+    const picker = fixture.page.getByRole("combobox", { name: "Гостевая система" });
     await picker.waitFor();
     assert.equal(await picker.isDisabled(), true);
     assert.match(await picker.innerText(), /Ubuntu 22.04/);
-    assert.equal(await fixture.page.getByRole("button", { name: "重新选择系统或镜像" }).count(), 0);
+    assert.equal(await fixture.page.getByRole("button", { name: "Выбрать другую систему или образ" }).count(), 0);
     assert.deepEqual(fixture.errors, []);
     console.log("Ubuntu interrupted installation retains its system and cannot replace an existing disk");
   } finally { await fixture.browser.close(); }

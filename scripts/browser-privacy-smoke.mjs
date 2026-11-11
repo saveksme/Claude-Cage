@@ -82,7 +82,7 @@ try {
   checks.push('search and pagination; clearing a site ignores search and preserves other hosts');
 
   await cdp(normal, 'Network.setCookie', { name: 'persistent', value: 'retained', url: origin, expires: Date.now() / 1000 + 3600 });
-  await assert.rejects(api('/cookies', { id: normal, url: origin + '/stale-page', mode: 'clear', scope: 'all' }), /网页已切换/);
+  await assert.rejects(api('/cookies', { id: normal, url: origin + '/stale-page', mode: 'clear', scope: 'all' }), /Страница изменилась/);
   assert.ok((await list(normal)).cookies.some(cookie => cookie.name === 'persistent'));
   await api('/activate', { id: normal });
   await api('/activate', { id: third.id });

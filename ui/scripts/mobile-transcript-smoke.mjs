@@ -28,13 +28,13 @@ try {
   );
   assert.equal(await page.getByRole("table").count(), 1);
   assert.equal(await page.getByRole("checkbox", { checked: true }).count(), 1);
-  const transcript = page.getByRole("region", { name: "会话消息" });
+  const transcript = page.getByRole("region", { name: "Сообщения сеанса" });
   assert(await transcript.evaluate((el) => el.scrollWidth <= el.clientWidth));
-  const call = page.locator("summary").filter({ hasText: "2 次工具调用" });
+  const call = page.locator("summary").filter({ hasText: "Вызовы инструментов: 2" });
   await call.click();
   await page.getByText("检查帧率", { exact: true }).waitFor();
   await call.click();
-  const task = page.locator("summary").filter({ hasText: "后台任务" });
+  const task = page.locator("summary").filter({ hasText: "Фоновая задача" });
   assert.equal(await task.count(), 1);
   await task.focus();
   await page.keyboard.press("Enter");
@@ -47,11 +47,11 @@ try {
       path: path.join(capture, engine + "-transcript.png"),
     });
   }
-  await page.getByRole("button", { name: /封面.*查看图片/ }).click();
+  await page.getByRole("button", { name: /封面.*Посмотреть изображение/ }).click();
   await page.waitForFunction(
     () => document.querySelector(".project-media img")?.naturalWidth > 0,
   );
-  await page.getByRole("button", { name: /成片.*加载视频/ }).click();
+  await page.getByRole("button", { name: /成片.*Загрузить видео/ }).click();
   await page.waitForFunction(
     () => document.querySelector("video")?.videoWidth > 0,
   );
@@ -66,10 +66,10 @@ try {
   await video.evaluate((el) => el.pause());
   if (capture)
     await page.screenshot({ path: path.join(capture, engine + "-media.png") });
-  await page.getByRole("button", { name: /成片.*收起/ }).click();
+  await page.getByRole("button", { name: /成片.*Свернуть/ }).click();
   assert.equal(await video.count(), 0);
-  await page.getByRole("button", { name: /缺失.*查看图片/ }).click();
-  await page.getByText(/未找到媒体文件/).waitFor();
+  await page.getByRole("button", { name: /缺失.*Посмотреть изображение/ }).click();
+  await page.getByText(/Медиафайл не найден/).waitFor();
   await page.reload();
   await page.getByRole("heading", { name: "交付文件" }).waitFor();
   assert.equal(await page.locator("video").count(), 0);

@@ -4,11 +4,11 @@ import { createWorkbench } from "./workbench-fixture.mjs";
 
 const { page, state, browser, errors } = await createWorkbench();
 try {
-  await page.getByRole("button", { name: "启动 Cage 环境", exact: true }).click();
-  await page.getByRole("heading", { name: "Cage 环境已就绪" }).waitFor();
-  await page.getByRole("button", { name: "打开浏览器", exact: true }).click();
-  await page.getByRole("tablist", { name: "浏览器标签页" }).waitFor();
-  await page.getByRole("button", { name: "新建网页", exact: true }).click();
+  await page.getByRole("button", { name: "Запустить среду Cage", exact: true }).click();
+  await page.getByRole("heading", { name: "Среда Cage готова" }).waitFor();
+  await page.getByRole("button", { name: "Открыть браузер", exact: true }).click();
+  await page.getByRole("tablist", { name: "Вкладки браузера" }).waitFor();
+  await page.getByRole("button", { name: "Новая страница", exact: true }).click();
   const workspace = page.locator("main.workspace");
   const tabs = page.locator(".browser-tabs [role=tab]");
   const first = state.tabs[0].id;
@@ -51,12 +51,12 @@ try {
   const box = await workspace.boundingBox();
   assert.equal(Math.round(surface.width), Math.round(box.width));
   assert.ok(state.split.left === second && state.split.right === first);
-  const leftAddress = left.getByRole("textbox", { name: "网页地址或搜索" });
+  const leftAddress = left.getByRole("textbox", { name: "Адрес страницы или поисковый запрос" });
   await leftAddress.fill("https://example.com/left");
   await leftAddress.press("Enter");
   assert.equal(state.requests.filter(r => r.path === "/browser/navigate").at(-1).body.id, second);
-  assert.equal(await right.getByRole("textbox", { name: "网页地址或搜索" }).inputValue(), state.tabs.find(t => t.id === first).url);
-  await left.getByRole("button", { name: "退出分屏" }).click();
+  assert.equal(await right.getByRole("textbox", { name: "Адрес страницы или поисковый запрос" }).inputValue(), state.tabs.find(t => t.id === first).url);
+  await left.getByRole("button", { name: "Выйти из разделённого экрана" }).click();
   assert.equal(await tabs.count(), 2);
   await page.waitForFunction(() => document.querySelectorAll(".browser-header-cell").length === 1);
 
@@ -65,7 +65,7 @@ try {
   await page.locator(`.browser-tab[data-tab-id="${first}"] .tab-close`).click();
   await page.waitForFunction(() => !document.querySelector(".workspace-split"));
   await page.setViewportSize({ width: 820, height: 558 });
-  const term = { id: "split-term", title: "分屏终端", workspace: state.settings.workspace };
+  const term = { id: "split-term", title: "Терминал разделённого экрана", workspace: state.settings.workspace };
   state.terminals.push(term);
   const terminal = page.getByRole("tab", { name: term.title, exact: true });
   await terminal.waitFor();
@@ -82,7 +82,7 @@ try {
   await terminalRight.locator("textarea.xterm-helper-textarea").click({ force: true });
   assert.equal(await workspace.locator(".browser-chrome").count(), 1);
   assert.equal(state.terminalConnections, connections);
-  const secondTerm = { ...term, id: "split-term-2", title: "第二个终端" };
+  const secondTerm = { ...term, id: "split-term-2", title: "Второй терминал" };
   state.terminals.push(secondTerm);
   const secondTerminal = page.getByRole("tab", { name: secondTerm.title, exact: true });
   await secondTerminal.waitFor();

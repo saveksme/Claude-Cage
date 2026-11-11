@@ -28,36 +28,36 @@ try {
   state.status.ready = true;
   state.status.vm_running = true;
   await page.reload();
-  await page.getByRole("button", { name: "下载文件", exact: true }).waitFor();
+  await page.getByRole("button", { name: "Скачать файл", exact: true }).waitFor();
   // A tiny export can finish between polls; it must still offer Save As.
-  const item = { id, name: "桌面视频.mp4", state: "saved", target: "desktop",
-    startedAt: new Date(Date.now() + 5).toISOString(), path: "/Users/test/Cage/Downloads/桌面视频.mp4" };
+  const item = { id, name: "видео-с-рабочего-стола.mp4", state: "saved", target: "desktop",
+    startedAt: new Date(Date.now() + 5).toISOString(), path: "/Users/test/Cage/Downloads/видео-с-рабочего-стола.mp4" };
   saved = [{ id, name: item.name, path: item.path }];
   downloads = [item];
   await waitFor(() => calls.some((call) => call.action === "saveBrowserDownload"));
-  await page.getByRole("button", { name: "下载文件", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: "下载文件" });
+  await page.getByRole("button", { name: "Скачать файл", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Скачать файл" });
   await dialog.getByText(item.path, { exact: true }).waitFor();
-  await dialog.getByRole("button", { name: "在文件夹中显示", exact: true }).click();
+  await dialog.getByRole("button", { name: "Показать в папке", exact: true }).click();
   await waitFor(() => calls.some((call) => call.action === "browserDownloadAction" && call.id === id));
   await page.reload();
-  await page.getByRole("button", { name: "下载文件", exact: true }).click();
+  await page.getByRole("button", { name: "Скачать файл", exact: true }).click();
   await dialog.getByText(item.path, { exact: true }).waitFor();
   assert.equal(calls.filter((call) => call.action === "saveBrowserDownload").length, 1, "history reopened a save dialog");
-  const openError = "文件打开关联未能完成，请在 Cage 下载列表中打开文件。";
+  const openError = "Не удалось открыть файл связанным приложением; откройте его в списке загрузок Cage.";
   downloads = [{ ...item, openError }];
   await dialog.getByText(openError, { exact: true }).waitFor();
-  assert.equal(await page.getByRole("button", { name: "下载文件", exact: true }).getAttribute("title"), "有下载需要处理，点击查看");
+  assert.equal(await page.getByRole("button", { name: "Скачать файл", exact: true }).getAttribute("title"), "Есть загрузки, требующие внимания. Нажмите, чтобы открыть");
   await dialog.getByText(item.path, { exact: true }).waitFor();
   downloads = [item];
   await dialog.getByText(openError, { exact: true }).waitFor({ state: "hidden" });
   saved = [];
-  downloads = [{ ...item, state: "failed", retryable: true, path: "", error: "共享目录暂时不可写" }];
+  downloads = [{ ...item, state: "failed", retryable: true, path: "", error: "Общий каталог временно недоступен для записи" }];
   await page.reload();
-  await page.getByRole("button", { name: "下载文件", exact: true }).click();
-  await dialog.getByRole("button", { name: "重试保存", exact: true }).click();
+  await page.getByRole("button", { name: "Скачать файл", exact: true }).click();
+  await dialog.getByRole("button", { name: "Повторить сохранение", exact: true }).click();
   await waitFor(() => retries === 1);
-  assert.equal(await dialog.getByRole("button", { name: "另存为…", exact: true }).count(), 0);
+  assert.equal(await dialog.getByRole("button", { name: "Сохранить как…", exact: true }).count(), 0);
   assert.deepEqual(errors, []);
   console.log("PASS: Desktop instant export, native Save As cancel retains fallback, reveal, history does not reprompt, saved-file open warning and recovery, failed export uses Desktop retry");
 } finally { await browser.close(); }

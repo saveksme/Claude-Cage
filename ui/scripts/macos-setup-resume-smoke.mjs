@@ -11,7 +11,7 @@ for (const scenario of ["permission-read", "start-failure", "open-failure"]) {
     Object.assign(state.status, { ready: scenario !== "start-failure", vm_running: scenario !== "start-failure" });
     await page.route("**/api/start", route => {
       starts++;
-      if (failAction) return route.fulfill({ status: 409, contentType: "text/plain", body: "启动失败，已有磁盘已保留" });
+      if (failAction) return route.fulfill({ status: 409, contentType: "text/plain", body: "Запуск не удался; существующий диск сохранён" });
       Object.assign(state.status, { ready: true, vm_running: true });
       return route.fulfill({ json: { id: "resumed", running: false } });
     });
@@ -19,46 +19,46 @@ for (const scenario of ["permission-read", "start-failure", "open-failure"]) {
       const { action } = route.request().postDataJSON();
       if (action === "permissions") {
         permissionReads++;
-        if (scenario === "permission-read" && failRead && permissionReads > 1) return route.fulfill({ status: 409, contentType: "text/plain", body: "客机连接暂时中断" });
+        if (scenario === "permission-read" && failRead && permissionReads > 1) return route.fulfill({ status: 409, contentType: "text/plain", body: "Соединение с гостевой системой временно прервано" });
         return route.fulfill({ json: permissions });
       }
       if (action === "finish") { finishes++; state.account.initial_mac_setup = false; }
-      if (action === "input" && scenario === "open-failure" && failAction) return route.fulfill({ status: 409, contentType: "text/plain", body: "授权页面暂时无法打开，请重试" });
+      if (action === "input" && scenario === "open-failure" && failAction) return route.fulfill({ status: 409, contentType: "text/plain", body: "Страница авторизации временно не открывается; повторите" });
       return route.fulfill({ json: {} });
     });
   }});
   const { page, browser, errors, state } = f;
   try {
-    await page.getByRole("heading", { name: "完成虚拟 Mac 的系统授权" }).waitFor();
+    await page.getByRole("heading", { name: "Завершите настройку разрешений виртуального Mac" }).waitFor();
     if (scenario === "start-failure") {
-      await page.getByRole("alert").filter({ hasText: "启动失败" }).waitFor();
+      await page.getByRole("alert").filter({ hasText: "ресурсов контейнера" }).waitFor();
       assert.equal(starts, 1);
       failAction = false;
-      await page.getByRole("button", { name: "继续启动并连接", exact: true }).click();
-      await page.getByRole("button", { name: "打开辅助功能", exact: true }).waitFor();
+      await page.getByRole("button", { name: "Продолжить запуск и подключение", exact: true }).click();
+      await page.getByRole("button", { name: "Открыть: Универсальный доступ", exact: true }).waitFor();
       assert.equal(starts, 2);
     } else if (scenario === "permission-read") {
-      await page.getByRole("list", { name: "系统授权进度" }).getByText("已验证", { exact: true }).waitFor();
-      await page.getByRole("alert").filter({ hasText: "客机连接暂时中断" }).waitFor();
-      assert.equal(await page.getByRole("list", { name: "系统授权进度" }).getByText("已验证", { exact: true }).count(), 1, "read failure erased measured permissions");
+      await page.getByRole("list", { name: "Ход системных разрешений" }).getByText("Проверено", { exact: true }).waitFor();
+      await page.getByRole("alert").filter({ hasText: "Соединение с гостевой системой временно прервано" }).waitFor();
+      assert.equal(await page.getByRole("list", { name: "Ход системных разрешений" }).getByText("Проверено", { exact: true }).count(), 1, "read failure erased measured permissions");
       permissions.input = true; permissions.projects = true;
       assert.equal(finishes, 0, "read failure advanced setup");
       if (evidence) await page.screenshot({ path: `${evidence}/permission-read-failure.png`, fullPage: true });
       failRead = false;
-      await page.getByRole("button", { name: "重新检查状态", exact: true }).click();
-      await page.getByRole("heading", { name: "完成虚拟 Mac 的系统授权" }).waitFor({ state: "hidden" });
+      await page.getByRole("button", { name: "Проверить состояние заново", exact: true }).click();
+      await page.getByRole("heading", { name: "Завершите настройку разрешений виртуального Mac" }).waitFor({ state: "hidden" });
       assert.equal(finishes, 1);
     } else {
-      await page.getByRole("button", { name: "打开辅助功能", exact: true }).click();
-      await page.getByRole("alert").filter({ hasText: "授权页面暂时无法打开" }).waitFor();
+      await page.getByRole("button", { name: "Открыть: Универсальный доступ", exact: true }).click();
+      await page.getByRole("alert").filter({ hasText: "Страница авторизации временно не открывается" }).waitFor();
       failAction = false;
-      await page.getByRole("button", { name: "打开辅助功能", exact: true }).click();
+      await page.getByRole("button", { name: "Открыть: Универсальный доступ", exact: true }).click();
       await page.getByRole("alert").waitFor({ state: "hidden" });
       permissions.input = true;
-      await page.getByRole("list", { name: "系统授权进度" }).getByText("已验证", { exact: true }).nth(1).waitFor();
-      await page.getByRole("region", { name: "当前设置步骤" }).getByText(/打开 macFUSE 和 macFUSE \(local\) 两个开关/).waitFor();
+      await page.getByRole("list", { name: "Ход системных разрешений" }).getByText("Проверено", { exact: true }).nth(1).waitFor();
+      await page.getByRole("region", { name: "Текущий шаг настройки" }).getByText(/оба переключателя macFUSE и macFUSE \(local\)/).waitFor();
       await page.reload();
-      await page.getByRole("list", { name: "系统授权进度" }).getByText("已验证", { exact: true }).nth(1).waitFor();
+      await page.getByRole("list", { name: "Ход системных разрешений" }).getByText("Проверено", { exact: true }).nth(1).waitFor();
       assert.equal(starts, 0, "refresh restarted installed VM");
       if (evidence) await page.screenshot({ path: `${evidence}/permissions-resumed.png`, fullPage: true });
     }

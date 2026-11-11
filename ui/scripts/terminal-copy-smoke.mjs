@@ -30,9 +30,9 @@ for (const platform of ["MacIntel", "Win32", "Linux x86_64"]) {
       socket.send(Buffer.from(`\x1b]52;c;${Buffer.from("旧复制不得重放").toString("base64")}\x07CopyMe1234\r\n$ `));
     });
     await page.reload();
-    await page.getByRole("button", { name: "启动 Cage 环境", exact: true }).click();
-    await page.getByRole("button", { name: "新建终端", exact: true }).first().click();
-    await page.getByRole("menuitem", { name: "普通终端", exact: true }).click();
+    await page.getByRole("button", { name: "Запустить среду Cage", exact: true }).click();
+    await page.getByRole("button", { name: "Новый терминал", exact: true }).first().click();
+    await page.getByRole("menuitem", { name: "Обычный терминал", exact: true }).click();
     const line = await page.locator(".xterm-rows").getByText("CopyMe1234", { exact: true }).first().boundingBox();
     const drag = async () => {
       await page.mouse.move(line.x + 1, line.y + line.height / 2);
@@ -45,7 +45,7 @@ for (const platform of ["MacIntel", "Win32", "Linux x86_64"]) {
     assert.deepEqual(writes, [], "replayed OSC 52 must not overwrite the clipboard");
     await drag();
     await copy();
-    await page.getByText("已复制终端选中文本", { exact: true }).waitFor();
+    await page.getByText("Выделенный текст терминала скопирован", { exact: true }).waitFor();
     assert.deepEqual(writes, ["CopyMe"]);
 
     // Replay while the terminal already owns focus, as on a reconnect. The
@@ -59,7 +59,7 @@ for (const platform of ["MacIntel", "Win32", "Linux x86_64"]) {
     await page.locator(".xterm.enable-mouse-events").waitFor();
     await drag();
     await copy();
-    await page.getByText("已复制终端选中文本", { exact: true }).waitFor();
+    await page.getByText("Выделенный текст терминала скопирован", { exact: true }).waitFor();
     const deadline = Date.now() + 3000;
     while (writes.length < 2 && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 10));
     assert.deepEqual(writes, ["CopyMe", "Claude 选中文本 🖼️"]);
@@ -71,7 +71,7 @@ for (const platform of ["MacIntel", "Win32", "Linux x86_64"]) {
     await drag();
     await page.keyboard.up(modifier);
     await copy();
-    await page.getByText("已复制终端选中文本", { exact: true }).waitFor();
+    await page.getByText("Выделенный текст терминала скопирован", { exact: true }).waitFor();
     const copyDeadline = Date.now() + 3000;
     while (writes.length < 3 && Date.now() < copyDeadline) await new Promise(resolve => setTimeout(resolve, 10));
     assert.deepEqual(writes, ["CopyMe", "Claude 选中文本 🖼️", "CopyMe"]);

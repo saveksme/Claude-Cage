@@ -19,7 +19,7 @@ for (const platform of ["windows", "darwin", "linux"]) {
       if (path !== "/client/trusted-login") return route.fulfill({ json: {} });
       const a = fixture.state.account;
       actions.push(body.action);
-      if (failTrust) return route.fulfill({ status: 409, contentType: "text/plain; charset=utf-8", body: "测试：无法保存本机信任凭据" });
+      if (failTrust) return route.fulfill({ status: 409, contentType: "text/plain; charset=utf-8", body: "Не удалось сохранить учётные данные доверия этого компьютера" });
       if (body.action === "enable") {
         assert.equal(body.password, fixture.state.accountPassword);
         a.trusted_login = true;
@@ -42,18 +42,18 @@ for (const platform of ["windows", "darwin", "linux"]) {
     state.account.unlocked = false;
     await page.goto(workbenchURL);
   };
-  const menu = () => page.getByRole("button", { name: /^账户菜单，/ });
-  const remember = () => page.getByRole("checkbox", { name: /^记住我/ });
+  const menu = () => page.getByRole("button", { name: /Меню аккаунта,/ });
+  const remember = () => page.getByRole("checkbox", { name: /Запомнить меня/ });
   const trustReply = () => page.waitForResponse(response => response.url().endsWith("/api/client/trusted-login"));
   const login = async (password = "fixture-password") => {
-    await page.getByLabel("账户密码", { exact: true }).fill(password);
+    await page.getByLabel("Пароль аккаунта", { exact: true }).fill(password);
     const saved = password === "fixture-password" ? trustReply() : null;
-    await page.getByRole("button", { name: "解锁 Cage", exact: true }).click();
+    await page.getByRole("button", { name: "Разблокировать Cage", exact: true }).click();
     if (saved) await (await saved).finished();
   };
   const settings = async () => {
     await menu().click();
-    await page.getByRole("menuitem", { name: "设置", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Настройки", exact: true }).click();
   };
   try {
     Object.assign(state.account, { unlocked: false, require_authentication: false });
@@ -62,7 +62,7 @@ for (const platform of ["windows", "darwin", "linux"]) {
     assert.equal(await remember().isChecked(), false, "existing account was opted in without consent");
     await remember().check();
     await login("incorrect-password");
-    await page.getByRole("alert").filter({ hasText: "密码不正确" }).waitFor();
+    await page.getByRole("alert").filter({ hasText: "Неверный пароль" }).waitFor();
     assert.deepEqual(actions, []);
     await page.screenshot({ path: fileURLToPath(new URL(`${platform}-login.png`, output)) });
     await login();
@@ -73,8 +73,8 @@ for (const platform of ["windows", "darwin", "linux"]) {
     assert.equal(actions.filter(a => a === "resume").length, 1);
 
     await menu().click();
-    await page.getByRole("menuitem", { name: /锁定 Cage/ }).click();
-    await page.getByRole("region", { name: "解锁 Cage", exact: true }).waitFor();
+    await page.getByRole("menuitem", { name: /Заблокировать Cage/ }).click();
+    await page.getByRole("region", { name: "Разблокировать Cage", exact: true }).waitFor();
     await page.reload();
     await remember().waitFor();
     assert.equal(await remember().isChecked(), true);
@@ -89,19 +89,19 @@ for (const platform of ["windows", "darwin", "linux"]) {
     assert.equal(actions.filter(a => a === "resume").length, 1);
     await login();
     await settings();
-    await page.getByLabel("验证账户密码", { exact: true }).fill("fixture-password");
-    await page.getByRole("button", { name: "信任此电脑", exact: true }).click();
-    await page.getByRole("button", { name: "关闭记住我", exact: true }).waitFor();
+    await page.getByLabel("Подтвердите пароль аккаунта", { exact: true }).fill("fixture-password");
+    await page.getByRole("button", { name: "Доверять этому компьютеру", exact: true }).click();
+    await page.getByRole("button", { name: "Отключить «Запомнить меня»", exact: true }).waitFor();
     await page.screenshot({ path: fileURLToPath(new URL(`${platform}-settings.png`, output)) });
-    await page.getByRole("button", { name: "关闭记住我", exact: true }).click();
-    await page.getByLabel("验证账户密码", { exact: true }).waitFor();
+    await page.getByRole("button", { name: "Отключить «Запомнить меня»", exact: true }).click();
+    await page.getByLabel("Подтвердите пароль аккаунта", { exact: true }).waitFor();
 
     // Existing macOS grants share the same opt-out control.
     state.account.devices = { automatic: "legacy-keychain", biometric: "touch-id" };
     await page.reload();
     await settings();
-    await page.getByRole("button", { name: "关闭记住我", exact: true }).click();
-    await page.getByLabel("验证账户密码", { exact: true }).waitFor();
+    await page.getByRole("button", { name: "Отключить «Запомнить меня»", exact: true }).click();
+    await page.getByLabel("Подтвердите пароль аккаунта", { exact: true }).waitFor();
     assert.deepEqual(state.account.devices, { biometric: "touch-id" });
 
     // A trust-storage failure must not undo a successful password login.
@@ -111,25 +111,25 @@ for (const platform of ["windows", "darwin", "linux"]) {
     await login();
     await menu().waitFor();
     await settings();
-    await page.getByText(/已登录，记住我未能开启/).waitFor();
+    await page.getByText(/Вход выполнен, но не удалось включить «Запомнить меня»/).waitFor();
     assert.equal(Boolean(state.account.trusted_login), false);
     failTrust = false;
 
     Object.assign(state.account, { exists: false, unlocked: false, username: "", devices: {}, require_authentication: false });
     await page.reload();
-    await page.getByRole("heading", { name: "注册 Cage 账户", exact: true }).waitFor();
+    await page.getByRole("heading", { name: "Регистрация аккаунта Cage", exact: true }).waitFor();
     await remember().waitFor();
     assert.equal(await remember().isChecked(), true);
-    await page.getByLabel("用户名", { exact: true }).fill("测试工作区");
-    await page.getByLabel("设置密码", { exact: true }).fill("fixture-password");
-    await page.getByLabel("确认密码", { exact: true }).fill("fixture-password");
+    await page.getByLabel("Имя пользователя", { exact: true }).fill("test-workbench");
+    await page.getByLabel("Задать пароль", { exact: true }).fill("fixture-password");
+    await page.getByLabel("Подтвердите пароль", { exact: true }).fill("fixture-password");
     const createdTrust = trustReply();
-    await page.getByRole("button", { name: "创建本地账户", exact: true }).click();
+    await page.getByRole("button", { name: "Создать локальный аккаунт", exact: true }).click();
     await (await createdTrust).finished();
     assert.equal(state.account.trusted_login, true);
     await menu().click();
-    await page.getByRole("menuitem", { name: "退出账户", exact: true }).click();
-    await page.getByRole("dialog").getByRole("button", { name: "停止环境并退出账户", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Выйти из аккаунта", exact: true }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Остановить среду и выйти из аккаунта", exact: true }).click();
     // The real backend revokes the grant after a successful environment stop.
     state.account.trusted_login = false;
     await page.reload();
@@ -152,8 +152,8 @@ const remote = await createWorkbench({
 try {
   remote.state.account.unlocked = false;
   await remote.page.reload();
-  await remote.page.getByLabel("账户密码", { exact: true }).waitFor();
-  assert.equal(await remote.page.getByRole("checkbox", { name: /^记住我/ }).count(), 0);
+  await remote.page.getByLabel("Пароль аккаунта", { exact: true }).waitFor();
+  assert.equal(await remote.page.getByRole("checkbox", { name: /Запомнить меня/ }).count(), 0);
   assert.deepEqual(remote.errors, []);
   console.log("PASS remote: local computer trust is unavailable for a remote host");
 } finally { await remote.browser.close(); }

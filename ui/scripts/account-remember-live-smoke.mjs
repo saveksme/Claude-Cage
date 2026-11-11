@@ -28,8 +28,8 @@ const account = () => page.evaluate(async () => {
   const context = await (await fetch("/api/client/context")).json();
   return (await fetch("/api/account", { headers: { "X-Cage-Connection": context.connection_id } })).json();
 });
-const menu = () => page.getByRole("button", { name: /^账户菜单，/ });
-const remember = () => page.getByRole("checkbox", { name: /^记住我/ });
+const menu = () => page.getByRole("button", { name: /Меню аккаунта,/ });
+const remember = () => page.getByRole("checkbox", { name: /Запомнить меня/ });
 const password = randomBytes(24).toString("base64url");
 const restart = async () => {
   await context?.close();
@@ -42,23 +42,23 @@ const restart = async () => {
 };
 const unlock = async (enabled) => {
   await remember().setChecked(enabled);
-  await page.getByLabel("账户密码", { exact: true }).fill(password);
+  await page.getByLabel("Пароль аккаунта", { exact: true }).fill(password);
   const response = page.waitForResponse(r => r.url().endsWith("/api/client/trusted-login"));
-  await page.getByRole("button", { name: "解锁 Cage", exact: true }).click();
+  await page.getByRole("button", { name: "Разблокировать Cage", exact: true }).click();
   assert.equal((await response).status(), 200);
   await menu().waitFor();
 };
 try {
   await restart();
-  await page.getByRole("heading", { name: "注册 Cage 账户", exact: true }).waitFor();
+  await page.getByRole("heading", { name: "Регистрация аккаунта Cage", exact: true }).waitFor();
   await remember().waitFor();
   assert.equal(await remember().isChecked(), true);
   await remember().uncheck();
-  await page.getByLabel("用户名", { exact: true }).fill("remember_live_qa");
-  await page.getByLabel("设置密码", { exact: true }).fill(password);
-  await page.getByLabel("确认密码", { exact: true }).fill(password);
+  await page.getByLabel("Имя пользователя", { exact: true }).fill("remember_live_qa");
+  await page.getByLabel("Задать пароль", { exact: true }).fill(password);
+  await page.getByLabel("Подтвердите пароль", { exact: true }).fill(password);
   const created = page.waitForResponse(r => r.url().endsWith("/api/client/trusted-login"));
-  await page.getByRole("button", { name: "创建本地账户", exact: true }).click();
+  await page.getByRole("button", { name: "Создать локальный аккаунт", exact: true }).click();
   assert.equal((await created).status(), 200);
   await menu().waitFor();
   assert.equal(Boolean((await account()).trusted_login), false);
@@ -76,8 +76,8 @@ try {
   await menu().waitFor();
   assert.equal((await account()).unlocked, true);
   await menu().click();
-  await page.getByRole("menuitem", { name: /锁定 Cage/ }).click();
-  await page.getByRole("region", { name: "解锁 Cage", exact: true }).waitFor();
+  await page.getByRole("menuitem", { name: /Заблокировать Cage/ }).click();
+  await page.getByRole("region", { name: "Разблокировать Cage", exact: true }).waitFor();
   await restart();
   await remember().waitFor();
   assert.equal((await account()).unlocked, false);
@@ -91,9 +91,9 @@ try {
   assert.equal((await account()).unlocked, false);
   await unlock(true);
   await menu().click();
-  await page.getByRole("menuitem", { name: "退出账户", exact: true }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "停止环境并退出账户", exact: true }).click();
-  await page.getByRole("region", { name: "解锁 Cage", exact: true }).waitFor();
+  await page.getByRole("menuitem", { name: "Выйти из аккаунта", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Остановить среду и выйти из аккаунта", exact: true }).click();
+  await page.getByRole("region", { name: "Разблокировать Cage", exact: true }).waitFor();
   assert.equal(Boolean((await account()).trusted_login), false);
   const final = JSON.parse(await fs.readFile(path.join(root, "profile", "account.json"), "utf8"));
   assert.equal(final.sealed_key, record.sealed_key, "workspace password-wrapped key changed");

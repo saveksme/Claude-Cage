@@ -32,7 +32,7 @@ await page.route("**/api/**", async route => {
   }
   if (url.pathname.startsWith("/api/input/files/desktop/")) {
     operations.push({ action: "upload", name: url.searchParams.get("name"), bytes: request.postDataBuffer()?.length });
-    if (failUpload) { failUpload = false; return route.fulfill({ status: 500, contentType: "text/plain", body: "测试附件传递中断，请重新选择文件" }); }
+    if (failUpload) { failUpload = false; return route.fulfill({ status: 500, contentType: "text/plain", body: "Тест: передача вложения прервана; выберите файл заново" }); }
     return route.fulfill({ json: { ok: true } });
   }
   if (["/api/input/files/finish", "/api/input/files/cancel"].includes(url.pathname)) {
@@ -56,12 +56,12 @@ const waitForCount = async (action, count) => {
 };
 const choose = async name => {
   const selected = page.waitForEvent("filechooser");
-  await page.getByRole("button", { name: "添加附件", exact: true }).click();
-  await (await selected).setFiles({ name, mimeType: "text/plain", buffer: Buffer.from("file bytes 中文") });
+  await page.getByRole("button", { name: "Добавить вложение", exact: true }).click();
+  await (await selected).setFiles({ name, mimeType: "text/plain", buffer: Buffer.from("from pathlib import Path\np=Path('/tmp/cage-clipboard-ui-qa'); (p/'кириллица.bin').write_bytes(bytes([0,255,128])); (p/'folder').mkdir(exist_ok=True); (p/'folder'/'blank').write_bytes(b'')") });
 };
 try {
   await page.goto(origin + "/mac-files-test");
-  await page.getByAltText("Claude Desktop 客机窗口").waitFor();
+  await page.getByAltText("Окно гостевой системы Claude Desktop").waitFor();
   await choose("paper.txt");
   await waitForCount("finish", 1);
   assert.deepEqual(operations.slice(0, 3).map(item => item.action), ["start", "upload", "finish"]);
@@ -77,7 +77,7 @@ try {
   });
   await waitForCount("finish", 2);
   assert.equal(operations.filter(item => item.action === "start").at(-1).body.kind, "drop");
-  await page.getByLabel("向 Claude Desktop 输入").evaluate((element, png) => {
+  await page.getByLabel("Ввод в Claude Desktop").evaluate((element, png) => {
     const data = new DataTransfer();
     const bytes = Uint8Array.from(atob(png), value => value.charCodeAt(0));
     data.items.add(new File([bytes], "image.png", { type: "image/png" }));
@@ -90,11 +90,11 @@ try {
   failUpload = true;
   await choose("failed.txt");
   await waitForCount("cancel", 1);
-  await page.getByRole("alert").filter({ hasText: "测试附件传递中断" }).waitFor();
+  await page.getByRole("alert").filter({ hasText: "Тест: передача вложения прервана" }).waitFor();
   await choose("retry.txt");
   await waitForCount("finish", 3);
   chooser = { id: "99999999-2222-4333-8444-111111111111", kind: "chooser", multiple: true, target: "desktop" };
-  await page.getByText("上传本机文件", { exact: true }).waitFor();
+  await page.getByText("Загрузить файлы с этого компьютера", { exact: true }).waitFor();
   await page.locator('.browser-upload-body input[type="file"]').setInputFiles({ name: "native-dialog.txt", mimeType: "text/plain", buffer: Buffer.from("chooser bytes") });
   await waitForCount("finish", 4);
   assert.equal(operations.filter(item => item.action === "finish").at(-1).body.id, "99999999-2222-4333-8444-111111111111");

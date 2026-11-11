@@ -9,7 +9,7 @@ export async function createSettingsWorkbench(options = {}) {
   const archive = execFileSync('uv', ['run', '--no-project', 'python', '-c', `import io,json,sys,zipfile
 b=io.BytesIO()
 with zipfile.ZipFile(b,'w') as z:
- z.writestr('manifest.json',json.dumps({'manifest_version':3,'name':'阅读助手','version':'1.0','description':'调整网页阅读体验。','permissions':['storage'],'content_scripts':[{'matches':['http://localhost/*'],'js':['content.js']}]}))
+ z.writestr('manifest.json',json.dumps({'manifest_version':3,'name':'Помощник чтения','version':'1.0','description':'Улучшает чтение веб-страниц.','permissions':['storage'],'content_scripts':[{'matches':['http://localhost/*'],'js':['content.js']}]}))
  z.writestr('content.js','document.documentElement.dataset.cageSettingsExtension="active";')
 sys.stdout.buffer.write(b.getvalue())`], { stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 1 << 20 });
   const profileID = 'a'.repeat(32), extensionID = 'b'.repeat(32);
@@ -38,7 +38,7 @@ sys.stdout.buffer.write(b.getvalue())`], { stdio: ['ignore', 'pipe', 'ignore'], 
         if (path === '/browser/resize') return route.fulfill({ json: { ok: true } });
         if (path === '/browser/preferences') {
           if (body) {
-            if (fixtureState.failSave) return route.fulfill({ status: 500, contentType: 'text/plain; charset=utf-8', body: '保存浏览器设置失败，请重试' });
+            if (fixtureState.failSave) return route.fulfill({ status: 500, contentType: 'text/plain; charset=utf-8', body: 'Не удалось сохранить настройки браузера; повторите попытку' });
             await controller.api('/homepage', { url: body.browser_home_url }); fixtureState.home = body.browser_home_url;
           }
           return route.fulfill({ json: { browser_home_url: fixtureState.home } });
@@ -52,9 +52,9 @@ sys.stdout.buffer.write(b.getvalue())`], { stdio: ['ignore', 'pipe', 'ignore'], 
         if (path === '/client/context') return route.fulfill({ json: clientContext });
         if (path === '/client/browser-extensions') {
           if (body) return route.fulfill({ contentType: 'application/zip', body: archive });
-          return route.fulfill({ json: { profiles: [{ id: profileID, browser: 'Microsoft Edge', name: '个人配置', extensions: [
-            { id: extensionID, name: '阅读助手', version: '1.0', enabled: false, state_known: true, compatible: true, identity_preserved: false, permissions: ['storage'], hostPermissions: ['http://localhost/*'] },
-            { id: 'c'.repeat(32), name: '旧版扩展', version: '2.0', enabled: true, state_known: true, compatible: false, identity_preserved: false, permissions: [], hostPermissions: [] },
+          return route.fulfill({ json: { profiles: [{ id: profileID, browser: 'Microsoft Edge', name: 'Личный профиль', extensions: [
+            { id: extensionID, name: 'Помощник чтения', version: '1.0', enabled: false, state_known: true, compatible: true, identity_preserved: false, permissions: ['storage'], hostPermissions: ['http://localhost/*'] },
+            { id: 'c'.repeat(32), name: 'Старое расширение', version: '2.0', enabled: true, state_known: true, compatible: false, identity_preserved: false, permissions: [], hostPermissions: [] },
           ] }] } });
         }
         return route.fulfill({ json: path === '/client/hosts' ? { hosts: [] } : {} });

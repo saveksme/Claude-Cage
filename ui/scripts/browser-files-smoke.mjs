@@ -22,7 +22,7 @@ const fixture = await createWorkbench({
       nativeCalls.push(body);
       if (cancelSave) return { canceled: true };
       saved = [
-        { id, name: "视频.mp4", path: "/Users/test/Downloads/视频.mp4" },
+        { id, name: "видео.mp4", path: "/Users/test/Downloads/видео.mp4" },
       ];
       return saved[0];
     }
@@ -74,41 +74,41 @@ try {
   state.status.ready = true;
   state.status.vm_running = true;
   await page.reload();
-  await page.getByRole("button", { name: "打开浏览器", exact: true }).click();
-  await page.getByRole("button", { name: "浏览器下载", exact: true }).click();
-  await page.getByText("正在下载", { exact: false }).waitFor();
+  await page.getByRole("button", { name: "Открыть браузер", exact: true }).click();
+  await page.getByRole("button", { name: "Загрузки браузера", exact: true }).click();
+  await page.locator(".download-state").filter({ hasText: /^Загрузка(?: · \d+%)?$/ }).waitFor();
   await page
-    .getByRole("dialog", { name: "下载文件" })
-    .getByRole("button", { name: "关闭面板" })
+    .getByRole("dialog", { name: "Скачать файл" })
+    .getByRole("button", { name: "Закрыть панель" })
     .click();
   selections = [{ id: chooser, tabId: "tab-1", multiple: true }];
-  await page.getByRole("dialog", { name: "上传本机文件" }).waitFor();
+  await page.getByRole("dialog", { name: "Загрузить файлы с этого компьютера" }).waitFor();
   Object.assign(download, {
     state: "saved",
     path: "/Users/test/Cage/Downloads/video.mp4",
   });
-  await page.getByRole("button", { name: "选择本机文件", exact: true }).click();
-  await page.getByRole("dialog", { name: "上传本机文件" }).waitFor({ state: "hidden" });
+  await page.getByRole("button", { name: "Выбрать файлы на компьютере", exact: true }).click();
+  await page.getByRole("dialog", { name: "Загрузить файлы с этого компьютера" }).waitFor({ state: "hidden" });
   assert.ok(nativeCalls.some(call => call.action === "uploadHostFiles"));
   await poll(() =>
     nativeCalls.some((call) => call.action === "saveBrowserDownload"),
   );
   assert.equal(saved.length, 0, "cancel must not invent a save destination");
-  await page.getByRole("button", { name: "浏览器下载", exact: true }).click();
+  await page.getByRole("button", { name: "Загрузки браузера", exact: true }).click();
   await page
     .getByText("/Users/test/Cage/Downloads/video.mp4", { exact: true })
     .waitFor();
   cancelSave = false;
-  await page.getByRole("button", { name: "另存为…", exact: true }).click();
+  await page.getByRole("button", { name: "Сохранить как…", exact: true }).click();
   await page
-    .getByText("/Users/test/Downloads/视频.mp4", { exact: true })
+    .getByText("/Users/test/Downloads/видео.mp4", { exact: true })
     .waitFor();
   await page
-    .getByRole("dialog", { name: "下载文件" })
-    .getByRole("button", { name: "打开文件", exact: true })
+    .getByRole("dialog", { name: "Скачать файл" })
+    .getByRole("button", { name: "Открыть файл", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "在文件夹中显示", exact: true })
+    .getByRole("button", { name: "Показать в папке", exact: true })
     .click();
   await poll(
     () =>
@@ -129,30 +129,30 @@ try {
     "web UI must not send arbitrary host paths",
   );
   await page
-    .getByRole("dialog", { name: "下载文件" })
-    .getByRole("button", { name: "关闭面板" })
+    .getByRole("dialog", { name: "Скачать файл" })
+    .getByRole("button", { name: "Закрыть панель" })
     .click();
   selections = [{ id: "a8af5851-5837-45ca-a820-1a2565bc7ec6", tabId: "tab-1", multiple: false }];
   await page
-    .getByRole("dialog", { name: "上传本机文件" })
-    .getByRole("button", { name: "取消上传" })
+    .getByRole("dialog", { name: "Загрузить файлы с этого компьютера" })
+    .getByRole("button", { name: "Отменить загрузку" })
     .click();
   await page
-    .getByRole("dialog", { name: "上传本机文件" })
+    .getByRole("dialog", { name: "Загрузить файлы с этого компьютера" })
     .waitFor({ state: "hidden" });
   state.status.ready = false;
   state.status.vm_running = false;
   await page.waitForFunction(
     () =>
-      document.querySelector('[aria-label="打开浏览器"]')?.disabled === true,
+      document.querySelector('[aria-label="Открыть браузер"]')?.disabled === true,
   );
-  await page.getByRole("button", { name: "下载文件", exact: true }).click();
+  await page.getByRole("button", { name: "Скачать файл", exact: true }).click();
   await page
-    .getByText("/Users/test/Downloads/视频.mp4", { exact: true })
+    .getByText("/Users/test/Downloads/видео.mp4", { exact: true })
     .waitFor();
   await page
-    .getByRole("dialog", { name: "下载文件" })
-    .getByRole("button", { name: "打开文件", exact: true })
+    .getByRole("dialog", { name: "Скачать файл" })
+    .getByRole("button", { name: "Открыть файл", exact: true })
     .click();
   await poll(
     () =>

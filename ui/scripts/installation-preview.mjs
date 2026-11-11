@@ -30,13 +30,13 @@ http.createServer(async (req, res) => {
   const showProgress = scenario === "progress" || session.installing;
   const showFailure = scenario === "failure";
   const showReady = scenario === "ready";
-  const job = showProgress || showFailure ? { id: "preview-install", kind: "guest-install", running: !showFailure, error: showFailure ? "系统镜像下载中断。请检查代理连接，已下载文件和虚拟磁盘会保留。" : "", message: "正在下载系统镜像", setup_progress: { system, phase: "image", operation: "download", label: `正在下载 ${system === "macos" ? "macOS" : system === "windows-11" ? "Windows 11" : "Ubuntu"} 系统镜像`, received: Math.floor(host.bytes * .43), total: host.bytes, bytes_per_second: 26 * 1048576 }, log: "正在通过主机系统代理或 TUN 下载官方系统镜像。" } : { running: false };
+  const job = showProgress || showFailure ? { id: "preview-install", kind: "guest-install", running: !showFailure, error: showFailure ? "Загрузка системного образа прервана. Проверьте подключение через прокси; загруженные файлы и виртуальный диск сохранятся." : "", message: "Загрузка системного образа", setup_progress: { system, phase: "image", operation: "download", label: `Загружается ${system === "macos" ? "macOS" : system === "windows-11" ? "Windows 11" : "Ubuntu"} (системный образ)`, received: Math.floor(host.bytes * .43), total: host.bytes, bytes_per_second: 26 * 1048576 }, log: "Официальный системный образ загружается через системный прокси хоста или TUN." } : { running: false };
   const status = { local_vm_storage: true, ready: showReady, vm_running: showReady, safety: showReady ? { gate: { mode: "open", until: new Date(Date.now()+3600000).toISOString() } } : {}, keyboard: host.platform === "darwin" ? "mac" : "native", job, projects: [], environment_workspace: true, environment_directory: "/preview/workspace", workspace: "/preview/workspace" };
   const pending = scenario === "resume" ? { version: 1, id: "preview-install", system, source: plan, editor_terms: true } : undefined;
   if (url.pathname.startsWith("/api/")) {
     let value = {};
     if (url.pathname === "/api/client/context") value = { mode: "local", connection_id: "local", client_platform: host.platform, server_platform: host.platform, connection: { state: "disconnected" } };
-    else if (url.pathname === "/api/account") value = { exists: true, unlocked: true, username: "安装界面预览" };
+    else if (url.pathname === "/api/account") value = { exists: true, unlocked: true, username: "Предпросмотр установки" };
     else if (url.pathname === "/api/status") value = status;
     else if (url.pathname === "/api/environment/initialization") {
       if (req.method === "POST") {
@@ -50,10 +50,10 @@ http.createServer(async (req, res) => {
     else if (url.pathname === "/api/environment/storage") value={directory: host.platform === "windows" ? "D:\\Cage\\CageData" : "/preview/cage-state",has_environment:false};
     else if (url.pathname === "/api/settings") value = { workspace: "/preview/workspace", browser_home_url: "https://www.bing.com/", timezone: "Asia/Shanghai", locale: "zh_CN.UTF-8", keyboard: status.keyboard };
     else if (url.pathname === "/api/appearance") value = { ...defaultAppearance, mode: "light" };
-    else if (url.pathname === "/api/proxy") value = { active: true, selected: "preview-node", port: 17896, core_available: true, state: "prepared", sources: [{ id: "preview", name: "预览代理", nodes: [{ id: "preview-node", name: "预览节点", type: "http" }] }] };
+    else if (url.pathname === "/api/proxy") value = { active: true, selected: "preview-node", port: 17896, core_available: true, state: "prepared", sources: [{ id: "preview", name: "Прокси предпросмотра", nodes: [{ id: "preview-node", name: "Узел предпросмотра", type: "http" }] }] };
     else if (url.pathname === "/api/environment/guest-systems") value = { fresh: !pending, available: true, system, pending, linux_systems: ["ubuntu-22.04"] };
     else if (url.pathname === "/api/environment/guest-systems/clone") value = { plan, key: "preview-only", enough_space: scenario !== "space", download_bytes: scenario === "cached" ? 0 : scenario === "resume" ? Math.floor(host.bytes / 3) : host.bytes, minimum_free_gib: 32 + Math.ceil(host.bytes / 1073741824), free_gib: scenario === "space" ? 10 : 120, installation_started: Boolean(pending) };
-    else if (url.pathname === "/api/host/git") value = { state: "ok", ready: true, message: "本机 Git 安全保护已启用。" };
+    else if (url.pathname === "/api/host/git") value = { state: "ok", ready: true, message: "Защита локального Git включена." };
     else if (url.pathname === "/api/terminals") value = [];
     else if (url.pathname === "/api/browser/tabs") value = { tabs: [], active: "" };
     else if (url.pathname === "/api/start") { session.installing=true; value={ id: "preview-install", kind: "guest-install", running: true }; }
@@ -71,8 +71,8 @@ http.createServer(async (req, res) => {
       const headers = { ...response.headers };
       if (url.pathname === "/") {
         const links = Object.keys(hosts).map(key => `<a href="/?host=${key}&state=${scenario}" ${key === selected ? 'aria-current="page"' : ""}>${key === "macos" ? "Mac" : key === "windows" ? "Windows" : "Linux"}</a>`).join("");
-        const states = [["download", "首次配置"], ["cached", "已有镜像"], ["progress", "安装进度"], ["failure", "安装失败"], ["ready", "环境就绪"]].map(([key, label]) => `<a href="/?host=${selected}&state=${key}" ${key === scenario ? 'aria-current="page"' : ""}>${label}</a>`).join("");
-        const banner = `<aside class="installation-preview"><strong>安装界面预览</strong><span>模拟数据 · 不会安装</span><nav>${links}</nav><nav>${states}</nav></aside>`;
+        const states = [["download", "Первичная настройка"], ["cached", "Образ уже есть"], ["progress", "Ход установки"], ["failure", "ошибка установки"], ["ready", "Готово на этом компьютере"]].map(([key, label]) => `<a href="/?host=${selected}&state=${key}" ${key === scenario ? 'aria-current="page"' : ""}>${label}</a>`).join("");
+        const banner = `<aside class="installation-preview"><strong>Предпросмотр интерфейса установки</strong><span>Имитационные данные · установка не выполняется</span><nav>${links}</nav><nav>${states}</nav></aside>`;
         body = Buffer.from(body.toString().replace("</head>", `<style>.installation-preview{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:10px 18px;background:#f5f5f5;border-bottom:1px solid #ddd;font:13px -apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif}.installation-preview span{color:#777}.installation-preview nav{display:flex;gap:12px}.installation-preview a{color:#666;text-decoration:none}.installation-preview a[aria-current]{color:#111;text-decoration:underline;text-underline-offset:4px}.client-shell{height:calc(100dvh - 45px)!important}.client-shell>.app{height:auto;flex:1;min-height:0}</style><script>window.cageNativeBridge={postMessage:async()=>null};</script></head>`).replace('<div id="root">', banner + '<div id="root">'));
         delete headers["content-length"];
       }

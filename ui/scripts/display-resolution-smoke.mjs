@@ -45,10 +45,10 @@ try {
   await matched();
   await page.setViewportSize({ width: 1000, height: 740 });
   await matched();
-  await page.getByRole("button", { name: "收起侧栏", exact: true }).click();
+  await page.getByRole("button", { name: "Свернуть боковую панель", exact: true }).click();
   await matched();
   const connections = display.stats.connections;
-  const selector = page.getByLabel("Desktop 显示大小", { exact: true });
+  const selector = page.getByLabel("Размер отображения Desktop", { exact: true });
   const screen = page.locator(".desktop-screen");
   const toolbar = page.locator(".claude-desktop-toolbar");
   const toolbarBefore = await toolbar.boundingBox();
@@ -76,11 +76,11 @@ try {
   assert.equal(display.stats.connections, connections, "zoom must preserve the active RFB connection");
   failResize = true;
   await chooseInline(selector, "1.1");
-  await page.getByRole("alert").filter({ hasText: "画面尺寸未能同步" }).waitFor();
+  await page.getByRole("alert").filter({ hasText: "Размер экрана не удалось синхронизировать" }).waitFor();
   failResize = false;
   await matched(1.1);
-  await page.getByRole("alert").filter({ hasText: "画面尺寸未能同步" }).waitFor({ state: "hidden" });
-  await page.getByRole("button", { name: "展开侧栏", exact: true }).click();
+  await page.getByRole("alert").filter({ hasText: "Размер экрана не удалось синхронизировать" }).waitFor({ state: "hidden" });
+  await page.getByRole("button", { name: "Развернуть боковую панель", exact: true }).click();
   await matched(1.1);
   await page.reload();
   await page.getByRole("button", { name: "Claude Desktop", exact: true }).click();
@@ -90,10 +90,10 @@ try {
   await matched();
   await page.setViewportSize({ width: 820, height: 558 });
   await matched();
-  await page.getByRole("button", { name: "设置", exact: true }).click();
-  await page.getByRole("switch", { name: /流畅画质/ }).check();
-  await page.getByRole("button", { name: "保存设置", exact: true }).click();
-  await page.getByRole("region", { name: "设置", exact: true }).waitFor({ state: "hidden" });
+  await page.getByRole("button", { name: "Настройки", exact: true }).click();
+  await page.getByRole("switch", { name: /Приоритет плавности/ }).check();
+  await page.getByRole("button", { name: "Сохранить настройки", exact: true }).click();
+  await page.getByRole("region", { name: "Настройки", exact: true }).waitFor({ state: "hidden" });
   assert.equal(state.settings.balanced_display, true);
   await matched(1, 2); // Reconnect to the application that was already running.
   runningDensity = 1.5;

@@ -65,7 +65,7 @@ async function point(x, y) {
 }
 try {
   await page.goto(config.url);
-  await page.getByRole("navigation", { name: "主导航" }).getByRole("button", { name: "打开浏览器", exact: true }).click();
+  await page.getByRole("navigation", { name: "Основная навигация" }).getByRole("button", { name: "Открыть браузер", exact: true }).click();
   const address = page.locator(".address-bar input").first();
   await address.fill(config.fixture);
   await address.press("Enter");
@@ -140,7 +140,7 @@ try {
   const resumed = await measure("resume", 2000);
   assert(resumed.bytes > 0, "restoring the workbench did not deliver pixels");
   if (process.env.CAGE_NATIVE_DISPLAY_DESKTOP === "1") {
-    await page.getByRole("navigation", { name: "主导航" }).getByRole("button", { name: "Claude Desktop", exact: true }).click();
+    await page.getByRole("navigation", { name: "Основная навигация" }).getByRole("button", { name: "Claude Desktop", exact: true }).click();
     await page.waitForFunction(() => [...document.querySelectorAll('section[aria-label="Claude Desktop"] canvas')].some(element => {
       if (element.getBoundingClientRect().width < 100 || element.width < 320 || element.height < 240) return false;
       const pixels = element.getContext("2d").getImageData(0, 0, element.width, element.height).data;
