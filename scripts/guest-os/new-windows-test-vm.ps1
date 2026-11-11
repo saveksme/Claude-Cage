@@ -87,7 +87,7 @@ if ($fromHost) {
     $answer = New-CageCloneAnswer $GuestAdministrator $ImageLanguage
 } else {
     if (!$GuestAdministrator) {
-        $GuestAdministrator = Get-Credential -UserName 'CageAdmin' -Message '设置虚拟 Windows 的初始本地管理员和密码。安装后用此账户登录客机，并在 Cage 继续安装时再次输入。'
+        $GuestAdministrator = Get-Credential -UserName 'CageAdmin' -Message 'Задайте начального локального администратора и пароль виртуальной Windows. После установки войдите с этой учетной записью в гостевую систему и введите её снова при продолжении установки в Cage.'
     }
     $answer = New-CageISOAnswer $GuestAdministrator
 }

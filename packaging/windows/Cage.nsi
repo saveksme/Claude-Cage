@@ -49,7 +49,7 @@ VIAddVersionKey /LANG=1033 "LegalCopyright" "Cage contributors"
 !define MUI_ABORTWARNING
 !define MUI_FINISHPAGE_RUN "$INSTDIR\Cage.exe"
 !define MUI_FINISHPAGE_RUN_NOTCHECKED
-!define MUI_FINISHPAGE_TEXT "Cage is installed.$\r$\n$\r$\nIf virtualization is unavailable, enable Windows Hypervisor Platform in Windows Features and restart Windows. Your projects and Cage data are preserved during upgrades and uninstall."
+!define MUI_FINISHPAGE_TEXT "Cage установлен.$\r$\n$\r$\nЕсли виртуализация недоступна, включите платформу Windows Hypervisor в компонентах Windows и перезагрузите систему. Проекты и данные Cage сохраняются при обновлении и удалении."
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_LICENSE "${APP_DIR}/LICENSE.txt"
 !define MUI_DIRECTORYPAGE_TEXT_TOP "$(CageDirectoryHelp)"
@@ -59,19 +59,13 @@ Page custom ShortcutOptionsPage ShortcutOptionsLeave
 !insertmacro MUI_PAGE_FINISH
 !insertmacro MUI_UNPAGE_CONFIRM
 !insertmacro MUI_UNPAGE_INSTFILES
-!insertmacro MUI_LANGUAGE "English"
-!insertmacro MUI_LANGUAGE "SimpChinese"
+!insertmacro MUI_LANGUAGE "Russian"
 
-LangString CageDirectoryHelp ${LANG_ENGLISH} "Choose where to install the Cage application. On first launch, you can choose a separate drive for the Linux image, download cache, and virtual disks before starting the environment."
-LangString CageDirectoryHelp ${LANG_SIMPCHINESE} "请选择 Cage 程序的安装目录。首次打开 Cage 后，可以在启动环境前单独选择存放 Linux 镜像、下载缓存和虚拟磁盘的磁盘。"
-LangString CageShortcutsTitle ${LANG_ENGLISH} "Shortcuts"
-LangString CageShortcutsTitle ${LANG_SIMPCHINESE} "快捷方式"
-LangString CageShortcutsHelp ${LANG_ENGLISH} "Choose where to add Cage shortcuts for your Windows account."
-LangString CageShortcutsHelp ${LANG_SIMPCHINESE} "选择为当前 Windows 用户添加的 Cage 快捷方式。"
-LangString CageDesktopShortcut ${LANG_ENGLISH} "Add a desktop shortcut"
-LangString CageDesktopShortcut ${LANG_SIMPCHINESE} "添加桌面快捷方式"
-LangString CageStartMenuShortcuts ${LANG_ENGLISH} "Add to the Start menu"
-LangString CageStartMenuShortcuts ${LANG_SIMPCHINESE} "添加到开始菜单"
+LangString CageDirectoryHelp ${LANG_RUSSIAN} "Выберите каталог для установки приложения Cage. При первом запуске можно отдельно выбрать диск для образа Linux, кэша загрузок и виртуальных дисков перед запуском среды."
+LangString CageShortcutsTitle ${LANG_RUSSIAN} "Ярлыки"
+LangString CageShortcutsHelp ${LANG_RUSSIAN} "Выберите, куда добавить ярлыки Cage для текущей учетной записи Windows."
+LangString CageDesktopShortcut ${LANG_RUSSIAN} "Добавить ярлык на рабочий стол"
+LangString CageStartMenuShortcuts ${LANG_RUSSIAN} "Добавить в меню «Пуск»"
 
 Var UpdateMode
 Var StageDir
@@ -172,12 +166,12 @@ FunctionEnd
   Pop $1
   ${If} $0 == 0
     SetErrorLevel 2
-    Abort "无法锁定 Cage 安装操作，请核对系统权限后重试。"
+    Abort "Не удалось заблокировать операцию установки Cage. Проверьте права системы и повторите попытку."
   ${EndIf}
   StrCpy $InstallationMutex $0
   ${If} $1 == 183
     SetErrorLevel 2
-    Abort "另一个 Cage 安装或卸载仍在进行，请等待完成后重试。"
+    Abort "Другая установка или удаление Cage ещё выполняется. Дождитесь завершения и повторите попытку."
   ${EndIf}
 !macroend
 
@@ -225,7 +219,7 @@ Function LoadShortcutOptions
     ${If} $1 != "0"
     ${AndIf} $1 != "1"
       SetErrorLevel 2
-      Abort "DESKTOPSHORTCUT must be 0 or 1."
+      Abort "Параметр DESKTOPSHORTCUT должен быть 0 или 1."
     ${EndIf}
     StrCpy $DesktopShortcut $1
   ${EndIf}
@@ -235,7 +229,7 @@ Function LoadShortcutOptions
     ${If} $1 != "0"
     ${AndIf} $1 != "1"
       SetErrorLevel 2
-      Abort "STARTMENUSHORTCUT must be 0 or 1."
+      Abort "Параметр STARTMENUSHORTCUT должен быть 0 или 1."
     ${EndIf}
     StrCpy $StartMenuShortcuts $1
   ${EndIf}
@@ -290,7 +284,7 @@ FunctionEnd
     ${If} $0 == -1
       StrCpy $HelperExit "application_file_in_use"
       SetErrorLevel 2
-      Abort "Quit Cage and stop its environment before installing or uninstalling."
+      Abort "Закройте Cage и остановите его среду перед установкой или удалением."
     ${EndIf}
     System::Call 'kernel32::CloseHandle(p r0)'
   ${EndIf}
@@ -309,13 +303,13 @@ Function .onInit
   SetShellVarContext current
   SetRegView 64
   ${IfNot} ${IsNativeAMD64}
-    MessageBox MB_ICONSTOP "This Cage package requires an Intel/AMD 64-bit version of Windows. Windows on ARM and 32-bit Windows are not supported."
+    MessageBox MB_ICONSTOP "Этот пакет Cage требует 64-разрядной Windows для Intel/AMD. Windows на ARM и 32-разрядная Windows не поддерживаются."
     SetErrorLevel 1633
     Quit
   ${EndIf}
   ReadRegStr $0 HKLM "SOFTWARE\Microsoft\Windows NT\CurrentVersion" "CurrentBuildNumber"
   ${If} $0 < 19045
-    MessageBox MB_ICONSTOP "Cage requires Windows 10 22H2 (build 19045) or Windows 11. Update Windows and try again."
+    MessageBox MB_ICONSTOP "Cage требуется Windows 10 22H2 (сборка 19045) или Windows 11. Обновите Windows и повторите попытку."
     SetErrorLevel 1633
     Quit
   ${EndIf}
@@ -337,7 +331,7 @@ Function CheckDestination
   ${OrIf} $INSTDIR == $0
   ${OrIf} $INSTDIR == "$0\"
     SetErrorLevel 2
-    Abort "Choose a dedicated application folder."
+    Abort "Выберите отдельный каталог приложения."
   ${EndIf}
   StrCpy $ExistingInstall "0"
   IfFileExists "$INSTDIR\Cage.install-id" existing
@@ -360,7 +354,7 @@ Function CheckDestination
     Goto done
   foreign:
     SetErrorLevel 2
-    Abort "The destination contains files from another installation. Choose an empty folder."
+    Abort "Целевой каталог содержит файлы другой установки. Выберите пустой каталог."
   done:
     ClearErrors
 FunctionEnd
@@ -372,20 +366,20 @@ Function RestorePreservedFiles
   ${If} $0 != 0
     DetailPrint "$1"
     SetErrorLevel 2
-    Abort "安装恢复尚未完成。文件分别保留在 $BackupDir 和 $StageDir，请保留这两个目录后重试。"
+    Abort "Восстановление установки не завершено. Файлы сохранены в $BackupDir и $StageDir; сохраните оба каталога и повторите попытку."
   ${EndIf}
   ClearErrors
   Rename "$BackupDir" "$INSTDIR"
   ${If} ${Errors}
     SetErrorLevel 2
-    Abort "原安装目录未能恢复。文件保留在 $BackupDir，新程序保留在 $StageDir。"
+    Abort "Не удалось восстановить исходный каталог установки. Файлы сохранены в $BackupDir, новая программа — в $StageDir."
   ${EndIf}
   nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\installation-files.ps1" -Operation complete -Target "$INSTDIR" -Receipt "$TransactionRecord" $DiagnosticArguments'
   Pop $0
   Pop $1
   ${If} $0 != 0
     SetErrorLevel 2
-    Abort "仍有文件需要核对，安装回执保留在 $TransactionRecord。请保留相关目录后处理。"
+    Abort "Остались файлы для проверки; квитанция установки сохранена в $TransactionRecord. Сохраните связанные каталоги и обработайте их."
   ${EndIf}
 FunctionEnd
 
@@ -395,7 +389,7 @@ Section "Cage" Main
   StrCpy $TransactionRecord "$INSTDIR.cage-installation.json"
   ${If} ${FileExists} "$TransactionRecord"
     SetErrorLevel 2
-    Abort "存在未处理的安装事务记录：$TransactionRecord。请先按记录恢复保留的目录，再重试。"
+    Abort "Обнаружена незавершённая запись установки: $TransactionRecord. Сначала восстановите сохранённые каталоги по записи, затем повторите попытку."
   ${EndIf}
   !insertmacro InstallPhase "checking_destination"
   Call CheckDestination
@@ -417,7 +411,7 @@ Section "Cage" Main
     SetOutPath "$TEMP"
     RMDir /r "$StageDir"
     SetErrorLevel 2
-    Abort "Could not unpack Cage. Check free disk space and folder permissions."
+    Abort "Не удалось распаковать Cage. Проверьте свободное место на диске и права на каталог."
   ${EndIf}
 
   ; Install the bundled offline runtime only when WebView2 is absent.
@@ -430,7 +424,7 @@ Section "Cage" Main
   ${OrIf} $0 == "0.0.0.0"
     ${If} $1 == ""
     ${OrIf} $1 == "0.0.0.0"
-      DetailPrint "Installing the bundled Microsoft WebView2 runtime..."
+      DetailPrint "Установка встроенной среды Microsoft WebView2..."
       !insertmacro InstallPhase "installing_webview_runtime"
       ExecWait '"$StageDir\resources\runtime\MicrosoftEdgeWebView2RuntimeInstallerX64.exe" /silent /install' $0
       StrCpy $HelperExit $0
@@ -439,7 +433,7 @@ Section "Cage" Main
         SetOutPath "$TEMP"
         RMDir /r "$StageDir"
         SetErrorLevel 2
-        Abort "Microsoft WebView2 installation failed ($0). Install the runtime and retry."
+        Abort "Не удалось установить Microsoft WebView2 ($0). Установите среду и повторите попытку."
       ${EndIf}
     ${EndIf}
   ${EndIf}
@@ -455,7 +449,7 @@ Section "Cage" Main
   SetOutPath "$PLUGINSDIR"
   File /oname=installation-files.ps1 "installation-files.ps1"
   File /oname=verified-file-deletion.cs "verified-file-deletion.cs"
-  DetailPrint "正在检查并保留已有项目和修改文件…"
+  DetailPrint "Проверка и сохранение существующих проектов и изменённых файлов…"
   !insertmacro InstallPhase "preparing_file_transaction"
   nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\installation-files.ps1" -Operation prepare -Target "$StageDir" -Source "$INSTDIR" -Backup "$BackupDir" -Receipt "$TransactionRecord" $DiagnosticArguments'
   Pop $0
@@ -467,7 +461,7 @@ Section "Cage" Main
     SetOutPath "$TEMP"
     RMDir /r "$StageDir"
     SetErrorLevel 2
-    Abort "无法安全保留现有文件，安装已停止。原安装目录已保留，请检查磁盘空间、文件占用和安装日志。"
+    Abort "Не удалось безопасно сохранить существующие файлы; установка остановлена. Исходный каталог установки сохранён. Проверьте свободное место, занятость файлов и журнал установки."
   ${EndIf}
   SetOutPath "$TEMP"
   ${If} $ExistingInstall == "1"
@@ -480,9 +474,9 @@ Section "Cage" Main
       Pop $1
       RMDir /r "$StageDir"
       SetErrorLevel 2
-      Abort "Could not move the installed application. Quit Cage and retry."
+      Abort "Не удалось переместить установленное приложение. Закройте Cage и повторите попытку."
     ${EndIf}
-    DetailPrint "正在迁入个人文件并保留原有链接…"
+    DetailPrint "Перенос личных файлов с сохранением существующих ссылок…"
     !insertmacro InstallPhase "moving_personal_files"
     nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\installation-files.ps1" -Operation move -Target "$StageDir" -Source "$BackupDir" -Receipt "$TransactionRecord" $DiagnosticArguments'
     Pop $0
@@ -494,7 +488,7 @@ Section "Cage" Main
       Call RestorePreservedFiles
       RMDir /r "$StageDir"
       SetErrorLevel 2
-      Abort "个人文件未能迁入新程序目录，原安装已恢复。请关闭占用文件的程序后重试。"
+      Abort "Не удалось перенести личные файлы в новый каталог программы; исходная установка восстановлена. Закройте программы, занимающие файлы, и повторите попытку."
     ${EndIf}
   ${Else}
     RMDir "$INSTDIR"
@@ -508,11 +502,11 @@ Section "Cage" Main
     ${EndIf}
     RMDir /r "$StageDir"
     SetErrorLevel 2
-    Abort "Could not install Cage. The previous installation has been restored."
+    Abort "Не удалось установить Cage. Предыдущая установка восстановлена."
   ${EndIf}
   ${If} $BackupDir != ""
     !insertmacro InstallPhase "cleaning_previous_application"
-    DetailPrint "正在清理已核对的旧程序文件…"
+    DetailPrint "Очистка проверенных старых файлов программы…"
     nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\installation-files.ps1" -Operation cleanup -Target "$INSTDIR" -Source "$BackupDir" -Receipt "$TransactionRecord" $DiagnosticArguments'
     Pop $0
     Pop $1
@@ -520,9 +514,9 @@ Section "Cage" Main
     Call WriteInstallDiagnostic
     DetailPrint "$1"
     ${If} $0 != 0
-      DetailPrint "旧目录中仍有需要保留的文件：$BackupDir"
+      DetailPrint "В старом каталоге остались файлы для сохранения: $BackupDir"
       SetErrorLevel 2
-      Abort "安装仍有待恢复的文件。请保留 $TransactionRecord 及其中记录的目录，再处理恢复。"
+      Abort "В установке остались файлы, требующие восстановления. Сохраните $TransactionRecord и указанные в нём каталоги, затем обработайте восстановление."
     ${EndIf}
   ${Else}
     !insertmacro InstallPhase "completing_file_transaction"
@@ -533,7 +527,7 @@ Section "Cage" Main
     Call WriteInstallDiagnostic
     ${If} $0 != 0
       SetErrorLevel 2
-      Abort "安装回执未能完成，记录保留在 $TransactionRecord。"
+      Abort "Не удалось завершить квитанцию установки; запись сохранена в $TransactionRecord."
     ${EndIf}
   ${EndIf}
   !insertmacro InstallPhase "registering_installation"
@@ -586,7 +580,7 @@ Function un.onInit
     StrCpy $HelperExit "identity_mismatch"
     Call un.WriteInstallDiagnostic
     SetErrorLevel 2
-    Abort "This is not a Cage installation folder."
+    Abort "Это не каталог установки Cage."
   ${EndIf}
   !insertmacro UninstallPhase "checking_stopped_processes"
   !insertmacro CheckStopped "Cage.exe"
@@ -595,7 +589,7 @@ Function un.onInit
   !insertmacro CheckStopped "resources\runtime\qemu\qemu-system-x86_64.exe"
 FunctionEnd
 
-Section "Uninstall"
+Section "Удаление Cage"
   !insertmacro UninstallPhase "acquiring_installation_lock"
   !insertmacro AcquireInstallationMutex
   !insertmacro UninstallPhase "checking_pending_transaction"
@@ -603,7 +597,7 @@ Section "Uninstall"
     StrCpy $HelperExit "pending_install_transaction"
     Call un.WriteInstallDiagnostic
     SetErrorLevel 2
-    Abort "存在待恢复的安装事务，请先处理 $INSTDIR.cage-installation.json 中记录的目录。"
+    Abort "Обнаружена установка, требующая восстановления. Сначала обработайте каталоги, указанные в $INSTDIR.cage-installation.json."
   ${EndIf}
   InitPluginsDir
   SetOutPath "$PLUGINSDIR"
@@ -622,7 +616,7 @@ Section "Uninstall"
   DetailPrint "$1"
   ${If} $0 != 0
     SetErrorLevel 2
-    Abort "部分程序文件正在使用或无法读取，卸载未完成。个人文件已保留，请关闭占用程序后重试。"
+    Abort "Часть файлов программы используется или недоступна для чтения; удаление не завершено. Личные файлы сохранены. Закройте занимающие программы и повторите попытку."
   ${EndIf}
   !insertmacro UninstallPhase "removing_shortcuts_and_registration"
   Delete "$DESKTOP\Cage.lnk"

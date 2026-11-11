@@ -81,7 +81,7 @@ internal static class GuestVersions
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or InvalidOperationException)
         {
-            result["error"] = "客机尚无可核验的组件记录，请同步环境组件。";
+            result["error"] = "В гостевой системе нет проверяемой записи компонентов; синхронизируйте компоненты среды.";
         }
         return result;
     }

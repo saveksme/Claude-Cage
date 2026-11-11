@@ -54,10 +54,10 @@ const specialKeys = new Map([
 ]);
 for (let i = 0; i < 12; i++) specialKeys.set(0xffbe + i, ["F" + (i + 1), "F" + (i + 1), 112 + i]);
 function rfbKey(value) {
-  if (!Number.isSafeInteger(value) || value < 0 || value > 0x11ffffff) throw failure("invalid_input", "按键无效");
+  if (!Number.isSafeInteger(value) || value < 0 || value > 0x11ffffff) throw failure("invalid_input", "Недопустимая клавиша");
   if (specialKeys.has(value)) { const [key, code, windowsVirtualKeyCode] = specialKeys.get(value); return { key, code, windowsVirtualKeyCode }; }
   const cp = (value & 0xff000000) === 0x01000000 ? value & 0xffffff : value;
-  if (cp < 32 || cp > 0x10ffff || (cp >= 0xd800 && cp <= 0xdfff) || (value >= 0xff00 && value < 0x01000000)) throw failure("invalid_input", "不支持此按键");
+  if (cp < 32 || cp > 0x10ffff || (cp >= 0xd800 && cp <= 0xdfff) || (value >= 0xff00 && value < 0x01000000)) throw failure("invalid_input", "Эта клавиша не поддерживается");
   const key = String.fromCodePoint(cp), letter = /^[a-z]$/i.test(key), digit = /^\d$/.test(key);
   return { key, code: letter ? "Key" + key.toUpperCase() : digit ? "Digit" + key : key === " " ? "Space" : "", windowsVirtualKeyCode: letter ? key.toUpperCase().charCodeAt(0) : digit ? key.charCodeAt(0) : key === " " ? 32 : 0, printable: true };
 }
@@ -69,19 +69,19 @@ function failure(code, message) {
   return error;
 }
 export function checkedBrowserURL(value) {
-  if (typeof value !== "string" || value.length > 4096) throw failure("invalid_url", "浏览器地址无效");
+  if (typeof value !== "string" || value.length > 4096) throw failure("invalid_url", "Недопустимый адрес браузера");
   if (value === "about:blank") return value;
   let url;
-  try { url = new URL(value); } catch { throw failure("invalid_url", "浏览器地址无效"); }
+  try { url = new URL(value); } catch { throw failure("invalid_url", "Недопустимый адрес браузера"); }
   if (!["http:", "https:"].includes(url.protocol) || !url.hostname || url.username || url.password)
     throw failure("invalid_url", "Only HTTP(S) URLs without credentials are accepted");
   return url.href;
 }
 export function checkedLoopbackProxy(value) {
   let url;
-  try { url = new URL(value); } catch { throw failure("network_unavailable", "Windows 客机受控网络代理尚未配置"); }
+  try { url = new URL(value); } catch { throw failure("network_unavailable", "Управляемый сетевой прокси гостевой Windows не настроен"); }
   if (url.protocol !== "http:" || url.hostname !== "127.0.0.1" || !url.port || url.username || url.password || url.pathname !== "/" || url.search || url.hash)
-    throw failure("network_unavailable", "Windows 客机受控网络代理尚未配置");
+    throw failure("network_unavailable", "Управляемый сетевой прокси гостевой Windows не настроен");
   return url.origin;
 }
 export function validWindowsBrowserFileName(value) {
@@ -94,14 +94,14 @@ export function applyWindowsEditorHTMLDefault(html, trustDefault) {
   const meta = /<meta\b[^>]*\bid="vscode-workbench-web-configuration"[^>]*>/i;
   const tag = html.match(meta)?.[0];
   const attribute = tag?.match(/\bdata-settings="([^"]*)"/i);
-  if (!attribute) throw failure("editor_unavailable", "编辑器配置入口与已安装版本不一致");
+  if (!attribute) throw failure("editor_unavailable", "Точка входа настроек редактора не соответствует установленной версии");
   const entities = { quot: '"', amp: "&", lt: "<", gt: ">", apos: "'" };
   const decoded = attribute[1].replace(/&(?:quot|amp|lt|gt|apos|#\d+|#x[0-9a-f]+);/gi, value => {
     const name = value.slice(1, -1).toLowerCase();
     return name[0] === "#" ? String.fromCodePoint(Number.parseInt(name.slice(name[1] === "x" ? 2 : 1), name[1] === "x" ? 16 : 10)) : entities[name];
   });
   const settings = JSON.parse(decoded);
-  if (!settings || Array.isArray(settings) || typeof settings !== "object") throw failure("editor_unavailable", "编辑器配置入口无效");
+  if (!settings || Array.isArray(settings) || typeof settings !== "object") throw failure("editor_unavailable", "Недопустимая точка входа настроек редактора");
   const previous = settings.configurationDefaults;
   settings.configurationDefaults = { ...(previous && !Array.isArray(previous) && typeof previous === "object" ? previous : {}), "security.workspace.trust.enabled": trustDefault };
   const encoded = JSON.stringify(settings).replace(/[&"<>']/g, value => ({ "&": "&amp;", '"': "&quot;", "<": "&lt;", ">": "&gt;", "'": "&#39;" })[value]);
@@ -115,7 +115,7 @@ export function browserExecutable() {
     const executable = path.join(root, ...relative.split("/"));
     if (existsSync(executable)) return executable;
   }
-  throw failure("browser_unavailable", "请先在 Windows 客机安装受支持的 Chrome 或 Edge");
+  throw failure("browser_unavailable", "Сначала установите поддерживаемые Chrome или Edge в гостевой Windows");
 }
 
 // Tests provide their dependencies explicitly. Production uses the selected
@@ -164,12 +164,12 @@ export function createNativeBrowserService(options = {}) {
   function copyTarget(proof) {
     const tab = target(proof);
     if (closing || tab.copyContext !== proof.context || proof.version !== copyVersion)
-      throw failure("copy_changed", "复制来源已切换，请重新复制");
+      throw failure("copy_changed", "Источник копирования изменился; скопируйте заново");
     return tab;
   }
 
   async function privateClipboardPage() {
-    if (closing) throw failure("copy_unavailable", "浏览器已关闭");
+    if (closing) throw failure("copy_unavailable", "Браузер закрыт");
     if (!clipboardHelper) {
       clipboardHelper = (async () => {
         const isolated = await owner.newContext({ permissions: ["clipboard-read", "clipboard-write"] });
@@ -213,10 +213,10 @@ export function createNativeBrowserService(options = {}) {
       return { ...payload, text: value.text };
     const mime = typeof value.text === "string" ? "text/plain" : "image/png";
     const bytes = Buffer.from(mime === "text/plain" ? value.text : value.png, mime === "text/plain" ? "utf8" : "base64");
-    if (bytes.length > (mime === "text/plain" ? textLimit : imageLimit)) throw failure("copy_limit", "复制内容超过大小限制");
+    if (bytes.length > (mime === "text/plain" ? textLimit : imageLimit)) throw failure("copy_limit", "Скопированное содержимое превышает ограничение размера");
     if (mime === "image/png" && (bytes.length < 33 || !bytes.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10])) || bytes.toString("ascii", 12, 16) !== "IHDR" ||
         !bytes.readUInt32BE(16) || !bytes.readUInt32BE(20) || bytes.readUInt32BE(16) * bytes.readUInt32BE(20) > 40_000_000))
-      throw failure("copy_image_invalid", "复制的 PNG 图片无效");
+      throw failure("copy_image_invalid", "Скопированное изображение PNG недопустимо");
     const id = randomUUID(), file = path.join(uploadDirectory, "clipboard", id);
     await mkdir(path.dirname(file), { recursive: true, mode: 0o700 });
     await writeFile(file, bytes, { mode: 0o600, flag: "wx" });
@@ -251,7 +251,7 @@ export function createNativeBrowserService(options = {}) {
   }
 
   async function copyAction(tab, input, action, signal) {
-    if (!tokenPattern.test(input.context || "")) throw failure("invalid_input", "复制上下文无效");
+    if (!tokenPattern.test(input.context || "")) throw failure("invalid_input", "Недопустимый контекст копирования");
     const document = tab.document;
     await privateClipboardPage();
     await tab.page.bringToFront();
@@ -264,7 +264,7 @@ export function createNativeBrowserService(options = {}) {
     let timeout;
     const completed = new Promise((resolve, reject) => {
       tab.copyCompletion = resolve;
-      timeout = setTimeout(() => reject(failure("copy_unavailable", "未收到新的复制内容，请重新选择后复制")), 5000);
+      timeout = setTimeout(() => reject(failure("copy_unavailable", "Новое скопированное содержимое не получено; выберите и скопируйте заново")), 5000);
     });
     completed.catch(() => {});
     try {
@@ -438,7 +438,7 @@ export function createNativeBrowserService(options = {}) {
         let timeout;
         try {
           await Promise.race([first, new Promise((_, reject) => {
-            timeout = setTimeout(() => reject(failure("frame_unavailable", "浏览器画面流尚未就绪")), 5000);
+            timeout = setTimeout(() => reject(failure("frame_unavailable", "Поток изображения браузера ещё не готов")), 5000);
           })]);
         } finally { clearTimeout(timeout); }
       } catch (error) {
@@ -530,7 +530,7 @@ export function createNativeBrowserService(options = {}) {
   }
   async function addPage(page, { id = token(), incognito = false, login = false, kind = "web", workspace, blocked = false } = {}) {
     if (byPage.has(page)) { const existing = byPage.get(page); await existing.ready; return existing; }
-    if (tabs.size >= 100) { await page.close(); throw failure("tab_limit", "打开的标签页过多，请先关闭部分标签页"); }
+    if (tabs.size >= 100) { await page.close(); throw failure("tab_limit", "Открыто слишком много вкладок; сначала закройте часть вкладок"); }
     const tab = { id, page, incognito, login, kind, workspace, blocked, document: token(), geometry: token(), title: "", copyContext: "", frameSessions: new Map() };
     tabs.set(id, tab); byPage.set(page, tab);
     page.on("close", () => {
@@ -601,7 +601,7 @@ export function createNativeBrowserService(options = {}) {
     changed(); return tab;
   }
   async function saveDownload(id, name) {
-    if (!validWindowsBrowserFileName(name)) throw failure("file_invalid", "下载文件名不适用于 Windows，请从网页选择其他文件名");
+    if (!validWindowsBrowserFileName(name)) throw failure("file_invalid", "Имя загружаемого файла недопустимо для Windows; выберите другое имя на веб-странице");
     await mkdir(destination, { recursive: true, mode: 0o700 });
     let file, output, savedName;
     for (let attempt = 0; attempt < 100; attempt++) {
@@ -610,17 +610,17 @@ export function createNativeBrowserService(options = {}) {
       try { file = await open(output, "wx", 0o600); break; }
       catch (error) { if (error.code !== "EEXIST") throw error; }
     }
-    if (!file) throw failure("download_unavailable", "Downloads 中的同名文件过多，请整理后重试");
+    if (!file) throw failure("download_unavailable", "В Downloads слишком много файлов с тем же именем; упорядочьте их и повторите попытку");
     try {
       await pipeline(createReadStream(path.join(directory, "Downloads", id)), file.createWriteStream());
       return { ok: true, path: "Downloads/" + savedName, name: savedName, bytes: (await stat(output)).size };
-    } catch { await rm(output, { force: true }); throw failure("download_unavailable", "下载保存未完成，请检查客机可用空间"); }
+    } catch { await rm(output, { force: true }); throw failure("download_unavailable", "Сохранение загрузки не завершено; проверьте свободное место в гостевой системе"); }
   }
   async function initialize() {
     if (initialized) return initialized;
     initialized = (async () => {
-      if (!options.testing && process.platform !== (mac ? "darwin" : "win32")) throw failure("platform_unavailable", "浏览器需要在所选客机系统中启动");
-      if (!configured) throw failure("network_unavailable", "Windows 客机受控网络代理尚未配置");
+      if (!options.testing && process.platform !== (mac ? "darwin" : "win32")) throw failure("platform_unavailable", "Браузер необходимо запустить в выбранной гостевой системе");
+      if (!configured) throw failure("network_unavailable", "Управляемый сетевой прокси гостевой Windows не настроен");
       let chromium, modules;
       try {
         chromium = options.chromium ?? (await import(new URL("./playwright/index.mjs", import.meta.url))).chromium;
@@ -631,7 +631,7 @@ export function createNativeBrowserService(options = {}) {
           await import(new URL("./modules/browser-cookies.mjs", import.meta.url)),
           await import(new URL("./modules/browser-extensions.mjs", import.meta.url)),
           await import(new URL("./modules/browser-vault.mjs", import.meta.url)));
-      } catch { throw failure("browser_unavailable", "Windows 客机浏览器组件尚未完整安装"); }
+      } catch { throw failure("browser_unavailable", "Компоненты браузера гостевой Windows установлены не полностью"); }
       await mkdir(directory, { recursive: true, mode: 0o700 });
       // Remove only this controller's scratch uploads. Profiles, downloads and
       // editor buffers are persistent and are never initialized away.
@@ -649,9 +649,9 @@ export function createNativeBrowserService(options = {}) {
           args: ["--disable-blink-features=AutomationControlled", "--disable-quic", "--no-first-run", "--no-default-browser-check", "--restore-last-session", "--disable-session-crashed-bubble", "--host-resolver-rules=MAP *.cage-editor.localhost 127.0.0.1", ...(networkMode === "packet" ? ["--no-proxy-server"] : []), ...(extensionTools ? ["--enable-unsafe-extension-debugging", `--load-extension=${splitDirectory}`] : [])],
           ignoreDefaultArgs: ["--enable-automation", ...(extensionTools ? ["--disable-extensions"] : []), ...(mac ? ["--mute-audio"] : [])], timeout: 20000,
         });
-      } catch (error) { if (error.code) throw error; throw failure("browser_unavailable", "Windows 客机图形浏览器未能启动，请检查 GUI 会话和安装组件"); }
+      } catch (error) { if (error.code) throw error; throw failure("browser_unavailable", "Графический браузер гостевой Windows не запустился; проверьте сеанс GUI и установленные компоненты"); }
       context.setDefaultTimeout(7000); owner = context.browser();
-      if (!owner) throw failure("browser_unavailable", "Windows 客机浏览器控制连接未就绪");
+      if (!owner) throw failure("browser_unavailable", "Соединение управления браузером гостевой Windows не готово");
       browserCDP = await owner.newBrowserCDPSession();
       clipboard = new modules.BrowserClipboard(cdp, observeCopy, { includeChanges: mac });
       clipboardAvailable = true;
@@ -713,7 +713,7 @@ export function createNativeBrowserService(options = {}) {
                 await page.goto(`chrome-extension://${protectedID}/control.html`, { waitUntil: "load", timeout: 7000 });
                 const connection = await context.newCDPSession(page), session = token(); sessions.set(session, connection);
                 controller = { page, session };
-                if (!await page.evaluate(() => typeof globalThis.manageCageExtensions === "function")) throw failure("extensions_unavailable", "扩展管理组件没有就绪");
+                if (!await page.evaluate(() => typeof globalThis.manageCageExtensions === "function")) throw failure("extensions_unavailable", "Компонент управления расширениями не готов");
               } finally { complete(); internalCreation = undefined; }
               await tabs.get(active)?.page.bringToFront();
             }
@@ -733,15 +733,15 @@ export function createNativeBrowserService(options = {}) {
     if (input.networkMode === "packet") { networkMode = "packet"; proxy = undefined; }
     else { proxy = checkedLoopbackProxy(input.proxy); networkMode = "proxy"; }
     if (input.displayScale !== undefined) {
-      if (![1, 1.5, 2].includes(input.displayScale)) throw failure("invalid_input", "像素密度无效");
+      if (![1, 1.5, 2].includes(input.displayScale)) throw failure("invalid_input", "Недопустимая плотность пикселей");
       displayScale = input.displayScale;
     }
     if (input.timezone !== undefined) {
       try { timezone = new Intl.DateTimeFormat("en", { timeZone: input.timezone }).resolvedOptions().timeZone; }
-      catch { throw failure("invalid_configuration", "客机浏览器时区配置无效"); }
+      catch { throw failure("invalid_configuration", "Недопустимая настройка часового пояса браузера гостевой системы"); }
     }
     if (input.language !== undefined) {
-      if (typeof input.language !== "string" || !/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8}){0,3}$/.test(input.language)) throw failure("invalid_configuration", "客机浏览器语言配置无效");
+      if (typeof input.language !== "string" || !/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8}){0,3}$/.test(input.language)) throw failure("invalid_configuration", "Недопустимая настройка языка браузера гостевой системы");
       language = input.language;
     }
     configured = true;
@@ -756,7 +756,7 @@ export function createNativeBrowserService(options = {}) {
   function target(input, requireActive = true, allowBlocked = false) {
     const id = input.id || active, tab = tabs.get(id);
     if (!tab || tab.page.isClosed()) throw failure("target_changed", "Tab no longer exists");
-    if (tab.blocked && !allowBlocked) throw failure("project_grant_unavailable", "项目授权已经断开，请重新连接此项目");
+    if (tab.blocked && !allowBlocked) throw failure("project_grant_unavailable", "Авторизация проекта разорвана; подключите этот проект заново");
     if ((requireActive && id !== active) || (input.document && input.document !== tab.document)) throw failure("target_changed", "Input target changed");
     return tab;
   }
@@ -768,7 +768,7 @@ export function createNativeBrowserService(options = {}) {
       try { tab.title = (await tab.page.title()).slice(0, 160); } catch {}
       let url = tab.publicURL || (tab.kind === "editor" ? "cage://editor" : tab.page.url().slice(0, 4096));
       if (tab.login) { try { url = new URL(tab.page.url()).origin; } catch { url = "about:blank"; } }
-      list.push({ id: tab.id, url, title: tab.login ? "账号授权" : tab.kind === "browser-settings" ? "设置" : tab.title || (tab.page.url() === "about:blank" ? "新标签页" : "网页"), document: tab.document, incognito: tab.incognito, login: tab.login, favicon: "", kind: tab.kind, blocked: Boolean(tab.blocked), ...(tab.workspace ? { workspace: tab.visibleWorkspace ?? tab.workspace } : {}) });
+      list.push({ id: tab.id, url, title: tab.login ? "Авторизация аккаунта" : tab.kind === "browser-settings" ? "Настройки" : tab.title || (tab.page.url() === "about:blank" ? "Новая вкладка" : "Веб-страница"), document: tab.document, incognito: tab.incognito, login: tab.login, favicon: "", kind: tab.kind, blocked: Boolean(tab.blocked), ...(tab.workspace ? { workspace: tab.visibleWorkspace ?? tab.workspace } : {}) });
     }
     let back = false, forward = false;
     if (tabs.has(active)) try { const h = await cdp("Page.getNavigationHistory", {}, tabs.get(active).session); back = h.currentIndex > 0; forward = h.currentIndex < h.entries.length - 1; } catch {}
@@ -794,9 +794,9 @@ export function createNativeBrowserService(options = {}) {
   async function setSplit(input) {
     if (!input.left) { split = undefined; await applyViewport(); if (input.id) await activate(input.id); changed(); return { split: null }; }
     const left = target({ id: input.left }, false), right = target({ id: input.right }, false);
-    if (left === right || ![left.id, right.id].includes(input.id) || left.page.context() !== right.page.context() || left.incognito || right.incognito || left.kind === "browser-settings" || right.kind === "browser-settings") throw failure("invalid_split", "不同浏览会话不能分屏");
+    if (left === right || ![left.id, right.id].includes(input.id) || left.page.context() !== right.page.context() || left.incognito || right.incognito || left.kind === "browser-settings" || right.kind === "browser-settings") throw failure("invalid_split", "Разные сеансы браузера нельзя разделить на экраны");
     const fraction = input.fraction ?? 0.5;
-    if (!Number.isFinite(fraction) || fraction < 0.15 || fraction > 0.85 || viewport.width < 160) throw failure("invalid_split", "分屏比例或尺寸无效");
+    if (!Number.isFinite(fraction) || fraction < 0.15 || fraction > 0.85 || viewport.width < 160) throw failure("invalid_split", "Недопустимая пропорция или размер разделения экрана");
     split = { left: left.id, right: right.id, fraction, generation: token() };
     await applyViewport(); await activate(input.id); changed(); return { split: (await snapshot()).split };
   }
@@ -852,7 +852,7 @@ export function createNativeBrowserService(options = {}) {
     return { focus: `${tab.document}:${nodes.join("/")}` };
   }
   function point(input, size = viewport) {
-    if (![input.x, input.y].every(v => Number.isFinite(v) && v >= 0 && v <= 1)) throw failure("invalid_input", "指针位置无效");
+    if (![input.x, input.y].every(v => Number.isFinite(v) && v >= 0 && v <= 1)) throw failure("invalid_input", "Недопустимое положение указателя");
     return { x: Math.min(size.width - 1, input.x * size.width), y: Math.min(size.height - 1, input.y * size.height) };
   }
   async function caret(tab) {
@@ -882,7 +882,7 @@ export function createNativeBrowserService(options = {}) {
   }
   async function ime(input) {
     const tab = target(input);
-    if (input.target !== "browser") throw failure("input_unavailable", "Windows 客机桌面输入法应通过原生窗口通道操作");
+    if (input.target !== "browser") throw failure("input_unavailable", "Ввод IME на рабочем столе гостевой Windows должен выполняться через нативный оконный канал");
     if (input.mode === "status") {
       const state = await caret(tab);
       if (rfbPointer?.tab === tab && rfbPointer.document === tab.document) {
@@ -911,7 +911,7 @@ export function createNativeBrowserService(options = {}) {
     }
     input = { text: "", selectionStart: 0, selectionEnd: 0, ...input };
     if (!tokenPattern.test(input.session || "") || !Number.isSafeInteger(input.sequence) || input.sequence < 0 || typeof input.text !== "string" || Buffer.byteLength(input.text) > 8192)
-      throw failure("invalid_input", "输入法组合状态无效");
+      throw failure("invalid_input", "Недопустимое состояние композиции IME");
     if (input.mode === "begin") {
       const status = await caret(tab);
       if (!status.available || input.context !== status.context) throw failure("target_changed", "Input target changed");
@@ -925,32 +925,32 @@ export function createNativeBrowserService(options = {}) {
     composition.sequence = input.sequence;
     if (input.mode === "update") {
       if (!Number.isInteger(input.selectionStart) || !Number.isInteger(input.selectionEnd) || input.selectionStart < 0 || input.selectionEnd < input.selectionStart || input.selectionEnd > input.text.length)
-        throw failure("invalid_input", "输入法选择范围无效");
+        throw failure("invalid_input", "Недопустимый диапазон выбора IME");
       await cdp("Input.imeSetComposition", { text: input.text, selectionStart: input.selectionStart, selectionEnd: input.selectionEnd }, tab.session);
     } else if (input.mode === "commit") {
       await cdp("Input.insertText", { text: input.text }, tab.session); composition = undefined;
     } else if (input.mode === "cancel") {
       await cdp("Input.imeSetComposition", { text: "", selectionStart: 0, selectionEnd: 0 }, tab.session); composition = undefined;
-    } else throw failure("invalid_input", "输入法组合状态无效");
+    } else throw failure("invalid_input", "Недопустимое состояние композиции IME");
     return { ...status, ok: true };
   }
   function checkTransfer(input) {
     const transfer = transfers.get(input.transfer);
-    if (!transfer || !Number.isSafeInteger(input.sequence) || input.sequence !== transfer.sequence) throw failure("transfer_changed", "文件传递已关闭或顺序无效");
+    if (!transfer || !Number.isSafeInteger(input.sequence) || input.sequence !== transfer.sequence) throw failure("transfer_changed", "Передача файла закрыта или порядок недопустим");
     transfer.used = Date.now();
     if (transfer.direction === "upload") {
       const request = uploads.request(transfer.id), tab = tabs.get(request.tabId);
-      if (request !== transfer.request || active !== request.tabId || tab?.document !== transfer.document) throw failure("target_changed", "文件接收网页已切换，请返回原网页重试");
+      if (request !== transfer.request || active !== request.tabId || tab?.document !== transfer.document) throw failure("target_changed", "Страница получения файла изменилась; вернитесь на исходную страницу и повторите");
     }
     if (transfer.copy) {
       copyTarget(transfer.copy);
-      if (clipboardCopies.get(transfer.copy.reference) !== transfer.copy) throw failure("copy_changed", "复制内容已过期，请重新复制");
+      if (clipboardCopies.get(transfer.copy.reference) !== transfer.copy) throw failure("copy_changed", "Скопированное содержимое устарело; скопируйте заново");
     }
     return transfer;
   }
   async function closeTransfer(id) {
     const transfer = transfers.get(id); if (!transfer) return;
-    transfers.delete(id); transfer.stream?.destroy(failure("transfer_closed", "文件传递已取消"));
+    transfers.delete(id); transfer.stream?.destroy(failure("transfer_closed", "Передача файла отменена"));
     if (transfer.direction === "upload") uploads?.cancel(transfer.id);
     await transfer.file?.close().catch(() => {});
   }
@@ -961,7 +961,7 @@ export function createNativeBrowserService(options = {}) {
       const tab = target(input), length = input.length ?? 0;
       if (transfers.size >= 8 || !Number.isSafeInteger(length) || length < 0 || length > (input.mime === "text/plain" ? textLimit : imageLimit) ||
           input.mime && !["image/png", "text/plain"].includes(input.mime))
-        throw failure("image_target_invalid", "图片目标或大小无效");
+        throw failure("image_target_invalid", "Недопустимая цель или размер изображения");
       const document = tab.document, geometry = tab.geometry;
       if (mac) {
         invalidateCopies(); tab.copyContext = "";
@@ -977,27 +977,27 @@ export function createNativeBrowserService(options = {}) {
     let transfer;
     try {
       transfer = checkTransfer(input);
-      if (transfer.direction !== "paste") throw failure("image_transfer_changed", "粘贴传递已关闭");
+      if (transfer.direction !== "paste") throw failure("image_transfer_changed", "Передача вставки закрыта");
       const tab = target({ id: transfer.id, document: transfer.document });
       if (tab.geometry !== transfer.geometry || (await nativeFocusProof()).focus !== transfer.focus)
         throw failure("image_target_changed", "Image target changed");
       if (action === "paste-chunk") {
         if (transfer.sequence === 0 && !transfer.mime) transfer.mime = input.mime;
         if (!["image/png", "text/plain"].includes(transfer.mime) || input.mime && input.mime !== transfer.mime)
-          throw failure("invalid_input", "粘贴内容类型无效");
+          throw failure("invalid_input", "Недопустимый тип вставляемого содержимого");
         if (!transfer.length && transfer.sequence === 0) {
-          if (!Number.isSafeInteger(input.length) || input.length < 1 || input.length > (transfer.mime === "text/plain" ? textLimit : imageLimit)) throw failure("image_limit", "粘贴内容大小无效");
+          if (!Number.isSafeInteger(input.length) || input.length < 1 || input.length > (transfer.mime === "text/plain" ? textLimit : imageLimit)) throw failure("image_limit", "Недопустимый размер вставляемого содержимого");
           transfer.length = input.length;
         }
-        if (transfer.length > (transfer.mime === "text/plain" ? textLimit : imageLimit)) throw failure("image_limit", "粘贴内容超过大小限制");
+        if (transfer.length > (transfer.mime === "text/plain" ? textLimit : imageLimit)) throw failure("image_limit", "Вставляемое содержимое превышает ограничение размера");
         if (typeof input.data !== "string" || input.data.length > Math.ceil(chunkSize / 3) * 4 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(input.data))
-          throw failure("image_chunk_invalid", "图片数据块无效");
+          throw failure("image_chunk_invalid", "Недопустимый блок данных изображения");
         const bytes = Buffer.from(input.data, "base64");
-        if (!bytes.length || bytes.length > chunkSize || transfer.received + bytes.length > transfer.length) throw failure("image_chunk_invalid", "图片数据块超过声明大小");
+        if (!bytes.length || bytes.length > chunkSize || transfer.received + bytes.length > transfer.length) throw failure("image_chunk_invalid", "Блок данных изображения превышает заявленный размер");
         transfer.chunks.push(bytes); transfer.received += bytes.length; transfer.sequence++;
         return { ack: transfer.sequence };
       }
-      if (action !== "paste-finish" || transfer.received !== transfer.length || transfer.length < 1) throw failure("image_incomplete", "粘贴内容没有完整收到");
+      if (action !== "paste-finish" || transfer.received !== transfer.length || transfer.length < 1) throw failure("image_incomplete", "Вставляемое содержимое получено не полностью");
       const bytes = Buffer.concat(transfer.chunks, transfer.received);
       let text;
       if (transfer.mime === "text/plain") {
@@ -1010,7 +1010,7 @@ export function createNativeBrowserService(options = {}) {
       } else {
         if (bytes.length < 33 || !bytes.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10])) || bytes.toString("ascii", 12, 16) !== "IHDR" ||
             !bytes.readUInt32BE(16) || !bytes.readUInt32BE(20) || bytes.readUInt32BE(16) * bytes.readUInt32BE(20) > 40_000_000)
-          throw failure("image_invalid", "PNG 图片无效");
+          throw failure("image_invalid", "Недопустимое изображение PNG");
         // A private, local helper origin writes Chromium's clipboard. The site
         // receives an ordinary paste event without gaining clipboard permissions.
         const helper = await privateClipboardPage();
@@ -1032,17 +1032,17 @@ export function createNativeBrowserService(options = {}) {
   }
   async function fileAction(action, input) {
     if (action === "file-open") {
-      if (transfers.size >= 8 || input.direction !== "extension" && !uuidPattern.test(input.id || "")) throw failure("invalid_input", "文件传递标识无效或同时传递过多");
+      if (transfers.size >= 8 || input.direction !== "extension" && !uuidPattern.test(input.id || "")) throw failure("invalid_input", "Недопустимый идентификатор передачи файла или слишком много одновременных передач");
       const transferID = token();
       if (input.direction === "extension") {
-        if (!extensions || !Number.isSafeInteger(input.length) || input.length < -1 || input.length > 32 << 20) throw failure("extensions_unavailable", "扩展组件不可用或 ZIP 超过 32 MB");
+        if (!extensions || !Number.isSafeInteger(input.length) || input.length < -1 || input.length > 32 << 20) throw failure("extensions_unavailable", "Компонент расширений недоступен или ZIP-архив превышает 32 МБ");
         const stream = new PassThrough({ highWaterMark: chunkSize });
         const transfer = { direction: "extension", stream, length: input.length < 0 ? 32 << 20 : input.length, declared: input.length >= 0, received: 0, sequence: 0, used: Date.now() };
         transfer.result = extensions.upload(stream); transfer.result.catch(() => {});
         transfers.set(transferID, transfer); return { transfer: transferID };
       }
       if (input.direction === "upload") {
-        if (!validWindowsBrowserFileName(input.name) || !Number.isSafeInteger(input.length) || input.length < -1 || input.length > fileLimit) throw failure("invalid_input", "上传文件名或大小无效");
+        if (!validWindowsBrowserFileName(input.name) || !Number.isSafeInteger(input.length) || input.length < -1 || input.length > fileLimit) throw failure("invalid_input", "Недопустимое имя или размер загружаемого файла");
         const request = uploads.request(input.id), tab = target({ id: request.tabId });
         const stream = new PassThrough({ highWaterMark: chunkSize });
         const transfer = { direction: "upload", id: input.id, request, document: tab.document, stream, length: input.length < 0 ? fileLimit : input.length, declared: input.length >= 0, received: 0, sequence: 0, used: Date.now() };
@@ -1052,35 +1052,35 @@ export function createNativeBrowserService(options = {}) {
       if (input.direction === "download") {
         const copy = clipboardCopies.get(input.id);
         if (copy || input.context || input.document || input.tab) {
-          if (!copy || input.tab !== copy.id || input.context !== copy.context || input.document !== copy.document) throw failure("copy_changed", "复制来源已切换，请重新复制");
+          if (!copy || input.tab !== copy.id || input.context !== copy.context || input.document !== copy.document) throw failure("copy_changed", "Источник копирования изменился; скопируйте заново");
           copyTarget(copy);
         }
         const source = copy ? copy.file : downloads.sourceFile(input.id), file = await open(source, constants.O_RDONLY | (constants.O_NOFOLLOW || 0));
         const info = await file.stat();
-        if (!info.isFile()) { await file.close(); throw failure("download_unavailable", "下载文件不可用"); }
+        if (!info.isFile()) { await file.close(); throw failure("download_unavailable", "Загруженный файл недоступен"); }
         if (copy) {
-          try { copyTarget(copy); if (info.size !== copy.size) throw failure("copy_changed", "复制内容已变化"); }
+          try { copyTarget(copy); if (info.size !== copy.size) throw failure("copy_changed", "Скопированное содержимое изменилось"); }
           catch (error) { await file.close(); throw error; }
         }
         const name = copy ? "clipboard." + (copy.mime === "image/png" ? "png" : "txt") : downloads.snapshot().find(d => d.id === input.id).name;
         transfers.set(transferID, { direction: "download", id: input.id, copy, file, length: info.size, received: 0, sequence: 0, used: Date.now() });
         return { transfer: transferID, size: info.size, name, ...(copy ? { mime: copy.mime } : {}) };
       }
-      throw failure("invalid_input", "文件传递方向无效");
+      throw failure("invalid_input", "Недопустимое направление передачи файла");
     }
     if (action === "file-close") { await closeTransfer(input.transfer); return { ok: true }; }
     let transfer;
     try {
       transfer = checkTransfer(input);
       if (action === "file-chunk" && ["upload", "extension"].includes(transfer.direction)) {
-        if (typeof input.data !== "string" || input.data.length > Math.ceil(chunkSize / 3) * 4 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(input.data)) throw failure("invalid_input", "文件数据块无效");
+        if (typeof input.data !== "string" || input.data.length > Math.ceil(chunkSize / 3) * 4 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(input.data)) throw failure("invalid_input", "Недопустимый блок данных файла");
         const data = Buffer.from(input.data, "base64");
-        if (!data.length || data.length > chunkSize || transfer.received + data.length > transfer.length) throw failure("invalid_input", "文件数据块超过声明大小");
+        if (!data.length || data.length > chunkSize || transfer.received + data.length > transfer.length) throw failure("invalid_input", "Блок данных файла превышает заявленный размер");
         await new Promise((resolve, reject) => transfer.stream.write(data, error => error ? reject(error) : resolve()));
         transfer.received += data.length; transfer.sequence++; return { ack: transfer.sequence };
       }
       if (action === "file-finish" && ["upload", "extension"].includes(transfer.direction)) {
-        if (transfer.declared && transfer.received !== transfer.length) throw failure("invalid_input", "文件没有完整收到");
+        if (transfer.declared && transfer.received !== transfer.length) throw failure("invalid_input", "Файл получен не полностью");
         transfer.stream.end(); const result = await transfer.result; transfers.delete(input.transfer); return result;
       }
       if (action === "file-read" && transfer.direction === "download") {
@@ -1088,11 +1088,11 @@ export function createNativeBrowserService(options = {}) {
         if (transfer.copy) checkTransfer(input);
         transfer.received += bytesRead; transfer.sequence++;
         const eof = transfer.received === transfer.length;
-        if (!bytesRead && !eof) throw failure("download_unavailable", "下载文件没有完整返回");
+        if (!bytesRead && !eof) throw failure("download_unavailable", "Загруженный файл возвращён не полностью");
         const result = { data: data.subarray(0, bytesRead).toString("base64"), sequence: transfer.sequence, eof };
         if (eof) await closeTransfer(input.transfer); return result;
       }
-      throw failure("invalid_input", "文件传递操作无效");
+      throw failure("invalid_input", "Недопустимая операция передачи файла");
     } catch (error) { await closeTransfer(input.transfer); throw error; }
   }
   async function remoteInput(input, signal) {
@@ -1105,18 +1105,18 @@ export function createNativeBrowserService(options = {}) {
     if (input.kind === "pointer" && split) {
       const leftWidth = tabs.get(split.left).page.viewportSize().width * displayScale;
       const id = rfbMask && rfbPane ? rfbPane : input.x < leftWidth ? split.left : split.right;
-      tab = tabs.get(id); if (tab?.blocked) throw failure("project_grant_unavailable", "项目授权已经断开");
+      tab = tabs.get(id); if (tab?.blocked) throw failure("project_grant_unavailable", "Авторизация проекта разорвана");
       xOffset = id === split.right ? leftWidth : 0;
       if ((input.mask & 7) && !rfbMask) { rfbPane = id; await activate(id); }
     }
     if (input.kind === "key") await tab.page.bringToFront();
     if (input.target !== (split?.generation ?? tab.geometry)) throw failure("target_changed", "Input target changed");
     if (input.kind === "pointer") {
-      if (!Number.isInteger(input.mask) || input.mask < 0 || input.mask > 127 || ![input.x, input.y].every(Number.isFinite) || input.x < 0 || input.y < 0 || input.x >= viewport.width * displayScale || input.y >= viewport.height * displayScale) throw failure("invalid_input", "指针位置无效");
+      if (!Number.isInteger(input.mask) || input.mask < 0 || input.mask > 127 || ![input.x, input.y].every(Number.isFinite) || input.x < 0 || input.y < 0 || input.x >= viewport.width * displayScale || input.y >= viewport.height * displayScale) throw failure("invalid_input", "Недопустимое положение указателя");
       // Frames announce pixelWheel; a viewer may then send the scrolled
       // distance in pixels in place of one fixed step per event.
       const pixelWheel = input.deltaX !== undefined || input.deltaY !== undefined;
-      if (pixelWheel && (![input.deltaX, input.deltaY].every(v => Number.isInteger(v) && Math.abs(v) <= 2048) || (input.mask & 7) || !(input.mask & 120))) throw failure("invalid_input", "滚动距离无效");
+      if (pixelWheel && (![input.deltaX, input.deltaY].every(v => Number.isInteger(v) && Math.abs(v) <= 2048) || (input.mask & 7) || !(input.mask & 120))) throw failure("invalid_input", "Недопустимое расстояние прокрутки");
       const x = Math.max(0, Math.min(tab.page.viewportSize().width - 1, (input.x - xOffset) / displayScale)), y = input.y / displayScale, mask = input.mask & 7;
       const modifiers = Number.isInteger(input.modifiers) && input.modifiers >= 0 && input.modifiers <= 15 ? input.modifiers : 0;
       const buttons = ((mask & 1) ? 1 : 0) | ((mask & 2) ? 4 : 0) | ((mask & 4) ? 2 : 0);
@@ -1136,7 +1136,7 @@ export function createNativeBrowserService(options = {}) {
       rfbMask = mask; if (!mask) rfbPane = undefined; return { ok: true, active };
     }
     if (input.kind === "key") {
-      if (typeof input.down !== "boolean") throw failure("invalid_input", "按键状态无效");
+      if (typeof input.down !== "boolean") throw failure("invalid_input", "Недопустимое состояние клавиши");
       const spec = rfbKey(input.keysym), repeat = heldKeys.has(input.keysym);
       if (!heldKeys.size) keyTarget = { tab, document: tab.document };
       if (input.down) heldKeys.set(input.keysym, spec); else heldKeys.delete(input.keysym);
@@ -1147,7 +1147,7 @@ export function createNativeBrowserService(options = {}) {
       await cdp("Input.dispatchKeyEvent", { type: input.down ? "keyDown" : "keyUp", key: spec.key, code: spec.code, windowsVirtualKeyCode: spec.windowsVirtualKeyCode, modifiers, autoRepeat: repeat && input.down, ...(text ? { text, unmodifiedText: spec.key } : {}) }, tab.session);
       return { ok: true, active };
     }
-    throw failure("invalid_input", "浏览器输入操作无效");
+    throw failure("invalid_input", "Недопустимая операция ввода браузера");
   }
   async function releaseInput(signal) {
     if (inputOwner !== signal) return;
@@ -1185,10 +1185,10 @@ export function createNativeBrowserService(options = {}) {
     }
     if (operation === "editor-connect") {
       await initialize();
-      if (!/^[a-f0-9]{16}$/.test(input.workspace || "") || !tokenPattern.test(input.connection || "") || typeof input.folder !== "string" || input.folder.length > 8192) throw failure("project_grant_unavailable", "项目授权无效");
+      if (!/^[a-f0-9]{16}$/.test(input.workspace || "") || !tokenPattern.test(input.connection || "") || typeof input.folder !== "string" || input.folder.length > 8192) throw failure("project_grant_unavailable", "Недопустимая авторизация проекта");
       const url = new URL(input.url);
-      if (url.protocol !== "http:" || !editorHost(url.hostname) || !url.port || url.username || url.password || url.href.length > 8192 || url.hostname !== "127.0.0.1" && url.hostname !== input.workspace + ".cage-editor.localhost") throw failure("editor_unavailable", "编辑器本地会话无效");
-      if (input.trust_default !== undefined && input.trust_default !== null && typeof input.trust_default !== "boolean") throw failure("editor_unavailable", "编辑器默认策略无效");
+      if (url.protocol !== "http:" || !editorHost(url.hostname) || !url.port || url.username || url.password || url.href.length > 8192 || url.hostname !== "127.0.0.1" && url.hostname !== input.workspace + ".cage-editor.localhost") throw failure("editor_unavailable", "Недопустимый локальный сеанс редактора");
+      if (input.trust_default !== undefined && input.trust_default !== null && typeof input.trust_default !== "boolean") throw failure("editor_unavailable", "Недопустимая политика редактора по умолчанию");
       editorConnections.set(input.workspace, { id: input.connection, url: url.href, folder: input.folder, trustDefault: input.trust_default ?? undefined }); return { ok: true };
     }
     if (operation === "editor-revoke") {
@@ -1196,7 +1196,7 @@ export function createNativeBrowserService(options = {}) {
       for (const tab of tabs.values()) if (tab.kind === "editor" && tab.workspace === input.workspace && (!input.connection || tab.editorConnection === input.connection)) { tab.blocked = true; tab.geometry = token(); uploads?.cancelTab(tab.id); }
       changed(); return { ok: true };
     }
-    if (!["GET", "POST"].includes(method) || typeof route !== "string" || !/^\/[a-z-]+$/.test(route) || !input || typeof input !== "object" || Array.isArray(input)) throw failure("invalid_input", "浏览器操作无效");
+    if (!["GET", "POST"].includes(method) || typeof route !== "string" || !/^\/[a-z-]+$/.test(route) || !input || typeof input !== "object" || Array.isArray(input)) throw failure("invalid_input", "Недопустимая операция браузера");
     if (method === "POST" && ["/paste-cancel", "/image-cancel", "/file-close"].includes(route)) {
       await closeTransfer(input.transfer);
       return { ok: true };
@@ -1220,7 +1220,7 @@ export function createNativeBrowserService(options = {}) {
         }
         return { sequence: eventSequence, events: events.filter(e => e.sequence > after), state: await snapshot() };
       }
-      if (action !== "frame") throw failure("invalid_input", "浏览器操作无效");
+      if (action !== "frame") throw failure("invalid_input", "Недопустимая операция браузера");
     }
     if (action.startsWith("file-")) return fileAction(action, input);
     if (action.startsWith("image-")) return pasteAction(action.replace("image-", "paste-"), action === "image-start" ? { ...input, mime: "image/png" } : input, signal);
@@ -1228,15 +1228,15 @@ export function createNativeBrowserService(options = {}) {
     if (action === "input") return remoteInput(input, signal);
     if (action === "split") return setSplit(input);
     if (action === "vault") {
-      if (!vault) return { vaultError: "Windows 浏览器密码组件尚未安装" };
-      try { return await vault.request(input); } catch { return { vaultError: "密码操作未完成，请重新解锁并核对当前页面" }; }
+      if (!vault) return { vaultError: "Компонент паролей браузера Windows ещё не установлен" };
+      try { return await vault.request(input); } catch { return { vaultError: "Операция с паролем не завершена; разблокируйте заново и проверьте текущую страницу" }; }
     }
     if (action === "login-finish" || action === "login-open") {
-      if (!/^[a-f0-9-]{16,64}$/.test(input.login || "")) throw failure("invalid_input", "登录任务无效");
+      if (!/^[a-f0-9-]{16,64}$/.test(input.login || "")) throw failure("invalid_input", "Недопустимая задача входа");
       let url;
       if (action === "login-open") {
         url = new URL(input.url);
-        if (url.protocol !== "https:" || url.username || url.password || !["claude.ai", "claude.com", "console.anthropic.com", "platform.claude.com", "platform.anthropic.com"].includes(url.hostname)) throw failure("invalid_input", "仅可打开官方登录地址");
+        if (url.protocol !== "https:" || url.username || url.password || !["claude.ai", "claude.com", "console.anthropic.com", "platform.claude.com", "platform.anthropic.com"].includes(url.hostname)) throw failure("invalid_input", "Можно открывать только официальные адреса входа");
       }
       const old = logins.get(input.login);
       if (old) { clearTimeout(old.expiry); logins.delete(input.login); privateContexts.delete(old.context); await old.context.close(); }
@@ -1250,9 +1250,9 @@ export function createNativeBrowserService(options = {}) {
     }
     if (action === "audit") {
       if (options.audit) return options.audit(context, input);
-      if (typeof input.timezone !== "string" || input.timezone.length > 128) throw failure("invalid_input", "诊断时区无效");
+      if (typeof input.timezone !== "string" || input.timezone.length > 128) throw failure("invalid_input", "Недопустимый часовой пояс диагностики");
       let expected;
-      try { expected = new Intl.DateTimeFormat("en", { timeZone: input.timezone }).resolvedOptions().timeZone; } catch { throw failure("invalid_input", "诊断时区无效"); }
+      try { expected = new Intl.DateTimeFormat("en", { timeZone: input.timezone }).resolvedOptions().timeZone; } catch { throw failure("invalid_input", "Недопустимый часовой пояс диагностики"); }
       const isolated = await owner.newContext({ serviceWorkers: "block", ...(timezone ? { timezoneId: timezone } : {}), ...(language ? { locale: language } : {}), ...(networkMode === "proxy" ? { proxy: { server: proxy, bypass: proxyBypass } } : {}) });
       try {
         const auditPage = await isolated.newPage();
@@ -1293,13 +1293,13 @@ export function createNativeBrowserService(options = {}) {
       return { ok: true };
     }
     if (action === "editor" || action === "editor-restart") {
-      if (!/^[a-f0-9]{16}(?:[a-f0-9]{8})?$/.test(input.workspace || "") || (!editorConnections.has(input.workspace) && typeof options.editor !== "function")) throw failure("editor_unavailable", "Windows 客机编辑器或项目授权尚未接通");
+      if (!/^[a-f0-9]{16}(?:[a-f0-9]{8})?$/.test(input.workspace || "") || (!editorConnections.has(input.workspace) && typeof options.editor !== "function")) throw failure("editor_unavailable", "Редактор гостевой Windows или авторизация проекта ещё не подключены");
       const existing = [...tabs.values()].find(t => t.kind === "editor" && t.workspace === input.workspace);
       const current = editorConnections.get(input.workspace);
       if (existing && !existing.blocked && action === "editor" && (!current || existing.editorConnection === current.id)) { await activate(existing.id); return { id: existing.id }; }
       const connection = current ?? await options.editor(input.workspace, action === "editor-restart");
       const url = new URL(connection.url);
-      if (url.protocol !== "http:" || !editorHost(url.hostname) || !url.port || url.username || url.password) throw failure("editor_unavailable", "客机编辑器没有返回有效的本地会话");
+      if (url.protocol !== "http:" || !editorHost(url.hostname) || !url.port || url.username || url.password) throw failure("editor_unavailable", "Редактор гостевой системы не вернул допустимый локальный сеанс");
       const page = existing?.page ?? await context.newPage();
       if (connection.cookies) await context.addCookies(connection.cookies);
       const tab = existing ?? await addPage(page, { kind: "editor", workspace: input.workspace });
@@ -1337,31 +1337,31 @@ export function createNativeBrowserService(options = {}) {
     if (action === "download-retry") return downloads.retry(input.id);
     if (action === "settings") {
       const mode = input.mode || "general";
-      if (!["general", "appearance", "privacy", "extensions", "about"].includes(mode)) throw failure("invalid_input", "设置分类无效");
+      if (!["general", "appearance", "privacy", "extensions", "about"].includes(mode)) throw failure("invalid_input", "Недопустимая категория настроек");
       let tab = [...tabs.values()].find(t => t.kind === "browser-settings");
       if (!tab) tab = await addPage(await context.newPage(), { kind: "browser-settings" });
       tab.kind = "browser-settings"; tab.publicURL = "cage://settings#" + mode;
-      await activate(tab.id); return { id: tab.id, kind: tab.kind, url: tab.publicURL, title: "设置" };
+      await activate(tab.id); return { id: tab.id, kind: tab.kind, url: tab.publicURL, title: "Настройки" };
     }
     if (action === "internal-page") {
       const pages = { extensions: "chrome://extensions/", permissions: "chrome://settings/content", clear: "chrome://settings/clearBrowserData" };
-      let url = pages[input.mode]; if (!url || input.id && !/^[a-p]{32}$/.test(input.id)) throw failure("invalid_input", "内部页面无效");
+      let url = pages[input.mode]; if (!url || input.id && !/^[a-p]{32}$/.test(input.id)) throw failure("invalid_input", "Недопустимая внутренняя страница");
       if (input.mode === "extensions" && input.id) url += "?id=" + input.id;
-      const tab = await addPage(await context.newPage()); await tab.page.goto(url, { waitUntil: "commit", timeout: 7000 }); await activate(tab.id); return { id: tab.id, url, kind: "web", title: "浏览器设置" };
+      const tab = await addPage(await context.newPage()); await tab.page.goto(url, { waitUntil: "commit", timeout: 7000 }); await activate(tab.id); return { id: tab.id, url, kind: "web", title: "Настройки браузера" };
     }
     if (action === "extensions") {
-      if (!extensions) throw failure("extensions_unavailable", "Windows 扩展管理组件未就绪，请核对浏览器版本和安装组件");
+      if (!extensions) throw failure("extensions_unavailable", "Компонент управления расширениями Windows не готов; проверьте версию браузера и установленные компоненты");
       const result = await extensions.request(input);
       if (input.mode === "options" && result.url) {
-        if (!result.url.startsWith(`chrome-extension://${input.id}/`)) throw failure("invalid_input", "扩展设置地址无效");
-        const tab = await addPage(await context.newPage()); await tab.page.goto(result.url, { waitUntil: "commit", timeout: 7000 }); await activate(tab.id); return { id: tab.id, url: result.url, kind: "web", title: "扩展选项" };
+        if (!result.url.startsWith(`chrome-extension://${input.id}/`)) throw failure("invalid_input", "Недопустимый адрес настроек расширения");
+        const tab = await addPage(await context.newPage()); await tab.page.goto(result.url, { waitUntil: "commit", timeout: 7000 }); await activate(tab.id); return { id: tab.id, url: result.url, kind: "web", title: "Параметры расширения" };
       }
       return result;
     }
     if (action === "info") return browserCDP.send("Browser.getVersion");
     if (action === "cookies") {
       const tab = target(input, false);
-      if (typeof cookieActions !== "function") throw failure("action_unavailable", "Windows Cookie 组件尚未完整安装");
+      if (typeof cookieActions !== "function") throw failure("action_unavailable", "Компонент Cookie Windows установлен не полностью");
       return cookieActions(cdp, async id => tabs.get(id)?.session, { targetId: tab.id, url: tab.page.url(), browserContextId: tab.browserContextId, incognito: tab.incognito, login: tab.login }, input);
     }
     if (action === "ime") return ime(input);
@@ -1382,7 +1382,7 @@ export function createNativeBrowserService(options = {}) {
           const size = pane.page.viewportSize(), width = Math.round(size.width * displayScale), height = Math.round(size.height * displayScale);
           panes.push({ jpeg, x, y: 0, width, height, id, document }); x += width;
         }
-        if (bytes > 8 << 20) throw failure("frame_limit", "浏览器画面过大，请缩小窗口后重试");
+        if (bytes > 8 << 20) throw failure("frame_limit", "Изображение браузера слишком велико; уменьшите окно и повторите попытку");
         return { sequence, target: generation, width: x, height: Math.round(viewport.height * displayScale), scale: displayScale, panes, active, pixelWheel: true, native: await nativeFrameProof() };
       }
       const geometry = tab.geometry, document = tab.document;
@@ -1390,7 +1390,7 @@ export function createNativeBrowserService(options = {}) {
       const sequence = geometry + document + captured.sequence;
       if (tab.id !== active || tab.geometry !== geometry || tab.document !== document) throw failure("target_changed", "Input target changed");
       if (input.after === sequence) return { unchanged: true, sequence, ...(input.nativeProof ? { native: await nativeFrameProof() } : {}) };
-      if (Buffer.byteLength(captured.jpeg, "base64") > 8 << 20) throw failure("frame_limit", "浏览器画面过大，请缩小窗口后重试");
+      if (Buffer.byteLength(captured.jpeg, "base64") > 8 << 20) throw failure("frame_limit", "Изображение браузера слишком велико; уменьшите окно и повторите попытку");
       return { ...(mac ? {url: page.url(), title: await page.title()} : {}), sequence, id: tab.id, document, jpeg: captured.jpeg, target: geometry, width: Math.round(viewport.width * displayScale), height: Math.round(viewport.height * displayScale), cssWidth: viewport.width, cssHeight: viewport.height, scale: displayScale, pixelWheel: true, native: await nativeFrameProof() };
     }
     if (action === "activate") return activate(tab.id);
@@ -1414,7 +1414,7 @@ export function createNativeBrowserService(options = {}) {
       return { ok: true };
     }
     if (action === "key") {
-      if (!(keys.has(input.key) || /^[a-z0-9]$/i.test(input.key))) throw failure("invalid_input", "不支持此键");
+      if (!(keys.has(input.key) || /^[a-z0-9]$/i.test(input.key))) throw failure("invalid_input", "Эта клавиша не поддерживается");
       await page.bringToFront();
       await page.keyboard.press([input.ctrl && "Control", input.meta && "Meta", input.alt && "Alt", input.shift && "Shift", input.key].filter(Boolean).join("+"));
       return { ok: true };
@@ -1423,7 +1423,7 @@ export function createNativeBrowserService(options = {}) {
       const p = point(input, page.viewportSize()), scale = tab.inputScale ?? 1; await page.bringToFront(); await page.mouse.move(p.x * scale, p.y * scale);
       if (action === "click") await page.mouse.click(p.x * scale, p.y * scale, { clickCount: input.double ? 2 : 1 });
       if (action === "wheel") {
-        if (![input.dx, input.dy].every(v => Number.isFinite(v) && Math.abs(v) <= 2000)) throw failure("invalid_input", "滚动位置无效");
+        if (![input.dx, input.dy].every(v => Number.isFinite(v) && Math.abs(v) <= 2000)) throw failure("invalid_input", "Недопустимое положение прокрутки");
         await page.mouse.wheel(input.dx, input.dy);
       }
       if (action === "pointer") {
@@ -1431,11 +1431,11 @@ export function createNativeBrowserService(options = {}) {
         else if (["move", "up"].includes(input.mode)) {
           if (!pointer || pointer.id !== tab.id || pointer.document !== tab.document) throw failure("target_changed", "Input target changed");
           if (input.mode === "up") { await page.mouse.up(); pointer = undefined; }
-        } else throw failure("invalid_input", "指针操作无效");
+        } else throw failure("invalid_input", "Недопустимая операция указателя");
       }
       return { ok: true };
     }
-    throw failure("action_unavailable", "Windows 客机浏览器尚未支持这项操作");
+    throw failure("action_unavailable", "Браузер гостевой Windows пока не поддерживает эту операцию");
   }
   async function close() {
     if (closing) return closing;
@@ -1473,12 +1473,12 @@ export async function* lines(input, limit = lineLimit) {
     buffer = Buffer.concat([buffer, chunk]);
     let end;
     while ((end = buffer.indexOf(10)) >= 0) {
-      if (end > limit) throw failure("message_limit", "浏览器请求过大");
+      if (end > limit) throw failure("message_limit", "Запрос браузера слишком велик");
       yield buffer.subarray(0, end).toString("utf8"); buffer = buffer.subarray(end + 1);
     }
-    if (buffer.length > limit) throw failure("message_limit", "浏览器请求过大");
+    if (buffer.length > limit) throw failure("message_limit", "Запрос браузера слишком велик");
   }
-  if (buffer.length) throw failure("message_invalid", "浏览器请求没有完整收到");
+  if (buffer.length) throw failure("message_invalid", "Запрос браузера получен не полностью");
 }
 export const createWindowsBrowserService = createNativeBrowserService;
 
@@ -1488,7 +1488,7 @@ export async function runWindowsBrowser(input = process.stdin, output = process.
     for await (const line of lines(input)) {
       let result;
       try { result = await service.request(JSON.parse(line)); }
-      catch (error) { result = { error: error.safe ? error.message : "Windows 客机浏览器操作未完成，请恢复连接后核对结果", code: error.safe ? error.code : "browser_operation_failed" }; }
+      catch (error) { result = { error: error.safe ? error.message : "Операция браузера гостевой Windows не завершена; восстановите соединение и проверьте результат", code: error.safe ? error.code : "browser_operation_failed" }; }
       await new Promise((resolve, reject) => output.write(JSON.stringify(result) + "\n", error => error ? reject(error) : resolve()));
     }
   } finally { await service.close(); }

@@ -172,7 +172,7 @@ if ($vm.State -ne 'Running') { throw 'The private Windows guest is not running y
 if (!$readyToProvision -and !$fromHost) {
     Start-Process -FilePath (Join-Path ([Environment]::GetFolderPath('System')) 'vmconnect.exe') -ArgumentList @('localhost',$name)
     Write-Output 'CAGE_GUEST_STAGE windows-11 oobe'
-    Write-Output '在虚拟机连接窗口完成 Windows 安装，用安装前设置的本地管理员登录桌面，再回 Cage 点击「已进入桌面，继续安装」。本轮 PowerShell 创建窗口会自动关闭。'
+    Write-Output 'Завершите установку Windows в окне подключения к виртуальной машине, войдите на рабочий стол с локальным администратором, заданным перед установкой, затем вернитесь в Cage и нажмите «Рабочий стол открыт, продолжить установку». Это окно PowerShell закроется автоматически.'
     return
 }
 $componentsReady = (Test-Path -LiteralPath (Join-Path $instance 'cage-workbench/pair/workbench-components-ready')) -and

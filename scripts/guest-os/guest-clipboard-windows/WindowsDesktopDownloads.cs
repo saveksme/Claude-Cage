@@ -121,7 +121,7 @@ internal static class WindowsDesktopDownloads
             foreach (var item in saved)
             {
                 if (!Guid.TryParseExact(item.ID, "D", out _) || !AttachmentsRpc.NameValid(item.Name)) continue;
-                if (item.State == "downloading") { item.State = "failed"; item.Error = "保存过程被中断，请从 Claude Desktop 重新下载。"; }
+                if (item.State == "downloading") { item.State = "failed"; item.Error = "Сохранение прервано; загрузите файл заново из Claude Desktop."; }
                 Downloads[item.ID] = item;
             }
         }
@@ -213,7 +213,7 @@ internal static class WindowsDesktopDownloads
             try { Persist(); submit(Source(item)); }
             catch
             {
-                watcher.Dispose(); Watching.Remove(item.ID); item.State = "failed"; item.Error = "客机保存窗口未接收文件位置，请重新下载。"; Persist(); throw;
+                watcher.Dispose(); Watching.Remove(item.ID); item.State = "failed"; item.Error = "Окно сохранения гостевой системы не получило расположение файла; загрузите файл заново."; Persist(); throw;
             }
             _ = Task.Run(async () =>
             {
@@ -247,7 +247,7 @@ internal static class WindowsDesktopDownloads
                     }
                     catch
                     {
-                        lock (Gate) { item.State = "failed"; item.Error = "未能确认文件保存完成，请从 Claude Desktop 重新下载。"; Persist(); }
+                        lock (Gate) { item.State = "failed"; item.Error = "Не удалось подтвердить завершение сохранения; загрузите файл заново из Claude Desktop."; Persist(); }
                     }
                     finally { watcher.Dispose(); lock (Gate) Watching.Remove(item.ID); }
                 }

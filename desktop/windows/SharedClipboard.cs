@@ -85,7 +85,7 @@ internal static class SharedClipboard
     public static async Task<object> Release(JsonElement request, CancellationToken token)
     {
         var id = request.Text("files");
-        if (!Guid.TryParse(id, out _)) throw new InvalidDataException("剪贴板文件标识无效");
+        if (!Guid.TryParse(id, out _)) throw new InvalidDataException("Недопустимый идентификатор файла буфера обмена");
         await ReleaseRemote(request.Text("connection_id"), id, token);
         return new { ok = true };
     }
@@ -115,11 +115,11 @@ internal static class SharedClipboard
         }
         if (Clipboard.ContainsImage())
         {
-            using var image = Clipboard.GetImage() ?? throw new IOException("无法读取剪贴板图片");
-            if ((long)image.Width * image.Height > 40_000_000) throw new IOException("图片不能超过 4000 万像素");
+            using var image = Clipboard.GetImage() ?? throw new IOException("Не удалось прочитать изображение из буфера обмена");
+            if ((long)image.Width * image.Height > 40_000_000) throw new IOException("Изображение не должно превышать 40 миллионов пикселей");
             using var output = new MemoryStream();
             image.Save(output, System.Drawing.Imaging.ImageFormat.Png);
-            if (output.Length > 20 * 1024 * 1024) throw new IOException("图片不能超过 20 MB");
+            if (output.Length > 20 * 1024 * 1024) throw new IOException("Изображение не должно превышать 20 МБ");
             return new { revision, png = Convert.ToBase64String(output.ToArray()) };
         }
         return new { revision, text = Clipboard.ContainsText() ? Clipboard.GetText() : "" };
@@ -133,7 +133,7 @@ internal static class SharedClipboard
         var cache = "";
         if (request.Text("files") is { Length: > 0 } id)
         {
-            if (!Guid.TryParse(id, out _)) throw new InvalidDataException("剪贴板文件标识无效");
+            if (!Guid.TryParse(id, out _)) throw new InvalidDataException("Недопустимый идентификатор файла буфера обмена");
             try
             {
                 var response = await Backend.Json(["clipboard-files", "--json", "--connection", request.Text("connection_id"), "receive", id], token, TimeSpan.FromMinutes(30));
@@ -158,19 +158,19 @@ internal static class SharedClipboard
             else if (request.Text("png") is { Length: > 0 } png)
             {
                 var bytes = Convert.FromBase64String(png);
-                if (bytes.Length > 20 * 1024 * 1024) throw new InvalidDataException("图片不能超过 20 MB");
+                if (bytes.Length > 20 * 1024 * 1024) throw new InvalidDataException("Изображение не должно превышать 20 МБ");
                 using var input = new MemoryStream(bytes);
                 using var image = Image.FromStream(input);
-                if ((long)image.Width * image.Height > 40_000_000) throw new InvalidDataException("图片不能超过 4000 万像素");
+                if ((long)image.Width * image.Height > 40_000_000) throw new InvalidDataException("Изображение не должно превышать 40 миллионов пикселей");
                 Clipboard.SetImage(image);
             }
             else if (request.TryGetProperty("text", out var text))
             {
                 var value = text.GetString() ?? "";
-                if (System.Text.Encoding.UTF8.GetByteCount(value) > 2 * 1024 * 1024) throw new InvalidDataException("文本不能超过 2 MB");
+                if (System.Text.Encoding.UTF8.GetByteCount(value) > 2 * 1024 * 1024) throw new InvalidDataException("Текст не должен превышать 2 МБ");
                 if (value.Length == 0) Clipboard.Clear(); else Clipboard.SetText(value);
             }
-            else throw new InvalidDataException("剪贴板格式无效");
+            else throw new InvalidDataException("Недопустимый формат буфера обмена");
             var writtenRevision = Revision;
             if (cache.Length != 0) { try { await Cache("publish", cache); } catch { } }
             return new { revision = writtenRevision };

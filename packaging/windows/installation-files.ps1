@@ -144,17 +144,17 @@ function Save-Transfer($Transfer) {
 
 function Complete-Transfer {
     $transfer = Get-Content -LiteralPath $Receipt -Raw -Encoding UTF8 | ConvertFrom-Json
-    if ($transfer.kind -ne 'cage-installation' -or !(Test-Path -LiteralPath (Join-Path $Target $identityName))) { throw '安装目录尚未恢复，事务回执已保留。' }
-    if ($transfer.backupPath -and (Test-Path -LiteralPath $transfer.backupPath)) { throw ('旧目录仍需恢复，事务回执已保留：' + $transfer.backupPath) }
+    if ($transfer.kind -ne 'cage-installation' -or !(Test-Path -LiteralPath (Join-Path $Target $identityName))) { throw 'Каталог установки ещё не восстановлен; квитанция транзакции сохранена.' }
+    if ($transfer.backupPath -and (Test-Path -LiteralPath $transfer.backupPath)) { throw ('Старый каталог всё ещё требует восстановления; квитанция транзакции сохранена: ' + $transfer.backupPath) }
     foreach ($entry in $transfer.moves) {
         if ($entry.state -eq 'absent') { continue }
         $relative = if ($entry.state -eq 'moved') { $entry.destination } else { $entry.path }
-        if (!(Get-Item -LiteralPath (Join-Path $Target $relative) -Force -ErrorAction SilentlyContinue)) { throw ('个人文件尚未恢复，事务回执已保留：' + $relative) }
+        if (!(Get-Item -LiteralPath (Join-Path $Target $relative) -Force -ErrorAction SilentlyContinue)) { throw ('Личные файлы ещё не восстановлены; квитанция транзакции сохранена: ' + $relative) }
     }
     $receiptStream = Open-ReadLocked $Receipt
     try { $hash = Stream-Hash $receiptStream } finally { $receiptStream.Dispose() }
     Remove-MatchingFile (Split-Path $Receipt -Parent) (Split-Path $Receipt -Leaf) $hash
-    if (Test-Path -LiteralPath $Receipt) { throw '安装回执在完成期间发生变化，已保留待核对。' }
+    if (Test-Path -LiteralPath $Receipt) { throw 'Квитанция установки изменилась во время завершения; сохранена для проверки.' }
 }
 
 $Target = [IO.Path]::GetFullPath($Target).TrimEnd([IO.Path]::DirectorySeparatorChar)
@@ -162,19 +162,19 @@ foreach ($rootPath in @($Target, $Source)) {
     if (!$rootPath) { continue }
     $rootEntry = Get-Item -LiteralPath $rootPath -Force -ErrorAction SilentlyContinue
     if ($rootEntry -and $rootEntry.Attributes -band [IO.FileAttributes]::ReparsePoint) {
-        throw ('安装目录本身是文件系统链接，原文件已保留。请选择实际程序目录：' + $rootPath)
+        throw ('Каталог установки является файловой ссылкой; исходные файлы сохранены. Выберите настоящий каталог программы: ' + $rootPath)
     }
 }
 if ($Operation -eq 'prepare') {
     $diagnosticStep = 'reading_new_manifest'
-    if (Test-Path -LiteralPath $Receipt) { throw ('仍有未完成的安装事务，请保留并检查回执：' + $Receipt) }
+    if (Test-Path -LiteralPath $Receipt) { throw ('Осталась незавершённая транзакция установки; сохраните и проверьте квитанцию: ' + $Receipt) }
     $current = Read-FileManifest (Join-Path $Target $manifestName)
     $legacySnapshot = !$current.Count -and $LegacyTarget
     if ($legacySnapshot) {
         $identity = Open-ReadLocked (Join-Path $Target $identityName)
         try { $current[$identityName] = Stream-Hash $identity } finally { $identity.Dispose() }
     }
-    if (!$current.Count) { throw '新程序缺少有效文件清单，安装已停止。' }
+    if (!$current.Count) { throw 'У новой программы отсутствует допустимый список файлов; установка остановлена.' }
     $diagnosticStep = 'reading_new_uninstaller'
     $uninstaller = Open-ReadLocked (Join-Path $Target 'Uninstall.exe')
     try { $current['Uninstall.exe'] = Stream-Hash $uninstaller } finally { $uninstaller.Dispose() }
@@ -270,7 +270,7 @@ if ($Operation -eq 'prepare') {
         $from = Join-Path $Source $from
         $to = Join-Path $Target $to
         if (!(Get-Item -LiteralPath $from -Force -ErrorAction SilentlyContinue)) {
-            if ($Operation -eq 'restore' -and !(Get-Item -LiteralPath $to -Force -ErrorAction SilentlyContinue)) { throw ('待恢复的个人文件无法定位，回执已保留：' + $entry.path) }
+            if ($Operation -eq 'restore' -and !(Get-Item -LiteralPath $to -Force -ErrorAction SilentlyContinue)) { throw ('Не удалось найти личный файл для восстановления; квитанция сохранена: ' + $entry.path) }
             if ($Operation -eq 'move' -and $entry.state -eq 'prepared') { $entry.state = 'absent'; Save-Transfer $transfer }
             continue
         }
@@ -288,7 +288,7 @@ if ($Operation -eq 'prepare') {
         }
     }
     if ($Operation -eq 'move' -and @($moves | Where-Object { $_.destination.StartsWith('Cage-preserved-files/') }).Count) {
-        Write-Output ('同名修改或旧程序文件已保留在 ' + (Join-Path $Target 'Cage-preserved-files'))
+        Write-Output ('Изменённые файлы с теми же именами или старые файлы программы сохранены в ' + (Join-Path $Target 'Cage-preserved-files'))
     }
 } elseif ($Operation -eq 'cleanup') {
     $diagnosticStep = 'verifying_previous_file_ownership'
@@ -302,14 +302,14 @@ if ($Operation -eq 'prepare') {
                 try { if ((Stream-Hash $copy) -ne $entry.sha256) { continue } } finally { $copy.Dispose() }
             }
             Remove-MatchingFile $Source $entry.path $entry.sha256
-        } catch { Write-Output '安装期间变化或被占用的文件已保留在旧目录。' }
+        } catch { Write-Output 'Файлы, изменённые или занятые во время установки, сохранены в старом каталоге.' }
     }
     Remove-EmptyDirectories $Source $transfer.directories
     if (@(Get-ChildItem -LiteralPath $Source -Force).Count) {
         $recovery = Join-Path $Target ('Cage-preserved-files/late-' + [guid]::NewGuid().ToString('N'))
         [IO.Directory]::CreateDirectory((Split-Path $recovery -Parent)) | Out-Null
         [IO.Directory]::Move($Source, $recovery)
-        Write-Output ('安装期间变化的文件已保留在 ' + $recovery)
+        Write-Output ('Файлы, изменённые во время установки, сохранены в ' + $recovery)
     } else { [IO.Directory]::Delete($Source) }
     Complete-Transfer
 } elseif ($Operation -eq 'complete') {
@@ -319,7 +319,7 @@ if ($Operation -eq 'prepare') {
     # The payload list comes from this uninstaller's embedded build manifest.
     $diagnosticStep = 'reading_uninstall_manifest'
     $owned = Read-FileManifest $Manifest
-    if (!$owned.Count) { throw '卸载文件清单无效，原文件已保留。' }
+    if (!$owned.Count) { throw 'Список файлов для удаления недопустим; исходные файлы сохранены.' }
     $installed = Read-FileManifest (Join-Path $Target $manifestName)
     if ($installed.ContainsKey('Uninstall.exe')) { $owned['Uninstall.exe'] = $installed['Uninstall.exe'] }
     $actual = @(Read-Tree $Target @($owned.Keys) | Where-Object { !($_.Attributes -band [IO.FileAttributes]::ReparsePoint) } | ForEach-Object { Relative-Path $Target $_.FullName })
@@ -344,5 +344,5 @@ if ($Operation -eq 'prepare') {
     if (!$remaining.Count) {
         if ($owned.ContainsKey($identityName)) { Remove-MatchingFile $Target $identityName $owned[$identityName] }
         if (@(Get-ChildItem -LiteralPath $Target -Force).Count -eq 0) { [IO.Directory]::Delete($Target) }
-    } else { Write-Output ('用户新增或修改的文件已保留在 ' + $Target) }
+    } else { Write-Output ('Файлы, добавленные или изменённые пользователем, сохранены в ' + $Target) }
 }

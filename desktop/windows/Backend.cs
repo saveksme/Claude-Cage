@@ -33,7 +33,7 @@ internal static class Backend
                     _ = process.SafeHandle;
                     if (process.HasExited) { process.Dispose(); continue; }
                     if (!string.Equals(Path.GetFullPath(process.MainModule!.FileName), Path.GetFullPath(Executable), StringComparison.OrdinalIgnoreCase))
-                        throw new IOException("自检后台身份与当前应用不符，未等待其他程序");
+                        throw new IOException("Личность фонового процесса самопроверки не совпадает с текущим приложением; ожидание других программ не выполнялось");
                     processes.Add(process);
                 }
                 catch { process.Dispose(); throw; }
@@ -66,7 +66,7 @@ internal static class Backend
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
         timeout.CancelAfter(deadline ?? TimeSpan.FromMinutes(3));
         using var process = new Process { StartInfo = StartInfo(executable, arguments) };
-        if (!process.Start()) throw new IOException("无法启动 Cage 后台");
+        if (!process.Start()) throw new IOException("Не удалось запустить фон Cage");
         using var abort = timeout.Token.Register(() => { try { if (!process.HasExited) process.Kill(); } catch (InvalidOperationException) { } });
         try
         {
@@ -74,7 +74,7 @@ internal static class Backend
             var text = await ReadLimited(process.StandardOutput, outputLimit, timeout.Token);
             await process.WaitForExitAsync(timeout.Token); await errors;
             try { return (process.ExitCode, JsonDocument.Parse(text).RootElement.Clone()); }
-            catch (JsonException) { throw new IOException("Cage 后台未返回有效状态，请查看工作台日志"); }
+            catch (JsonException) { throw new IOException("Фон Cage не вернул допустимое состояние; проверьте журнал рабочей среды"); }
         }
         finally
         {
@@ -88,7 +88,7 @@ internal static class Backend
         while ((count = await reader.ReadAsync(buffer.AsMemory(), token)) > 0)
         {
             text.Append(buffer, 0, count);
-            if (text.Length > limit) throw new IOException("后台响应超过允许大小");
+            if (text.Length > limit) throw new IOException("Ответ фона превышает допустимый размер");
         }
         return text.ToString();
     }

@@ -192,9 +192,9 @@ integration("actual Chromium tabs restore and project switching retains unsaved 
   const page = f.context().pages().find(page => page.url() === url.href); await page.waitForLoadState();
   const metadata = await page.locator('#vscode-workbench-web-configuration').getAttribute('data-settings');
   assert.deepEqual(JSON.parse(metadata), { remoteAuthority: url.host, configurationDefaults: { "editor.fontSize": 19, "security.workspace.trust.enabled": false } });
-  await assert.rejects(f.privateRequest({ operation: "editor-connect", input: { ...input, trust_default: { arbitrary: false } } }), /默认策略/);
+  await assert.rejects(f.privateRequest({ operation: "editor-connect", input: { ...input, trust_default: { arbitrary: false } } }), /политика редактора по умолчанию/);
   await f.privateRequest({ operation: "editor-revoke", input: { workspace: project, connection } });
-  await assert.rejects(f.call("frame", {}, "GET"), /授权/);
+  await assert.rejects(f.call("frame", {}, "GET"), /авторизац/i);
   assert(opened.id);
 });
 
@@ -275,7 +275,7 @@ integration("64 KiB file blocks reach native chooser/drop, reject switched targe
   const stale = await f.call("upload-start", { id: one.id, kind: "paste" });
   const opened = await f.call("file-open", { direction: "upload", id: stale.id, name: "late.txt", length: 4 });
   await f.open("/other");
-  await assert.rejects(f.call("file-chunk", { transfer: opened.transfer, sequence: 0, data: Buffer.from("late").toString("base64") }), /切换/);
+  await assert.rejects(f.call("file-chunk", { transfer: opened.transfer, sequence: 0, data: Buffer.from("late").toString("base64") }), /изменил/);
   await f.call("activate", { id: one.id }); await f.click(one.id, one.page, "#download");
   let record;
   for (let i = 0; i < 100; i++) {
@@ -484,8 +484,8 @@ integration("pixel wheel preserves distance and still rejects stale targets and 
   await f.call("input", { ...wheel, mask: 8, deltaY: -360 });
   await page.waitForFunction(() => scrollY === 360);
   await assert.rejects(f.call("input", { ...wheel, target: "stale" }), /target changed/);
-  await assert.rejects(f.call("input", { ...wheel, deltaY: 2049 }), /滚动距离/);
-  await assert.rejects(f.call("input", { ...wheel, mask: 17 }), /滚动距离/);
+  await assert.rejects(f.call("input", { ...wheel, deltaY: 2049 }), /расстояние прокрутки/);
+  await assert.rejects(f.call("input", { ...wheel, mask: 17 }), /расстояние прокрутки/);
   assert.equal(await page.evaluate(() => scrollY), 360);
 });
 
@@ -602,11 +602,11 @@ macImages("Mac image preparation rejects a changed field before accepting bytes"
   const prepared = await f.call("image-start", { id: one.id });
   const png = await one.page.screenshot({ type: "png" });
   await f.click(one.id, one.page, "#second");
-  await assert.rejects(f.call("image-chunk", { transfer: prepared.transfer, sequence: 0, length: png.length, data: png.toString("base64") }), /target changed/i);
-  await assert.rejects(f.call("image-finish", { transfer: prepared.transfer, sequence: 0 }), /已关闭|顺序/);
+  await assert.rejects(f.call("image-chunk", { transfer: prepared.transfer, sequence: 0, length: png.length, data: png.toString("base64") }), /изменил/i);
+  await assert.rejects(f.call("image-finish", { transfer: prepared.transfer, sequence: 0 }), /закрыта|порядок/);
   const cancelled = await f.call("image-start", { id: one.id });
   await f.call("image-cancel", { transfer: cancelled.transfer });
-  await assert.rejects(f.call("image-finish", { transfer: cancelled.transfer, sequence: 0 }), /已关闭|顺序/);
+  await assert.rejects(f.call("image-finish", { transfer: cancelled.transfer, sequence: 0 }), /закрыта|порядок/);
 });
 
 macImages("Mac clipboard text uses one bounded transfer and one final insertion", async t => {
@@ -635,7 +635,7 @@ macImages("Mac clipboard text uses one bounded transfer and one final insertion"
   assert.equal(pasted.trusted, true);
   assert.equal(pasted.text, text);
   const tooLarge = await f.call("paste-start", { id: one.id });
-  await assert.rejects(f.call("paste-chunk", { transfer: tooLarge.transfer, sequence: 0, length: bytes.length + 1, mime: "text/plain", data: "YQ==" }), /大小/);
+  await assert.rejects(f.call("paste-chunk", { transfer: tooLarge.transfer, sequence: 0, length: bytes.length + 1, mime: "text/plain", data: "YQ==" }), /размер/);
 });
 
 const macImagePaste = playwrightPath && executablePath && process.env.CAGE_BROWSER_TEST_PLATFORM === "darwin" && process.env.CAGE_BROWSER_TEST_PNG_PASTE === "1" ? test : test.skip;
@@ -654,7 +654,7 @@ integration("native paste preparation rejects a field switch inside a child fram
     await child.locator("#second").focus();
     const after = await f.call("focus-proof", {}, "GET");
     assert.notEqual(after.focus, before.focus);
-    await assert.rejects(f.call("paste-chunk", { transfer: prepared.transfer, sequence: 0, mime: "text/plain", length: 1, data: "YQ==" }), /target changed/i);
+    await assert.rejects(f.call("paste-chunk", { transfer: prepared.transfer, sequence: 0, mime: "text/plain", length: 1, data: "YQ==" }), /изменил/i);
   }
 });
 
@@ -681,7 +681,7 @@ macImagePaste("Mac headless image transfer delivers an actual PNG paste event", 
   assert.equal(pasted.trusted, true);
   assert.equal(pasted.type, "image/png");
   assert.deepEqual(Buffer.from(pasted.bytes).subarray(0, 8), png.subarray(0, 8));
-  await assert.rejects(f.call("image-finish", { transfer: prepared.transfer, sequence }), /已关闭|顺序/);
+  await assert.rejects(f.call("image-finish", { transfer: prepared.transfer, sequence }), /закрыта|порядок/);
 });
 
 async function readClipboardReference(f, copied) {

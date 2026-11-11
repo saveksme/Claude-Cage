@@ -44,11 +44,11 @@ test("ZIP traversal, links, ADS, reserved names, duplicate Windows paths and dec
     await assert.rejects(readFile(path.join(output, "manifest.json"))); // nothing was written before validation
   }
   const duplicate = path.join(root, "duplicate.zip"); await writeFile(duplicate, fixtureZip([{ name: "manifest.json", data: manifest }, { name: "A.js" }, { name: "a.js" }]));
-  await assert.rejects(extractWindowsExtensionArchive(duplicate, path.join(root, "duplicates")), /重复/);
+  await assert.rejects(extractWindowsExtensionArchive(duplicate, path.join(root, "duplicates")), /повторяющ/);
   const oversized = path.join(root, "oversized.zip"); await writeFile(oversized, fixtureZip(Array.from({ length: 5 }, (_, n) => ({ name: "file" + n, size: 32 << 20 }))));
-  await assert.rejects(extractWindowsExtensionArchive(oversized, path.join(root, "oversized")), /128 MB/);
+  await assert.rejects(extractWindowsExtensionArchive(oversized, path.join(root, "oversized")), /128 МБ/);
   const damaged = path.join(root, "damaged.zip"); await writeFile(damaged, fixtureZip([{ name: "manifest.json", data: manifest, crc: 0 }]));
-  await assert.rejects(extractWindowsExtensionArchive(damaged, path.join(root, "damaged")), /校验/);
+  await assert.rejects(extractWindowsExtensionArchive(damaged, path.join(root, "damaged")), /Проверка/);
 });
 
 test("disabled extension import computes the Windows ID without loading or executing it", async t => {

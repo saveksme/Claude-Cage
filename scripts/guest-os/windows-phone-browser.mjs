@@ -10,7 +10,7 @@ import { browserExecutable, lines } from "./windows-browser.mjs";
 export async function playwrightPhonePipe(chromium, binary, args) {
   const prefix = "--user-data-dir=";
   const directory = args.find(arg => arg.startsWith(prefix))?.slice(prefix.length);
-  if (!directory || !path.isAbsolute(directory)) throw new Error("手机资料目录无效");
+  if (!directory || !path.isAbsolute(directory)) throw new Error("Недопустимый каталог данных телефона");
   const filtered = args.filter(arg => !arg.startsWith(prefix) && !["--remote-debugging-pipe", "--headless=new", "about:blank"].includes(arg));
   const context = await chromium.launchPersistentContext(directory, {
     executablePath: binary, headless: true, chromiumSandbox: true,
@@ -26,18 +26,18 @@ export async function playwrightPhonePipe(chromium, binary, args) {
     async send(method, input = {}, id) {
       let timer;
       try { return await Promise.race([this.perform(method, input, id), new Promise((_, reject) => {
-        timer = setTimeout(() => reject(new Error("远程浏览器操作超时: " + method)), method === "Page.navigate" || method === "Page.navigateToHistoryEntry" ? 12000 : 4500);
+        timer = setTimeout(() => reject(new Error("Тайм-аут операции удалённого браузера: " + method)), method === "Page.navigate" || method === "Page.navigateToHistoryEntry" ? 12000 : 4500);
       })]); }
       catch (error) {
         if (method === "Page.captureScreenshot" && error.message.includes("Unable to capture screenshot"))
-          throw Object.assign(new Error("页面正在绘制，请重新读取画面"), { status: 409 });
+          throw Object.assign(new Error("Страница отрисовывается; прочитайте изображение заново"), { status: 409 });
         throw error;
       } finally { clearTimeout(timer); }
     },
     async perform(method, input = {}, id) {
       if (id) {
         const session = sessions.get(id);
-        if (!session) throw Object.assign(new Error("手机文档连接已结束"), { status: 410 });
+        if (!session) throw Object.assign(new Error("Соединение с документом телефона завершено"), { status: 410 });
         return session.send(method, input);
       }
       if (method === "Browser.close") return context.close();
@@ -51,7 +51,7 @@ export async function playwrightPhonePipe(chromium, binary, args) {
             session.on(method, params => pipe.onEvent?.({ method, params, sessionId: key }));
           return { sessionId: key };
         }
-        throw Object.assign(new Error("手机页面已结束"), { status: 410 });
+        throw Object.assign(new Error("Страница телефона завершена"), { status: 410 });
       }
       return connection.send(method, input);
     },
@@ -64,7 +64,7 @@ export async function playwrightPhonePipe(chromium, binary, args) {
 export async function runWindowsPhoneBrowser(input = process.stdin, output = process.stdout, options = {}) {
   const root = path.dirname(fileURLToPath(import.meta.url));
   const binary = options.binary ?? browserExecutable();
-  if (!options.testing && (process.platform !== "win32" || !existsSync(binary))) throw new Error("专用手机浏览器组件未安装");
+  if (!options.testing && (process.platform !== "win32" || !existsSync(binary))) throw new Error("Специальный компонент браузера телефона не установлен");
   const { PhoneBrowser } = options.PhoneBrowser ? options : await import(new URL("./modules/browser-phone.mjs", import.meta.url));
   const chromium = options.chromium ?? (await import(new URL("./playwright/index.mjs", import.meta.url))).chromium;
   let phone;
@@ -74,17 +74,17 @@ export async function runWindowsPhoneBrowser(input = process.stdin, output = pro
       try {
         const request = JSON.parse(text);
         if (request.operation === "configure") {
-          if (phone || request.input?.networkMode !== "packet") throw new Error("手机浏览器需要受控客机网络");
+          if (phone || request.input?.networkMode !== "packet") throw new Error("Браузеру телефона требуется управляемая сеть гостевой системы");
           phone = new PhoneBrowser({ binary, directory: options.directory ?? path.join(process.env.LOCALAPPDATA || path.join(homedir(), "AppData", "Local"), "Cage", "PhoneBrowser"),
             language: request.input.language || "en-US", connect: options.connect,
             pipeFactory: (binary, args) => playwrightPhonePipe(chromium, binary, args) });
           result = { ok: true };
         } else {
-          if (!phone || request.method !== "POST" || !/^\/phone-browser\/(open|frame|action|close)$/.test(request.path || "")) throw new Error("手机浏览器请求无效");
+          if (!phone || request.method !== "POST" || !/^\/phone-browser\/(open|frame|action|close)$/.test(request.path || "")) throw new Error("Недопустимый запрос браузера телефона");
           result = await phone.run(request.path.split("/").at(-1), request.input);
         }
       } catch (error) {
-        result = { error: "手机浏览器操作未完成，请核对授权和最新画面", code: "phone_browser_error", status: [403, 409, 410, 503].includes(error.status) ? error.status : 400 };
+        result = { error: "Операция браузера телефона не завершена; проверьте авторизацию и последнее изображение", code: "phone_browser_error", status: [403, 409, 410, 503].includes(error.status) ? error.status : 400 };
       }
       await new Promise((resolve, reject) => output.write(JSON.stringify(result) + "\n", error => error ? reject(error) : resolve()));
     }

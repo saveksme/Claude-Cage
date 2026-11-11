@@ -38,7 +38,7 @@ internal sealed class AppUpdater : IDisposable
         if (Backend.ClientOnly)
         {
             if (state["phase"] as string != "manual" || operation != "status")
-                Change("manual", "轻量客户端使用独立安装包更新；连接配置会保留，云端任务不受影响。");
+                Change("manual", "Лёгкий клиент обновляется отдельным установочным пакетом; параметры подключения сохранятся, облачные задачи не пострадают.");
             return new(state);
         }
         if (operation is "check" or "install" &&
@@ -50,7 +50,7 @@ internal sealed class AppUpdater : IDisposable
             case "check": if (cancellation == null && prepared == null) _ = Run(true); break;
             case "install": if (cancellation == null) _ = prepared != null ? Install() : Run(false); break;
             case "cancel": if (!committed && state["phase"] as string != "installing") cancellation?.Cancel(); break;
-            default: throw new InvalidDataException("更新操作无效");
+            default: throw new InvalidDataException("Недопустимая операция обновления");
         }
         return new(state);
     }
@@ -65,7 +65,7 @@ internal sealed class AppUpdater : IDisposable
         if (!Guid.TryParse(Environment.GetEnvironmentVariable("CAGE_UPDATE_CONFIRMATION"), out var token)) return;
         Directory.CreateDirectory(Root); UpdatePolicy.PlainPath(Root);
         File.WriteAllText(Path.Combine(Root, "launch-" + token + ".json"), JsonSerializer.Serialize(new { version = Version }));
-        Change("current", "Cage 已更新至 " + Version);
+        Change("current", "Cage обновлён до " + Version);
         Environment.SetEnvironmentVariable("CAGE_UPDATE_CONFIRMATION", null);
     }
 
@@ -73,21 +73,21 @@ internal sealed class AppUpdater : IDisposable
     {
         cancellation = new CancellationTokenSource(TimeSpan.FromMinutes(25));
         var token = cancellation.Token;
-        Change("checking", "正在通过所选代理检查更新");
+        Change("checking", "Проверка обновлений через выбранный прокси");
         string? archive = null;
         string retryAt = "";
         using var process = new Process { StartInfo = Backend.StartInfo(Backend.Executable, "app-update", checkOnly ? "check" : "download") };
         var started = false;
         try
         {
-            if (!process.Start()) throw new IOException("无法启动更新检查");
+            if (!process.Start()) throw new IOException("Не удалось запустить проверку обновлений");
             started = true;
             using var abort = token.Register(() => { try { if (!process.HasExited) process.Kill(); } catch (InvalidOperationException) { } });
             var errors = Backend.Drain(process.StandardError, token);
             JsonElement last = default;
             while (await process.StandardOutput.ReadLineAsync(token) is { } line)
             {
-                if (line.Length > 65536) throw new IOException("更新响应超过允许大小");
+                if (line.Length > 65536) throw new IOException("Ответ обновления превышает допустимый размер");
                 last = JsonDocument.Parse(line).RootElement.Clone();
                 retryAt = last.Text("retryAt");
                 foreach (var property in last.EnumerateObject())
@@ -100,12 +100,12 @@ internal sealed class AppUpdater : IDisposable
                 changed(new(state));
             }
             await process.WaitForExitAsync(token); await errors;
-            if (process.ExitCode != 0) throw new IOException(last.ValueKind == JsonValueKind.Object && last.Text("message") is { Length: > 0 } error ? error : "更新请求未完成");
+            if (process.ExitCode != 0) throw new IOException(last.ValueKind == JsonValueKind.Object && last.Text("message") is { Length: > 0 } error ? error : "Запрос обновления не завершён");
             if (checkOnly || last.Text("phase") != "downloaded") return;
             archive = UpdatePolicy.DownloadPath(last.Text("archivePath"), Root);
             var version = last.Text("latestVersion"); var digest = last.Text("sha256");
-            if (!UpdatePolicy.IsNewer(version, Version)) throw new IOException("安装包版本无效或不高于当前版本");
-            Change("verifying", "正在验证 Windows 签名和安装包内容");
+            if (!UpdatePolicy.IsNewer(version, Version)) throw new IOException("Версия установочного пакета недопустима или не новее текущей");
+            Change("verifying", "Проверка подписи Windows и содержимого установочного пакета");
             var publisher = await Task.Run(() => Authenticode.Publisher(Environment.ProcessPath!), token);
             await Task.Run(() => UpdateInstaller.VerifyArchive(archive, digest, version, publisher), token);
             token.ThrowIfCancellationRequested();
@@ -113,9 +113,9 @@ internal sealed class AppUpdater : IDisposable
                 AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar), Environment.ProcessId,
                 Process.GetCurrentProcess().StartTime.ToUniversalTime().Ticks, Guid.NewGuid().ToString());
             archive = null;
-            Change("ready", "更新已下载并验证，可安装重启", true);
+            Change("ready", "Обновление загружено и проверено; можно установить и перезапустить", true);
         }
-        catch (OperationCanceledException) { Change("failed", "更新已暂停，可稍后重试", true); }
+        catch (OperationCanceledException) { Change("failed", "Обновление приостановлено; повторите попытку позже", true); }
         catch (Exception error) { Change("failed", error.Message, true, retryAt); }
         finally
         {
@@ -133,7 +133,7 @@ internal sealed class AppUpdater : IDisposable
         var token = cancellation.Token;
         Process? helper = null;
         var helperPath = Path.Combine(Root, "helper-" + Guid.NewGuid() + ".exe");
-        Change("installing", "正在准备安装更新");
+        Change("installing", "Подготовка установки обновления");
         try
         {
             // Validate the destination before stopping a running environment.
@@ -143,23 +143,23 @@ internal sealed class AppUpdater : IDisposable
             await Task.Run(() => Authenticode.SamePublisher(helperPath, prepared.Publisher), token);
             var start = Backend.StartInfo(helperPath, "--install-update"); start.RedirectStandardInput = true;
             helper = new Process { StartInfo = start };
-            if (!helper.Start()) throw new IOException("无法启动安全安装程序");
+            if (!helper.Start()) throw new IOException("Не удалось запустить безопасную программу установки");
             await helper.StandardInput.WriteLineAsync(JsonSerializer.Serialize(prepared));
             await helper.StandardInput.FlushAsync(token);
             var ready = await helper.StandardOutput.ReadLineAsync(token);
-            if (ready != "READY") throw new IOException("安装程序准备失败，原应用已保留");
+            if (ready != "READY") throw new IOException("Не удалось подготовить программу установки; исходное приложение сохранено");
             var (exit, data) = await Backend.Json(["prepare-update", "--json"], token);
             if (data.Text("status") == "stop_required")
             {
                 (exit, data) = await Backend.Json(["prepare-update", "--json", "--stop"], token);
             }
-            if (exit != 0 || data.Text("status") != "prepared") throw new IOException(data.Text("message") is { Length: > 0 } detail ? detail : "环境未能安全停止");
-            if (helper.HasExited) throw new IOException("安装程序已退出，原应用已保留");
+            if (exit != 0 || data.Text("status") != "prepared") throw new IOException(data.Text("message") is { Length: > 0 } detail ? detail : "Не удалось безопасно остановить среду");
+            if (helper.HasExited) throw new IOException("Программа установки завершилась; исходное приложение сохранено");
             await helper.StandardInput.WriteLineAsync("COMMIT"); await helper.StandardInput.FlushAsync(token);
             helper.StandardInput.Close(); committed = true;
-            Change("installing", "正在安装并重启 Cage"); quit();
+            Change("installing", "Установка и перезапуск Cage"); quit();
         }
-        catch (Exception error) { Change("failed", error is OperationCanceledException ? "安装准备超时，原应用已保留" : error.Message, true); reconnect(); }
+        catch (Exception error) { Change("failed", error is OperationCanceledException ? "Время подготовки установки истекло; исходное приложение сохранено" : error.Message, true); reconnect(); }
         finally
         {
             if (!committed && helper != null)
