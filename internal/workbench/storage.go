@@ -40,7 +40,7 @@ func (s *Server) storageRecoveryStatus() storageRecoveryView {
 func (s *Server) requireStorageReady() error {
 	state := s.storageRecoveryStatus()
 	if state.Required {
-		return fmt.Errorf("环境存储待恢复，请在设置中恢复后继续。%s", state.Error)
+		return fmt.Errorf("Хранилище среды требует восстановления; восстановите его в настройках и продолжите. %s", state.Error)
 	}
 	return nil
 }
@@ -76,11 +76,11 @@ func storageRecoveryRoute(r *http.Request) bool {
 
 func (s *Server) recoverEnvironmentStorage(w http.ResponseWriter, r *http.Request) {
 	if !s.localVMStorage() {
-		http.Error(w, "请在虚拟机所在电脑上恢复环境存储", http.StatusConflict)
+		http.Error(w, "Восстановите хранилище среды на компьютере, где работает виртуальная машина", http.StatusConflict)
 		return
 	}
 	if !s.storageRecoveryStatus().Required {
-		http.Error(w, "当前环境存储无需恢复", http.StatusConflict)
+		http.Error(w, "Текущее хранилище среды не требует восстановления", http.StatusConflict)
 		return
 	}
 	var input struct {
@@ -91,13 +91,13 @@ func (s *Server) recoverEnvironmentStorage(w http.ResponseWriter, r *http.Reques
 	}
 	s.launch(w, "storage-recovery", func() error {
 		if input.Repair {
-			s.setMessage("正在修复 Windows 系统助手，请完成系统授权…")
+			s.setMessage("Идёт восстановление системного помощника Windows, завершите системную авторизацию…")
 			kit, _ := s.nativeComponentKit()
 			if err := guestos.RepairWindowsHostManager(s.operationContext(), s.profile, kit, s.jobs.execution(), s.jobs.execution()); err != nil {
-				return s.failStorageRecovery(executionFailure("修复 Windows 系统助手", err, s.jobs.snapshot().Log))
+				return s.failStorageRecovery(executionFailure("восстановление системного помощника Windows", err, s.jobs.snapshot().Log))
 			}
 		}
-		s.setMessage("正在恢复环境存储并检查数据位置…")
+		s.setMessage("Идёт восстановление хранилища среды и проверка расположения данных…")
 		if err := guestos.RecoverWindowsStorage(s.operationContext(), s.profile); err != nil {
 			return s.failStorageRecovery(err)
 		}
@@ -110,7 +110,7 @@ func (s *Server) recoverEnvironmentStorage(w http.ResponseWriter, r *http.Reques
 				return s.failStorageRecovery(err)
 			}
 			if binding == nil || binding.VMID != s.windowsGuest.VMID || binding.GUIUserSID != s.windowsGuest.GUIUserSID {
-				return s.failStorageRecovery(errors.New("Windows 客机绑定已改变，请重新打开原工作台后恢复"))
+				return s.failStorageRecovery(errors.New("Привязка гостевой системы Windows изменилась; снова откройте исходную рабочую среду и восстановите"))
 			}
 		}
 		if err := s.prepareEnvironment(); err != nil {
@@ -119,14 +119,14 @@ func (s *Server) recoverEnvironmentStorage(w http.ResponseWriter, r *http.Reques
 		s.mu.Lock()
 		s.storageRecoveryError = ""
 		s.mu.Unlock()
-		s.setMessage("环境存储已恢复，可以启动环境")
+		s.setMessage("Хранилище среды восстановлено, среду можно запускать")
 		return nil
 	})
 }
 
 func (s *Server) environmentStorage(w http.ResponseWriter, r *http.Request) {
 	if !s.localVMStorage() {
-		http.Error(w, "仅本机虚拟机支持调整存储位置", http.StatusConflict)
+		http.Error(w, "Изменение расположения хранилища поддерживается только для локальной виртуальной машины", http.StatusConflict)
 		return
 	}
 	if r.Method == http.MethodGet {
@@ -179,11 +179,11 @@ func (s *Server) environmentStorage(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		if current.Directory != input.Previous || current.HasEnvironment != input.Migrate {
-			return errors.New("环境或存储位置已改变，请重新打开设置后再选择")
+			return errors.New("Среда или расположение хранилища изменились; снова откройте настройки и выберите заново")
 		}
 		if err = cage.ValidateStorageTarget(s.profile, input.Directory); err != nil {
 			if errors.Is(err, os.ErrPermission) {
-				return errors.New("无法读取或写入所选存储目录，请在当前页面选择有权限的本地文件夹后重试，已有数据已保留")
+				return errors.New("Не удалось прочитать или записать выбранный каталог хранилища; выберите на текущей странице локальную папку с нужными правами и повторите, существующие данные сохранены")
 			}
 			return err
 		}
@@ -195,13 +195,13 @@ func (s *Server) environmentStorage(w http.ResponseWriter, r *http.Request) {
 				return err
 			}
 		}
-		s.setMessage("正在检查环境存储…")
+		s.setMessage("Идёт проверка хранилища среды…")
 		var runtime cage.StorageRuntime
 		if s.windowsGuest != nil {
 			runtime = guestos.WindowsStorageRuntime(s.profile)
 		}
 		_, err = cage.MoveStorageWithRuntime(s.operationContext(), s.profile, input.Directory, current, runtime, func(copied, total int64) {
-			s.setMessage(fmt.Sprintf("正在迁移环境数据 · %.1f / %.1f GiB", float64(copied)/(1<<30), float64(total)/(1<<30)))
+			s.setMessage(fmt.Sprintf("Идёт перенос данных среды · %.1f / %.1f ГиБ", float64(copied)/(1<<30), float64(total)/(1<<30)))
 		})
 		if err != nil {
 			if _, recoveryErr := cage.GetStorageLocation(s.profile); errors.Is(recoveryErr, cage.ErrStorageRuntimeRecovery) {
@@ -209,7 +209,7 @@ func (s *Server) environmentStorage(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if errors.Is(err, os.ErrPermission) {
-			return errors.New("无法写入所选存储目录。请在当前页面选择有写入权限的本地文件夹后重试，已有数据已保留")
+			return errors.New("Не удалось записать в выбранный каталог хранилища. Выберите на текущей странице локальную папку с правом записи и повторите, существующие данные сохранены")
 		}
 		return err
 	})

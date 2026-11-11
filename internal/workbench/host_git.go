@@ -23,17 +23,17 @@ func inspectHostGit(ctx context.Context) hostGitState {
 	switch state {
 	case gitguard.BareOK:
 		view.Ready = true
-		view.Message = "本机 Git 安全保护已启用。"
+		view.Message = "Защита локального Git включена."
 	case gitguard.BareNoGit:
 		view.Ready = true
-		view.Message = "本机未安装可用的 Git，无需修改；以后启动环境时会重新检查。"
+		view.Message = "Рабочий Git не установлен, изменения не нужны; при следующем запуске среды проверка повторится."
 	case gitguard.BareUnset:
 		view.CanEnable = true
-		view.Message = "启动前需要启用本机 Git 安全保护。"
+		view.Message = "Перед запуском нужно включить защиту локального Git."
 	case gitguard.BareOld:
-		view.Message = "本机 Git 版本过旧，请升级到 2.38 或更新版本后重新检查。"
+		view.Message = "Локальный Git слишком старый; обновите его до 2.38 или новее и повторите проверку."
 	default:
-		view.Message = "暂时无法检查本机 Git。请确认 Git 安装完整，再重新检查；Cage 不会自动打开安装器。"
+		view.Message = "Пока не удалось проверить локальный Git. Убедитесь, что Git установлен полностью, и повторите проверку; Cage не открывает установщик автоматически."
 	}
 	return view
 }
@@ -50,11 +50,11 @@ func (s *Server) enableHostGit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !input.Confirm {
-		http.Error(w, "请先确认启用本机 Git 安全保护。", http.StatusBadRequest)
+		http.Error(w, "Сначала подтвердите включение защиты локального Git.", http.StatusBadRequest)
 		return
 	}
 	if !s.op.TryLock() {
-		http.Error(w, "正在处理环境操作，请完成后重试。", http.StatusConflict)
+		http.Error(w, "Выполняется действие со средой; дождитесь завершения и повторите.", http.StatusConflict)
 		return
 	}
 	defer s.op.Unlock()
@@ -72,12 +72,12 @@ func (s *Server) enableHostGit(w http.ResponseWriter, r *http.Request) {
 	cmd := gitx.Untrusted(ctx, "config", "--global", "--replace-all", "safe.bareRepository", "explicit")
 	cmd.Dir = s.profile
 	if err := cmd.Run(); err != nil {
-		http.Error(w, "未能保存 Git 安全设置。请检查全局 Git 配置的写入权限，关闭其他 Git 设置操作后重试。", http.StatusInternalServerError)
+		http.Error(w, "Не удалось сохранить настройки безопасности Git. Проверьте права на запись глобальной конфигурации Git, закройте другие операции с настройками Git и повторите.", http.StatusInternalServerError)
 		return
 	}
 	after := inspectHostGit(ctx)
 	if !after.Ready {
-		http.Error(w, "Git 设置已写入，但检查尚未通过。请检查全局 Git 配置后重新检测。", http.StatusConflict)
+		http.Error(w, "Настройки Git записаны, но проверка ещё не пройдена. Проверьте глобальную конфигурацию Git и повторите проверку.", http.StatusConflict)
 		return
 	}
 	jsonReply(w, after)
@@ -86,7 +86,7 @@ func (s *Server) enableHostGit(w http.ResponseWriter, r *http.Request) {
 func requireHostGit(ctx context.Context) error {
 	state := inspectHostGit(ctx)
 	if !state.Ready {
-		return errors.New(state.Message + " 请从工作台点击启动，按提示完成检查。")
+		return errors.New(state.Message + " Запустите из рабочей среды и завершите проверку по подсказкам.")
 	}
 	return nil
 }

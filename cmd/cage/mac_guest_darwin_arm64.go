@@ -34,7 +34,7 @@ func runMacGuest(ctx context.Context, profile, state string, args []string) erro
 		manifest := flags.String("manifest", "", "")
 		updateTools := flags.Bool("tools", false, "")
 		if err := flags.Parse(args[1:]); err != nil || flags.NArg() != 0 || !filepath.IsAbs(*manifest) {
-			return errors.New("需要本次原生组件更新清单")
+			return errors.New("Требуется актуальный список обновления нативных компонентов")
 		}
 		exe, err := os.Executable()
 		if err != nil {

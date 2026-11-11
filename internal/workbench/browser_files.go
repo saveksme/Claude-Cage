@@ -33,18 +33,18 @@ func browserDownloadName(name string) bool {
 func (s *Server) browserUpload(w http.ResponseWriter, r *http.Request) {
 	id, name := r.PathValue("id"), r.URL.Query().Get("name")
 	if !browserFileID.MatchString(id) || !browserFileName(name) {
-		http.Error(w, "文件名或上传窗口无效", 400)
+		http.Error(w, "Неверное имя файла или окно загрузки", 400)
 		return
 	}
 	if r.ContentLength > browserFileLimit {
-		http.Error(w, "每个文件不能超过 2 GB", 413)
+		http.Error(w, "Каждый файл не должен превышать 2 ГБ", 413)
 		return
 	}
 	s.mu.Lock()
 	ready, token := s.ready, s.credentials.Token
 	s.mu.Unlock()
 	if !ready {
-		http.Error(w, "环境尚未就绪", 409)
+		http.Error(w, "Среда ещё не готова", 409)
 		return
 	}
 	// Never accept a file without a live chooser owned by the remote browser.
@@ -55,7 +55,7 @@ func (s *Server) browserUpload(w http.ResponseWriter, r *http.Request) {
 		} `json:"uploads"`
 	}
 	if err != nil || json.Unmarshal(snapshot, &state) != nil {
-		http.Error(w, "无法连接上传窗口", 502)
+		http.Error(w, "Не удалось подключиться к окну загрузки", 502)
 		return
 	}
 	found := false
@@ -65,7 +65,7 @@ func (s *Server) browserUpload(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if !found {
-		http.Error(w, "上传窗口已关闭，请重新点击网页上传按钮", 409)
+		http.Error(w, "Окно загрузки закрыто; снова нажмите кнопку загрузки на веб-странице", 409)
 		return
 	}
 	query := url.Values{"id": {id}, "name": {name}}
@@ -80,12 +80,12 @@ func (s *Server) proxyBrowserFile(w http.ResponseWriter, r *http.Request, token,
 	}
 	response, err := s.browserClient().file(r.Context(), token, method, path, body, r.ContentLength)
 	if err != nil {
-		http.Error(w, usererror.Wrap("传递浏览器文件", err, "请恢复环境连接后核对文件是否已收到，再重新选择文件。").Error(), 502)
+		http.Error(w, usererror.Wrap("действие «передача файла из браузера»", err, "Восстановите подключение к среде, проверьте, получен ли файл, и снова выберите файл.").Error(), 502)
 		return
 	}
 	defer response.Body.Close()
 	if response.StatusCode != 200 {
-		http.Error(w, serviceHTTPFailure("传递浏览器文件", response.StatusCode).Error(), 502)
+		http.Error(w, serviceHTTPFailure("передача файла из браузера", response.StatusCode).Error(), 502)
 		return
 	}
 	if method == "POST" {
@@ -112,7 +112,7 @@ type browserDownloadInfo struct {
 
 func (s *Server) downloadInfo(ctx context.Context, id string) (browserDownloadInfo, error) {
 	if !browserFileID.MatchString(id) {
-		return browserDownloadInfo{}, errors.New("下载标识无效")
+		return browserDownloadInfo{}, errors.New("Неверный идентификатор загрузки")
 	}
 	if saved, err := readSavedDownload(s.profile, id); err == nil {
 		return browserDownloadInfo{ID: id, Name: saved.Name, Path: saved.Path, State: "saved"}, nil
@@ -121,7 +121,7 @@ func (s *Server) downloadInfo(ctx context.Context, id string) (browserDownloadIn
 	ready, token := s.ready, s.credentials.Token
 	s.mu.Unlock()
 	if !ready {
-		return browserDownloadInfo{}, errors.New("请先启动环境或从已保存的位置打开文件")
+		return browserDownloadInfo{}, errors.New("Сначала запустите среду или откройте файл из сохранённого расположения")
 	}
 	item, err := s.guestDownloadInfo(ctx, token, id)
 	if err != nil {
@@ -151,7 +151,7 @@ func (s *Server) downloadInfo(ctx context.Context, id string) (browserDownloadIn
 		root := s.environmentDir()
 		expected := strings.TrimRight(guestPath(root), "/") + "/Downloads/" + item.Name
 		if item.Path != expected {
-			return browserDownloadInfo{}, errors.New("下载保存位置无效")
+			return browserDownloadInfo{}, errors.New("Неверное расположение сохранения загрузки")
 		}
 		item.Path = filepath.Join(root, "Downloads", item.Name)
 		if err = rememberDownload(s.profile, SavedDownload{ID: id, Name: item.Name, Path: item.Path}, true); err != nil {
@@ -187,13 +187,13 @@ func (s *Server) guestDownloadInfo(ctx context.Context, token, id string) (brows
 			Downloads []browserDownloadInfo `json:"downloads"`
 		}
 		if json.Unmarshal(data, &state) != nil {
-			failures = append(failures, errors.New("下载列表无效"))
+			failures = append(failures, errors.New("Неверный список загрузок"))
 			continue
 		}
 		for _, item := range state.Downloads {
 			if item.ID == id {
 				if !browserDownloadName(item.Name) {
-					return browserDownloadInfo{}, errors.New("下载文件记录无效")
+					return browserDownloadInfo{}, errors.New("Неверная запись загруженного файла")
 				}
 				item.Target = target
 				return item, nil
@@ -203,7 +203,7 @@ func (s *Server) guestDownloadInfo(ctx context.Context, token, id string) (brows
 	if len(failures) != 0 {
 		return browserDownloadInfo{}, errors.Join(failures...)
 	}
-	return browserDownloadInfo{}, errors.New("下载记录已不存在，请从原应用重新下载")
+	return browserDownloadInfo{}, errors.New("Запись загрузки больше не существует; загрузите файл заново из исходного приложения")
 }
 
 // The native guest owns the source file. Only a completed, recorded host copy
@@ -216,7 +216,7 @@ type nativeDownload struct {
 
 func (s *Server) startNativeDownload(item browserDownloadInfo) (*nativeDownload, error) {
 	if !browserFileID.MatchString(item.ID) || !browserDownloadName(item.Name) {
-		return nil, errors.New("下载文件记录无效")
+		return nil, errors.New("Неверная запись загруженного файла")
 	}
 	s.mu.Lock()
 	current := s.nativeDownloads[item.ID]
@@ -238,7 +238,7 @@ func (s *Server) startNativeDownload(item browserDownloadInfo) (*nativeDownload,
 	}
 	epoch, unlocked := s.account.access()
 	if !unlocked {
-		return nil, errors.New("Cage 已锁定，请先解锁再保存下载")
+		return nil, errors.New("Cage заблокирован; разблокируйте его, чтобы сохранить загрузку")
 	}
 	ctx, finish, err := s.beginActivity(epoch)
 	if err != nil {
@@ -349,7 +349,7 @@ func (s *Server) nativeDownloadForHost(item browserDownloadInfo) browserDownload
 		}
 	}
 	item.State, item.Retryable = "failed", true
-	item.Error = usererror.Display("保存下载到本机", err, "请恢复环境连接或检查默认工作区空间，再点击重试。").Error()
+	item.Error = usererror.Display("сохранение загрузки на этот компьютер", err, "Восстановите подключение к среде или проверьте место в рабочем пространстве по умолчанию и нажмите «Повторить».").Error()
 	return item
 }
 
@@ -371,7 +371,7 @@ func (s *Server) saveNativeDownload(ctx context.Context, item browserDownloadInf
 	}
 	defer source.Close()
 	if name != item.Name {
-		return errors.New("下载文件记录已变化，请刷新下载列表")
+		return errors.New("Запись загруженного файла изменилась; обновите список загрузок")
 	}
 	workspace, err := validateWorkspace(s.environmentDir(), s.profile)
 	if err != nil {
@@ -387,7 +387,7 @@ func (s *Server) saveNativeDownload(ctx context.Context, item browserDownloadInf
 	}
 	directory, err := root.Lstat("Downloads")
 	if err != nil || !directory.IsDir() {
-		return errors.New("默认下载目录无效，请选择默认工作区中的普通文件夹")
+		return errors.New("Неверный каталог загрузок по умолчанию; выберите обычную папку в рабочем пространстве по умолчанию")
 	}
 	downloads, err := root.OpenRoot("Downloads")
 	if err != nil {
@@ -445,7 +445,7 @@ func (s *Server) saveNativeDownload(ctx context.Context, item browserDownloadInf
 		published.Close()
 		if statErr != nil || !os.SameFile(written, current) {
 			removePublished()
-			return errors.New("下载保存位置已变化，请重新保存")
+			return errors.New("Расположение сохранения загрузки изменилось; сохраните заново")
 		}
 		if err = rememberDownload(s.profile, saved, true); err != nil {
 			removePublished()
@@ -453,7 +453,7 @@ func (s *Server) saveNativeDownload(ctx context.Context, item browserDownloadInf
 		}
 		return nil
 	}
-	return errors.New("默认下载目录中的同名文件过多，请整理后重试")
+	return errors.New("В каталоге загрузок по умолчанию слишком много файлов с одинаковым именем; наведите порядок и повторите")
 }
 
 func (s *Server) browserDownload(w http.ResponseWriter, r *http.Request) {
@@ -474,7 +474,7 @@ func (s *Server) browserDownload(w http.ResponseWriter, r *http.Request) {
 	if item.Path != "" {
 		file, err := openDownloadedFile(item.Path)
 		if err != nil {
-			http.Error(w, "文件已移动、删除或暂时无法读取", 404)
+			http.Error(w, "Файл перемещён, удалён или временно недоступен для чтения", 404)
 			return
 		}
 		defer file.Close()
@@ -483,7 +483,7 @@ func (s *Server) browserDownload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if item.State != "failed" || !item.Retryable {
-		http.Error(w, "文件尚未下载完成或已不可用", 409)
+		http.Error(w, "Файл ещё не загружен полностью или больше недоступен", 409)
 		return
 	}
 	s.mu.Lock()
@@ -509,14 +509,14 @@ func (reader cancelableDownload) Read(buffer []byte) (int, error) {
 func openDownloadedFile(path string) (*os.File, error) {
 	before, err := os.Lstat(path)
 	if err != nil || !before.Mode().IsRegular() {
-		return nil, errors.New("下载文件不可用")
+		return nil, errors.New("Загруженный файл недоступен")
 	}
 	parent, err := filepath.EvalSymlinks(filepath.Dir(path))
 	if err != nil {
 		return nil, err
 	}
 	if filepath.Clean(parent) != filepath.Clean(filepath.Dir(path)) {
-		return nil, errors.New("下载目录已被替换")
+		return nil, errors.New("Каталог загрузок был заменён")
 	}
 	file, err := os.Open(path)
 	if err != nil {
@@ -525,7 +525,7 @@ func openDownloadedFile(path string) (*os.File, error) {
 	after, err := file.Stat()
 	if err != nil || !os.SameFile(before, after) {
 		file.Close()
-		return nil, errors.New("下载文件已变化")
+		return nil, errors.New("Загруженный файл изменился")
 	}
 	return file, nil
 }

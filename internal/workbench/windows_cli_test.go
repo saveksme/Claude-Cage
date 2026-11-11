@@ -128,7 +128,7 @@ func TestWindowsCLIRejectsRevokedAndSiblingWorkspace(t *testing.T) {
 func TestWindowsCLIRPCFailureCannotSignAnAccountOut(t *testing.T) {
 	s := windowsCLIRelayFixture(t)
 	t.Setenv("CAGE_WINDOWS_CLI_RELAY_FAILURE", "1")
-	if _, err := s.readWindowsClaudeAccount(context.Background(), "snapshot", "default", ""); err == nil || !strings.Contains(err.Error(), "Windows 桌面尚未登录或已锁定") {
+	if _, err := s.readWindowsClaudeAccount(context.Background(), "snapshot", "default", ""); err == nil || !strings.Contains(err.Error(), "Рабочий стол Windows не разблокирован или вход не выполнен") {
 		t.Fatalf("GUI/RPC failure lost its login explanation: %v", err)
 	}
 }
@@ -136,11 +136,11 @@ func TestWindowsCLIRPCFailureCannotSignAnAccountOut(t *testing.T) {
 func TestWindowsCLIProcessFailureExplainsStageWithoutLeakingStderr(t *testing.T) {
 	s := windowsCLIRelayFixture(t)
 	for _, test := range []struct{ stage, message string }{
-		{"profile", "无法读取 Windows 环境配置"},
-		{"pairing", "安全配对校验未完成"},
-		{"connect", "未能连接 Windows 会话服务"},
-		{"transfer", "通信未完成"},
-		{"unknown", "未能读取 Windows 会话服务的响应"},
+		{"profile", "Не удалось прочитать конфигурацию среды Windows"},
+		{"pairing", "Проверка безопасного сопряжения среды Windows не завершена"},
+		{"connect", "Не удалось подключиться к службе сеансов Windows"},
+		{"transfer", "Обмен со службой сеансов Windows не завершён"},
+		{"unknown", "Не удалось прочитать ответ службы сеансов Windows"},
 	} {
 		t.Run(test.stage, func(t *testing.T) {
 			t.Setenv("CAGE_WINDOWS_CLI_RELAY_PROCESS_FAILURE", test.stage)
@@ -157,7 +157,7 @@ func TestWindowsCLIRequestTimeoutExplainsDeadline(t *testing.T) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
 	defer cancel()
 	err := s.windowsCLIRequest(ctx, map[string]any{"action": "channel", "mode": "discover"}, new(any))
-	if err == nil || !strings.Contains(err.Error(), "响应超时") {
+	if err == nil || !strings.Contains(err.Error(), "Истекло время ожидания") {
 		t.Fatalf("request timeout lost its cause: %v", err)
 	}
 }

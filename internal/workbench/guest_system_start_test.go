@@ -29,7 +29,7 @@ func TestIncompleteInstallationPreventsImplicitLinuxStart(t *testing.T) {
 			t.Fatalf("created a Linux job from pending macOS (%s): %d", body, w.Code)
 		}
 	}
-	if err := s.startEnvironment(false); err == nil || !strings.Contains(err.Error(), "原生客户机") {
+	if err := s.startEnvironment(false); err == nil || !strings.Contains(err.Error(), "нативной гостевой системы") {
 		t.Fatalf("indirect Linux start: %v", err)
 	}
 }

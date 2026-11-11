@@ -77,22 +77,22 @@ func loadLocalAccount(profile string) (*localAccount, error) {
 		return a, nil
 	}
 	if err != nil {
-		return nil, errors.New("无法读取本地账户，请检查配置目录")
+		return nil, errors.New("Не удалось прочитать локальный аккаунт; проверьте каталог конфигурации")
 	}
 	if err = host.CheckPrivateFile(a.path); err != nil {
-		return nil, errors.New("本地账户文件权限不安全，请恢复私有文件权限")
+		return nil, errors.New("Права на файл локального аккаунта небезопасны; восстановите приватные права файла")
 	}
 	var record accountRecord
 	if len(b) > 256<<10 || json.Unmarshal(b, &record) != nil || record.Version != 1 || !validTrustedID(record.TrustedDevice) || len(record.Salt) != 16 || len(record.Nonce) != 12 || len(record.SealedKey) != 48 || validAccountName(record.Username) != nil {
-		return nil, errors.New("本地账户文件损坏，请从备份恢复；已有数据未修改")
+		return nil, errors.New("Файл локального аккаунта повреждён; восстановите его из резервной копии, существующие данные не изменены")
 	}
 	if device := record.TrustedUnlock; device != nil && (len(device.ID) != 64 || !validTrustedID(device.ID) || len(device.Nonce) != 12 || len(device.SealedKey) != 48 || record.TrustedDevice != "") {
-		return nil, errors.New("本机信任记录损坏，请从备份恢复")
+		return nil, errors.New("Запись доверия этого компьютера повреждена; восстановите её из резервной копии")
 	}
 	a.record = &record
 	for kind, device := range record.Devices {
 		if !validDeviceKind(kind) || len(device.ID) != 32 || len(device.Nonce) != 12 || len(device.SealedKey) != 48 {
-			return nil, errors.New("本地账户快捷登录记录损坏，请从备份恢复")
+			return nil, errors.New("Запись быстрого входа локального аккаунта повреждена; восстановите её из резервной копии")
 		}
 	}
 	return a, nil
@@ -100,14 +100,14 @@ func loadLocalAccount(profile string) (*localAccount, error) {
 
 func validAccountName(name string) error {
 	if strings.TrimSpace(name) == "" || utf8.RuneCountInString(name) > 40 || strings.ContainsAny(name, "\x00\r\n") {
-		return errors.New("用户名需要 1–40 个字符，不能包含换行")
+		return errors.New("Имя пользователя должно содержать от 1 до 40 символов и не содержать переводов строки")
 	}
 	return nil
 }
 
 func validAccountPassword(password string) error {
 	if utf8.RuneCountInString(password) < 8 || len(password) > 1024 || strings.ContainsRune(password, 0) {
-		return errors.New("密码至少 8 个字符，最多 1024 字节")
+		return errors.New("Пароль должен содержать не менее 8 символов и не более 1024 байт")
 	}
 	return nil
 }
@@ -137,7 +137,7 @@ func sealAccountKey(record *accountRecord, password string, key []byte) error {
 
 func openAccountKey(record *accountRecord, password string) ([]byte, error) {
 	if len(password) > 1024 {
-		return nil, errors.New("密码不正确")
+		return nil, errors.New("Неверный пароль")
 	}
 	derived := argon2.IDKey([]byte(password), record.Salt, 3, 64*1024, 2, 32)
 	defer clear(derived)
@@ -145,7 +145,7 @@ func openAccountKey(record *accountRecord, password string) ([]byte, error) {
 	aead, _ := cipher.NewGCM(block)
 	key, err := aead.Open(nil, record.Nonce, record.SealedKey, []byte("Cage local account v1"))
 	if err != nil {
-		return nil, errors.New("密码不正确")
+		return nil, errors.New("Неверный пароль")
 	}
 	return key, nil
 }
@@ -243,7 +243,7 @@ func (a *localAccount) createAccount(name, password, avatar string, mac bool) er
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if a.record != nil {
-		return errors.New("此配置已创建本地账户，请登录")
+		return errors.New("Для этой конфигурации создан локальный аккаунт; войдите")
 	}
 	key := make([]byte, 32)
 	if _, err = rand.Read(key); err != nil {
@@ -260,7 +260,7 @@ func (a *localAccount) createAccount(name, password, avatar string, mac bool) er
 		}
 	}
 	if err = writePrivate(a.path, record); err != nil {
-		return errors.New("账户未能保存，请检查磁盘空间与目录权限")
+		return errors.New("Не удалось сохранить аккаунт; проверьте место на диске и права на каталог")
 	}
 	a.record = record
 	a.setKey(append([]byte(nil), key...))
@@ -271,10 +271,10 @@ func (a *localAccount) unlock(password string) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if a.record == nil {
-		return errors.New("请先创建本地账户")
+		return errors.New("Сначала создайте локальный аккаунт")
 	}
 	if time.Now().Before(a.nextAttempt) {
-		return errors.New("请稍后再试")
+		return errors.New("Повторите позже")
 	}
 	key, err := openAccountKey(a.record, password)
 	if err != nil {
@@ -302,7 +302,7 @@ func (a *localAccount) updateProfile(name, avatar string) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if len(a.key) != 32 {
-		return errors.New("请先解锁 Cage")
+		return errors.New("Сначала разблокируйте Cage")
 	}
 	if a.record.MacLogin != nil && name != a.record.Username {
 		login, err := a.openMacAccount()
@@ -310,7 +310,7 @@ func (a *localAccount) updateProfile(name, avatar string) error {
 			return err
 		}
 		if len(login.Guests) != 0 {
-			return errors.New("用户名已用于 macOS 客机，保留该名称以继续使用原账户和文件")
+			return errors.New("Имя пользователя уже используется гостевой системой macOS; сохраните его, чтобы продолжить работать с исходным аккаунтом и файлами")
 		}
 		if err := validMacAccount(name, login.Password); err != nil {
 			return err
@@ -320,7 +320,7 @@ func (a *localAccount) updateProfile(name, avatar string) error {
 	record.Username = name
 	record.Avatar = normalized
 	if err = writePrivate(a.path, record); err != nil {
-		return errors.New("资料未能保存，请重试")
+		return errors.New("Не удалось сохранить профиль; повторите попытку")
 	}
 	a.record = &record
 	return nil
@@ -333,10 +333,10 @@ func (a *localAccount) changePassword(oldPassword, newPassword string) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if len(a.key) != 32 {
-		return errors.New("请先解锁 Cage")
+		return errors.New("Сначала разблокируйте Cage")
 	}
 	if time.Now().Before(a.nextAttempt) {
-		return errors.New("请稍后再试")
+		return errors.New("Повторите позже")
 	}
 	key, err := openAccountKey(a.record, oldPassword)
 	if err != nil {
@@ -355,7 +355,7 @@ func (a *localAccount) changePassword(oldPassword, newPassword string) error {
 		}
 		for _, guest := range login.Guests {
 			if guest.Password != login.Password {
-				return errors.New("客机密码仍待同步，请先启动 macOS 客机并完成同步后再改密")
+				return errors.New("Пароль гостевой системы ещё не синхронизирован; запустите гостевую систему macOS, завершите синхронизацию и затем смените пароль")
 			}
 		}
 		login.Password = newPassword
@@ -367,7 +367,7 @@ func (a *localAccount) changePassword(oldPassword, newPassword string) error {
 		return err
 	}
 	if err = writePrivate(a.path, record); err != nil {
-		return errors.New("新密码未能保存，原密码仍然有效")
+		return errors.New("Новый пароль не сохранён, старый пароль остаётся действительным")
 	}
 	a.record = &record
 	a.nextAttempt = time.Time{}
@@ -378,7 +378,7 @@ func (a *localAccount) desktopKey() ([]byte, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if len(a.key) != 32 {
-		return nil, errors.New("请先登录 Cage，再打开 Claude Desktop")
+		return nil, errors.New("Сначала войдите в Cage, затем откройте Claude Desktop")
 	}
 	// Base64 is accepted by the keyring without newline/encoding ambiguity.
 	encoded := make([]byte, base64.RawStdEncoding.EncodedLen(len(a.key)))
@@ -392,23 +392,23 @@ func normalizeAccountAvatar(value string) (string, error) {
 	}
 	const maxBytes = 2 << 20
 	if len(value) > maxBytes*4/3+100 {
-		return "", errors.New("头像图片不能超过 2 MB")
+		return "", errors.New("Изображение профиля не должно превышать 2 МБ")
 	}
 	_, payload, ok := strings.Cut(value, ",")
 	if !ok || (!strings.HasPrefix(value, "data:image/png;base64,") && !strings.HasPrefix(value, "data:image/jpeg;base64,")) {
-		return "", errors.New("请选择 PNG 或 JPEG 图片")
+		return "", errors.New("Выберите изображение PNG или JPEG")
 	}
 	b, err := base64.StdEncoding.DecodeString(payload)
 	if err != nil || len(b) > maxBytes {
-		return "", errors.New("头像图片无效")
+		return "", errors.New("Неверное изображение профиля")
 	}
 	cfg, _, err := image.DecodeConfig(bytes.NewReader(b))
 	if err != nil || cfg.Width < 1 || cfg.Height < 1 || cfg.Width > 4096 || cfg.Height > 4096 || cfg.Width*cfg.Height > 8_000_000 {
-		return "", errors.New("头像图片尺寸无效或过大")
+		return "", errors.New("Неверный или слишком большой размер изображения профиля")
 	}
 	src, _, err := image.Decode(bytes.NewReader(b))
 	if err != nil {
-		return "", errors.New("无法读取头像图片")
+		return "", errors.New("Не удалось прочитать изображение профиля")
 	}
 	size := min(cfg.Width, cfg.Height)
 	x0, y0 := (cfg.Width-size)/2, (cfg.Height-size)/2

@@ -42,7 +42,7 @@ func (s *Server) applyMacGuestPassword(ctx context.Context, id uuid.UUID, oldPas
 		return err
 	}
 	if provision != "cageprovision" {
-		return errors.New("客机置备身份不匹配")
+		return errors.New("Идентичность подготовки гостевой системы не совпадает")
 	}
 	args, err := guestos.MacOSSSHArgs(s.profile, provision)
 	if err != nil {
@@ -63,7 +63,7 @@ func (s *Server) applyMacGuestPassword(ctx context.Context, id uuid.UUID, oldPas
 	out, err := command(ctx, `umask 077; mktemp -d /private/var/tmp/cage-account.XXXXXXXX`).Output()
 	stage := strings.TrimSpace(string(out))
 	if err != nil || !regexp.MustCompile(`^/private/var/tmp/cage-account\.[A-Za-z0-9]{8}$`).MatchString(stage) {
-		return errors.New("无法准备客机改密组件")
+		return errors.New("Не удалось подготовить компонент смены пароля гостевой системы")
 	}
 	admin := " < /Users/" + provision + "/password"
 	defer func() {

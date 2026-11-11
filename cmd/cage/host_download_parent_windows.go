@@ -17,7 +17,7 @@ func hostDownloadContext(parent context.Context) (context.Context, context.Cance
 func hostDownloadParentContext(parent context.Context, pid uint32) (context.Context, context.CancelFunc, error) {
 	process, err := windows.OpenProcess(windows.SYNCHRONIZE, false, pid)
 	if err != nil {
-		return nil, nil, errors.New("下载启动进程已退出或无法访问")
+		return nil, nil, errors.New("Процесс запуска загрузки завершился или недоступен")
 	}
 	ctx, cancel := context.WithCancel(parent)
 	done := make(chan struct{})

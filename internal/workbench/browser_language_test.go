@@ -35,16 +35,16 @@ func TestBrowserSettingsReportsOnlyMismatchedFields(t *testing.T) {
 			switch field {
 			case "language":
 				v.Language = "en-US"
-				want = []string{"语言不一致", `"zh-TW"`, `"en-US"`}
+				want = []string{"Язык не совпадает", `"zh-TW"`, `"en-US"`}
 			case "timezone":
 				v.Timezone = "UTC"
-				want = []string{"时区不一致", `"Asia/Taipei"`, `"UTC"`}
+				want = []string{"Часовой пояс не совпадает", `"Asia/Taipei"`, `"UTC"`}
 			case "platform":
 				v.Platform = "MacIntel"
-				want = []string{"系统标识不一致", "Linux", `"MacIntel"`}
+				want = []string{"Идентификатор системы не совпадает", "Linux", `"MacIntel"`}
 			case "all":
 				v = browserObservation{}
-				want = []string{"时区不一致", "语言不一致", "系统标识不一致"}
+				want = []string{"Часовой пояс не совпадает", "Язык не совпадает", "Идентификатор системы не совпадает"}
 			case "timezone-alias":
 				v.Timezone, v.ExpectedTimezone = "Asia/Calcutta", "Asia/Calcutta"
 			case "language-case":
@@ -62,7 +62,7 @@ func TestBrowserSettingsReportsOnlyMismatchedFields(t *testing.T) {
 			if len(want) == 0 && mismatch != "" {
 				t.Fatal(mismatch)
 			}
-			if field == "language" && (strings.Contains(mismatch, "时区") || strings.Contains(mismatch, "系统标识")) {
+			if field == "language" && (strings.Contains(mismatch, "Часовой пояс") || strings.Contains(mismatch, "Идентификатор системы")) {
 				t.Fatalf("language failure blamed unrelated fields: %s", mismatch)
 			}
 		})

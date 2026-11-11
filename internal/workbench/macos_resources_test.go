@@ -76,7 +76,7 @@ func TestMacOSResourceSaveUsesGuestMinimumAndPreservesOtherData(t *testing.T) {
 		t.Fatal(response.Code, response.Body.String())
 	}
 	job := awaitJobIdle(t, &s.jobs)
-	if !strings.Contains(job.Error, "至少需要") || !s.networkPaused {
+	if !strings.Contains(job.Error, "не менее") || !s.networkPaused {
 		t.Fatalf("invalid saved limit passed restart validation: %+v", job)
 	}
 }

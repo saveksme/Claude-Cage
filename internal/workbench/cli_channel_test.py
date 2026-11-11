@@ -91,7 +91,7 @@ class ChannelTests(unittest.TestCase):
         channel.save(self.root/connection/"state.json",state)
         completed=type("Result",(),{"returncode":0,"stdout":"[]"})()
         with patch.object(channel,"active_sessions",return_value=[]),patch.object(channel.subprocess,"run",return_value=completed):
-            with self.assertRaisesRegex(ValueError,"工具"): channel.prepare_account_switch(request)
+            with self.assertRaisesRegex(ValueError,"инструменты"): channel.prepare_account_switch(request)
         self.assertTrue(path.exists())
         self.assertFalse((self.root.parent/"cli-account-switches"/switch_id/"history.jsonl").exists())
 

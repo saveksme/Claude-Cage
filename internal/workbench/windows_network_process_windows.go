@@ -20,7 +20,7 @@ func containWindowsNetworkProcess() error {
 	}
 	job, err := windows.CreateJobObject(nil, nil)
 	if err != nil {
-		return errors.New("Windows 网络进程组无法创建，外网保持关闭")
+		return errors.New("Не удалось создать группу сетевых процессов Windows, внешняя сеть остаётся закрытой")
 	}
 	var limits windows.JOBOBJECT_EXTENDED_LIMIT_INFORMATION
 	limits.BasicLimitInformation.LimitFlags = windows.JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
@@ -30,7 +30,7 @@ func containWindowsNetworkProcess() error {
 	}
 	if err != nil {
 		_ = windows.CloseHandle(job)
-		return errors.New("Windows 网络子进程无法隔离，外网保持关闭")
+		return errors.New("Не удалось изолировать сетевой дочерний процесс Windows, внешняя сеть остаётся закрытой")
 	}
 	windowsNetworkProcessJob = job
 	return nil

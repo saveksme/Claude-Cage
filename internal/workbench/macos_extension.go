@@ -25,7 +25,7 @@ func (s *Server) checkMacOSSetupProjects(parent context.Context) error {
 	}
 	s.mu.Unlock()
 	if err != nil {
-		return errors.New("文件共享权限尚未通过。请点击「文件系统扩展」重新打开授权面板，确认 macFUSE 和 macFUSE (local) 两个开关均已打开，Cage 会自动检查")
+		return errors.New("Права общего доступа к файлам ещё не предоставлены. Нажмите «Расширение файловой системы», снова откройте панель авторизации и убедитесь, что включены оба переключателя macFUSE и macFUSE (local); Cage проверит автоматически")
 	}
 	return nil
 }

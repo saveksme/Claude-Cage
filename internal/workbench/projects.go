@@ -57,12 +57,12 @@ func (s *Server) openProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if input.Workspace == "" {
-		http.Error(w, "请选择项目文件夹", 400)
+		http.Error(w, "Выберите папку проекта", 400)
 		return
 	}
 	if !s.op.TryLock() {
 		w.Header().Set("X-Cage-Recovery", "project-operation-busy")
-		http.Error(w, "另一个操作仍在进行，请稍候", 409)
+		http.Error(w, "Выполняется другое действие; подождите", 409)
 		return
 	}
 	defer s.op.Unlock()
@@ -70,7 +70,7 @@ func (s *Server) openProject(w http.ResponseWriter, r *http.Request) {
 	ready, closing, preferences := s.ready, s.closing, s.preferences
 	s.mu.Unlock()
 	if closing || !ready || s.busy() {
-		http.Error(w, "环境尚未就绪或正在处理其他操作，请稍后重试", 409)
+		http.Error(w, "Среда ещё не готова или выполняет другое действие; повторите позже", 409)
 		return
 	}
 	workspace, err := s.connectProject(input.Workspace, input.Add)
@@ -92,7 +92,7 @@ func (s *Server) openProject(w http.ResponseWriter, r *http.Request) {
 				cancel()
 				if openErr != nil {
 					w.Header().Set("X-Cage-Recovery", "project-approval")
-					requestError(w, errors.New("未能显示客机项目授权窗口，请重试"))
+					requestError(w, errors.New("Не удалось показать окно авторизации проекта гостевой системы; повторите"))
 					return
 				}
 				jsonReply(w, map[string]string{"workspace": path, "approval": grant})
@@ -248,11 +248,11 @@ func (s *Server) ensureProjectShare(path string) (returned error) {
 	// Stale FUSE mounts can remain after a control-service restart. Only reconnect
 	// this explicitly authorized path, without changing other projects' mounts.
 	if _, err = s.guest(ctx, "if mountpoint -q "+quoted+"; then fusermount3 -uz "+quoted+"; fi; sudo mkdir -p "+quoted+" && sudo chown \"$(id -u):$(id -g)\" "+quoted); err != nil {
-		return errors.New("无法在 Cage 中准备项目目录")
+		return errors.New("Не удалось подготовить каталог проекта в Cage")
 	}
 	probe, err := os.CreateTemp(path, ".cage-mount-probe-*")
 	if err != nil {
-		return fmt.Errorf("无法验证项目目录的读写权限：%w", err)
+		return fmt.Errorf("Не удалось проверить права чтения и записи каталога проекта: %w", err)
 	}
 	defer os.Remove(probe.Name())
 	challenge := randomToken()
@@ -278,10 +278,10 @@ func (s *Server) ensureProjectShare(path string) (returned error) {
 		select {
 		case <-ctx.Done():
 			share.close()
-			return errors.New("项目文件夹连接超时，原有环境与会话保持运行")
+			return errors.New("Истекло время подключения папки проекта, исходная среда и сеансы продолжают работать")
 		case <-share.done:
 			share.close()
-			return errors.New("项目文件夹未能连接，原有环境与会话保持运行")
+			return errors.New("Не удалось подключить папку проекта, исходная среда и сеансы продолжают работать")
 		case <-time.After(100 * time.Millisecond):
 		}
 	}
@@ -369,14 +369,14 @@ func (s *Server) projectWorkspace(path string) (string, error) {
 	}
 	paths, err := s.projectPaths()
 	if err != nil {
-		return "", errors.New("无法读取项目列表，请检查项目配置")
+		return "", errors.New("Не удалось прочитать список проектов; проверьте конфигурацию проектов")
 	}
 	for _, authorized := range paths {
 		if path == authorized {
 			return validateWorkspace(path, s.profile)
 		}
 	}
-	return "", errors.New("请先通过打开项目添加该文件夹")
+	return "", errors.New("Сначала добавьте эту папку, открыв проект")
 }
 
 func (s *Server) rememberSharedProject(path string) error {
@@ -424,7 +424,7 @@ func (s *Server) restoreProjectShares() {
 		if err := s.ensureProjectShare(path); err != nil {
 			failures = append(failures, projectShareFailure(path, err))
 		} else if err := s.rememberSharedProject(path); err != nil {
-			failures = append(failures, projectShareError{Path: path, Message: "项目已连接，但未能保存项目记录：" + err.Error()})
+			failures = append(failures, projectShareError{Path: path, Message: "Проект подключён, но запись проекта сохранить не удалось: " + err.Error()})
 		}
 	}
 	s.mu.Lock()

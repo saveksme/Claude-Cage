@@ -121,7 +121,7 @@ func TestCloseBackgroundWaitsForJobAndRejectsNewWork(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("shutdown did not finish after the job returned")
 	}
-	if job := s.jobs.snapshot(); job.Running || job.Message != "已取消" {
+	if job := s.jobs.snapshot(); job.Running || job.Message != "Отменено" {
 		t.Fatalf("shutdown left a running job: %+v", job)
 	}
 }

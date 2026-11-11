@@ -71,12 +71,12 @@ func startWindowsGuestTerminalRequest(cmd *exec.Cmd, open any) (terminalPTY, err
 		cancelWindowsAdmissionDeadline(deadline, deadlineDone)
 		terminal.Close()
 		_ = cmd.Wait()
-		return nil, errors.New("Windows 客机终端未就绪")
+		return nil, errors.New("Терминал гостевой системы Windows не готов")
 	}
 	if !cancelWindowsAdmissionDeadline(deadline, deadlineDone) {
 		terminal.Close()
 		_ = cmd.Wait()
-		return nil, errors.New("Windows 客机终端连接超时")
+		return nil, errors.New("Истекло время подключения терминала гостевой системы Windows")
 	}
 	go func() {
 		var failure error
@@ -88,27 +88,27 @@ func startWindowsGuestTerminalRequest(cmd *exec.Cmd, open any) (terminalPTY, err
 				Error string  `json:"error"`
 			}
 			if json.Unmarshal(reader.Bytes(), &message) != nil {
-				failure = errors.New("Windows 客机终端响应无效")
+				failure = errors.New("Неверный ответ терминала гостевой системы Windows")
 				break
 			}
 			if message.Error != "" {
-				failure = errors.New("Windows 客机终端不可用")
+				failure = errors.New("Терминал гостевой системы Windows недоступен")
 				break
 			}
 			if message.Exit != nil {
 				sawExit = true
 				if *message.Exit != 0 {
-					failure = errors.New("Windows 客机终端进程已退出")
+					failure = errors.New("Процесс терминала гостевой системы Windows завершился")
 				}
 				break
 			}
 			if message.Data == nil {
-				failure = errors.New("Windows 客机终端响应无效")
+				failure = errors.New("Неверный ответ терминала гостевой системы Windows")
 				break
 			}
 			data, err := base64.StdEncoding.DecodeString(*message.Data)
 			if err != nil || len(data) > 64<<10 {
-				failure = errors.New("Windows 客机终端输出无效")
+				failure = errors.New("Неверный вывод терминала гостевой системы Windows")
 				break
 			}
 			if _, err = writer.Write(data); err != nil {
@@ -117,7 +117,7 @@ func startWindowsGuestTerminalRequest(cmd *exec.Cmd, open any) (terminalPTY, err
 			}
 		}
 		if !sawExit && failure == nil {
-			failure = errors.New("Windows 客机终端连接已中断")
+			failure = errors.New("Подключение терминала гостевой системы Windows прервалось")
 		}
 		if scanErr := reader.Err(); scanErr != nil && failure == nil {
 			failure = scanErr
@@ -177,7 +177,7 @@ func (t *windowsGuestTerminal) Write(data []byte) (int, error) {
 }
 func (t *windowsGuestTerminal) Resize(cols, rows uint16) error {
 	if cols < 1 || cols >= 600 || rows < 1 || rows > 500 {
-		return errors.New("终端尺寸无效")
+		return errors.New("Неверный размер терминала")
 	}
 	return t.send(map[string]any{"action": "resize", "cols": cols, "rows": rows})
 }

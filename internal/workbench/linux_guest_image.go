@@ -21,7 +21,7 @@ func linuxGuestSystems(platform, arch string) []string {
 
 func linuxGuestImagePlan(ctx context.Context, profile, system, arch string) (hostimage.Plan, error) {
 	if system != guestos.Ubuntu2204 || arch != "amd64" && arch != "arm64" {
-		return hostimage.Plan{}, errors.New("此主机暂不支持所选 Linux 客机镜像")
+		return hostimage.Plan{}, errors.New("Этот хост пока не поддерживает выбранный образ гостевой системы Linux")
 	}
 	template, err := limaembed.ReadImageTemplate(system)
 	if err != nil {

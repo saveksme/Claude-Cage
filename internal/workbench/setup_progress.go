@@ -29,7 +29,7 @@ func parseSetupProgress(line string) *SetupProgress {
 		if label == "" {
 			return nil
 		}
-		return &SetupProgress{Phase: "image", Label: label + "（准备第 " + fields[2] + "/3 次尝试）", System: "macos", Operation: "download"}
+		return &SetupProgress{Phase: "image", Label: label + " (подготовка, попытка " + fields[2] + "/3)", System: "macos", Operation: "download"}
 	}
 	if strings.HasPrefix(line, "CAGE_HOST_BYTES ") {
 		fields := strings.Fields(line)
@@ -60,11 +60,11 @@ func parseSetupProgress(line string) *SetupProgress {
 		if name == "" || err != nil || te != nil || received < 0 || total < 0 || (total > 0 && received > total) {
 			return nil
 		}
-		label := "正在下载 " + name + " 系统镜像"
+		label := "Загружается " + name + " (системный образ)"
 		switch fields[2] {
 		case "download":
 		case "verify":
-			label = "正在校验 " + name + " 系统镜像"
+			label = "Проверяется " + name + " (системный образ)"
 		default:
 			return nil
 		}
@@ -81,23 +81,23 @@ func parseSetupProgress(line string) *SetupProgress {
 		}
 		switch fields[2] {
 		case "restore":
-			p.Phase, p.Label = "packages", "正在安装 "+guestProgressName(fields[1])+" 系统"
+			p.Phase, p.Label = "packages", "Устанавливается система "+guestProgressName(fields[1])
 		case "account", "oobe", "credentials":
 			if fields[1] != "windows-11" {
 				return nil
 			}
 			p.Phase = "packages"
 			p.Label = map[string]string{
-				"account":     "请在安装窗口设置客机本地管理员",
-				"oobe":        "请在虚拟机连接窗口完成 Windows 首次设置",
-				"credentials": "请在安装窗口输入客机管理员账户",
+				"account":     "Задайте локального администратора гостевой системы в окне установки",
+				"oobe":        "Завершите первичную настройку Windows в окне подключения виртуальной машины",
+				"credentials": "Введите учётную запись администратора гостевой системы в окне установки",
 			}[fields[2]]
 		case "media":
-			p.Phase, p.Label = "image", "正在下载并校验客机开发组件"
+			p.Phase, p.Label = "image", "Идёт загрузка и проверка компонентов разработки гостевой системы"
 		case "tools":
-			p.Phase, p.Label = "tools", "正在安装客机应用和开发工具"
+			p.Phase, p.Label = "tools", "Идёт установка приложений и инструментов разработки гостевой системы"
 		case "services":
-			p.Phase, p.Label = "services", "正在完成客机配置"
+			p.Phase, p.Label = "services", "Идёт завершение настройки гостевой системы"
 		default:
 			return nil
 		}
@@ -113,7 +113,7 @@ func parseSetupProgress(line string) *SetupProgress {
 		if err != nil || te != nil || received < 0 || total < -1 || (total > 0 && received > total) {
 			return nil
 		}
-		return &SetupProgress{Phase: "image", Label: "正在下载 Debian 13 镜像", Received: &received, Total: max(total, 0)}
+		return &SetupProgress{Phase: "image", Label: "Идёт загрузка образа Debian 13", Received: &received, Total: max(total, 0)}
 	}
 	if strings.HasPrefix(line, "CAGE_TOOL_BYTES ") {
 		fields := strings.Fields(line)
@@ -134,15 +134,15 @@ func parseSetupProgress(line string) *SetupProgress {
 		}
 		switch fields[1] {
 		case "mise.tar.gz":
-			p.Phase, p.Label = "packages", "正在下载 mise"
+			p.Phase, p.Label = "packages", "Идёт загрузка mise"
 		case "code-server.deb":
-			p.Label = "正在下载网页编辑器 code-server"
+			p.Label = "Идёт загрузка веб-редактора code-server"
 		case "chromium.deb":
-			p.Phase, p.Label = "packages", "正在下载 Chromium 浏览器"
+			p.Phase, p.Label = "packages", "Идёт загрузка браузера Chromium"
 		case "chromium-common.deb":
-			p.Phase, p.Label = "packages", "正在下载 Chromium 公共资源"
+			p.Phase, p.Label = "packages", "Идёт загрузка общих ресурсов Chromium"
 		case "claude-code-linux-x64.tgz", "claude-code-linux-arm64.tgz":
-			p.Label = "正在下载 Claude Code"
+			p.Label = "Идёт загрузка Claude Code"
 		default:
 			return nil
 		}
@@ -150,41 +150,41 @@ func parseSetupProgress(line string) *SetupProgress {
 	}
 	switch line {
 	case "CAGE_IMAGE_READY":
-		return &SetupProgress{Phase: "image", Label: "正在启动 Linux 基础环境"}
+		return &SetupProgress{Phase: "image", Label: "Идёт запуск базовой среды Linux"}
 	case "CAGE_IMAGE_VERIFY":
-		return &SetupProgress{Phase: "image", Label: "正在校验 Debian 镜像"}
+		return &SetupProgress{Phase: "image", Label: "Идёт проверка образа Debian"}
 	case "Installing packages inside VM...", "Installing base packages...":
-		return &SetupProgress{Phase: "packages", Label: "正在安装 Linux 基础软件包"}
+		return &SetupProgress{Phase: "packages", Label: "Идёт установка базовых пакетов Linux"}
 	case "Installing Python 3...":
-		return &SetupProgress{Phase: "packages", Label: "正在安装 Python"}
+		return &SetupProgress{Phase: "packages", Label: "Идёт установка Python"}
 	case "Installing Chromium...":
-		return &SetupProgress{Phase: "packages", Label: "正在安装 Chromium 浏览器"}
+		return &SetupProgress{Phase: "packages", Label: "Идёт установка браузера Chromium"}
 	case "Installing Node.js 24...":
-		return &SetupProgress{Phase: "packages", Label: "正在安装 Node.js 24"}
+		return &SetupProgress{Phase: "packages", Label: "Идёт установка Node.js 24"}
 	case "Installing mise...":
-		return &SetupProgress{Phase: "packages", Label: "正在安装 mise"}
+		return &SetupProgress{Phase: "packages", Label: "Идёт установка mise"}
 	case "Installing Claude Code...":
-		return &SetupProgress{Phase: "tools", Label: "正在安装 Claude Code"}
+		return &SetupProgress{Phase: "tools", Label: "Идёт установка Claude Code"}
 	case "Installing code-server...":
-		return &SetupProgress{Phase: "tools", Label: "正在安装网页编辑器 code-server"}
+		return &SetupProgress{Phase: "tools", Label: "Идёт установка веб-редактора code-server"}
 	}
 	if strings.HasPrefix(line, "Running custom setup from ") {
-		return &SetupProgress{Phase: "services", Label: "正在配置桌面服务"}
+		return &SetupProgress{Phase: "services", Label: "Идёт настройка служб рабочего стола"}
 	}
 	return nil
 }
 
 func macOSDownloadLabel(name string) string {
 	component := map[string]string{
-		"editor.tgz": "macOS 网页编辑器", "playwright.tgz": "浏览器控制组件", "node.tgz": "Node.js",
-		"macfuse.dmg": "macFUSE 文件共享组件", "claude.dmg": "Claude Desktop", "chrome.dmg": "Chrome 浏览器",
-		"macos-cli-claude": "Claude Code", "macos-cli-uv.tar.gz": "uv 开发工具",
+		"editor.tgz": "веб-редактор macOS", "playwright.tgz": "компонент управления браузером", "node.tgz": "Node.js",
+		"macfuse.dmg": "компонент общих файлов macFUSE", "claude.dmg": "Claude Desktop", "chrome.dmg": "браузер Chrome",
+		"macos-cli-claude": "Claude Code", "macos-cli-uv.tar.gz": "инструмент разработки uv",
 		"macos-cli-python.tar.gz": "Python", "macos-cli-git.tar.gz": "Git", "macos-cli-gh.zip": "GitHub CLI",
 	}[name]
 	if component == "" {
 		return ""
 	}
-	return "正在下载 " + component
+	return "Загружается " + component
 }
 
 func guestProgressName(system string) string {

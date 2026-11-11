@@ -30,14 +30,14 @@ func (s *Server) promoteMobileConversation(ctx context.Context, id string) error
 		return nil
 	}
 	if active || record.turnActive() {
-		return errors.New("会话仍在运行，请等待本轮完成后打开")
+		return errors.New("Сеанс ещё работает; дождитесь завершения раунда и откройте")
 	}
 	selection, launcher, _, err := s.prepareMobileLaunch(record)
 	if err != nil {
 		return err
 	}
 	if record.SingleTurn {
-		return errors.New("此会话的原账号与上游无法验证，请核对原配置后新建会话")
+		return errors.New("Исходный аккаунт и вышестоящий сервис этого сеанса не удалось проверить; сверьте исходную конфигурацию и создайте новый сеанс")
 	}
 	config := ""
 	if record.Resume {
@@ -59,7 +59,7 @@ func (s *Server) promoteMobileConversation(ctx context.Context, id string) error
 			Config string `json:"config"`
 		}
 		if err != nil || len(out) > 4096 || json.Unmarshal(out, &result) != nil || !strings.HasPrefix(result.Config, "/") {
-			return errors.New("无法验证本会话原先使用的账号与上游，请检查原配置后重试")
+			return errors.New("Не удалось проверить аккаунт и вышестоящий сервис, которые использовал этот сеанс; проверьте исходную конфигурацию и повторите")
 		}
 		config = result.Config
 	}
@@ -76,7 +76,7 @@ func (s *Server) promoteMobileConversation(ctx context.Context, id string) error
 		return err
 	}
 	if record.Archived || record.Deleted {
-		return errors.New("此会话已归档或删除，请先恢复会话")
+		return errors.New("Этот сеанс архивирован или удалён; сначала восстановите сеанс")
 	}
 	record.LegacyTurns = append([]mobileTurn(nil), record.Turns...)
 	record.Terminal, record.Account, record.Launcher = true, selection, launcher

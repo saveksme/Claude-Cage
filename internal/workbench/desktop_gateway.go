@@ -34,9 +34,9 @@ type DesktopLocalStatus struct {
 }
 
 var (
-	errDesktopLocalLocked = errors.New("请先切回本机解锁账户，再停止本机环境")
-	errViewChanged        = errors.New("工作环境已切换，请刷新后重试")
-	errCandidateChanged   = errors.New("候选连接已取消或发生变化，请重新选择")
+	errDesktopLocalLocked = errors.New("Сначала переключитесь на этот компьютер и разблокируйте аккаунт, затем останавливайте локальную среду")
+	errViewChanged        = errors.New("Рабочая среда переключена; обновите и повторите")
+	errCandidateChanged   = errors.New("Подключение-кандидат отменено или изменилось; выберите заново")
 )
 
 type desktopCandidate struct {
@@ -64,16 +64,16 @@ func (t *desktopTarget) state() remotehost.ConnectionState {
 	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	state := remotehost.ConnectionState{State: "connecting", ConnectionID: t.id, Phase: "local_connect", Message: "正在连接本机工作台"}
+	state := remotehost.ConnectionState{State: "connecting", ConnectionID: t.id, Phase: "local_connect", Message: "Подключение к локальной рабочей среде"}
 	switch {
 	case t.localErr != nil:
 		state.State, state.Phase, state.ErrorCode, state.Message = "failed", "", "local_unavailable", t.localErr.Error()
 	case t.session != nil && t.session.Context.Err() == nil:
 		manifest := t.session.Manifest
-		state.State, state.Phase, state.Message = "connected", "", "已连接本机环境"
+		state.State, state.Phase, state.Message = "connected", "", "Локальная среда подключена"
 		state.InstanceID, state.Manifest = manifest.InstanceID, &manifest
 	case t.session != nil || t.ctx.Err() != nil:
-		state.State, state.Phase, state.ErrorCode, state.Message = "failed", "", "connection_lost", "本机工作台连接已断开，请重新连接"
+		state.State, state.Phase, state.ErrorCode, state.Message = "failed", "", "connection_lost", "Подключение к локальной рабочей среде разорвано; переподключитесь"
 	}
 	return state
 }
@@ -85,7 +85,7 @@ func (t *desktopTarget) acquire() (*remotehost.Session, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if t.session == nil || t.ctx.Err() != nil || t.session.Context.Err() != nil {
-		return nil, errors.New("本机工作台尚未连接")
+		return nil, errors.New("Локальная рабочая среда ещё не подключена")
 	}
 	return t.session, nil
 }
@@ -147,7 +147,7 @@ func (d *desktopGateway) context() ClientContext {
 	c.Mode, c.State = active.mode, active.state()
 	c.HostID, c.InstanceID = c.State.HostID, c.State.InstanceID
 	if active.mode == "local" {
-		c.Name, c.ServerPlatform = "本机环境", runtime.GOOS
+		c.Name, c.ServerPlatform = "Локальная среда", runtime.GOOS
 	} else {
 		c.ServerPlatform = "linux"
 		if p, err := d.store.Get(c.HostID); err == nil {
@@ -188,7 +188,7 @@ func (d *desktopGateway) prepare(in switchRequest) (*desktopCandidate, error) {
 		return nil, err
 	}
 	if d.pending != nil {
-		return nil, errors.New("请先取消当前候选连接")
+		return nil, errors.New("Сначала отмените текущее подключение-кандидат")
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	t := &desktopTarget{mode: in.Mode, ctx: ctx, cancel: cancel}
@@ -206,12 +206,12 @@ func (d *desktopGateway) prepare(in switchRequest) (*desktopCandidate, error) {
 	case "local":
 		if d.active != nil && d.active.mode == "local" && d.active.state().State == "connected" {
 			t.close()
-			return nil, errors.New("已连接当前本机工作台")
+			return nil, errors.New("Текущая локальная рабочая среда подключена")
 		}
 		t.id = randomToken()
 		if d.local == nil {
 			t.close()
-			return nil, errors.New("本机运行组件不可用")
+			return nil, errors.New("Локальный компонент выполнения недоступен")
 		}
 		t.localDone = make(chan struct{})
 		go func() {
@@ -223,7 +223,7 @@ func (d *desktopGateway) prepare(in switchRequest) (*desktopCandidate, error) {
 		}()
 	default:
 		t.close()
-		return nil, errors.New("请选择本机或远程主机")
+		return nil, errors.New("Выберите этот компьютер или удалённый хост")
 	}
 	d.mu.Lock()
 	d.pending = t
@@ -268,21 +268,21 @@ func (d *desktopGateway) discard(t *desktopTarget) {
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
 		if err := owner.ReleaseUnused(ctx, t.session); err != nil {
-			diagnostics.Log("warn", "controller", "取消本机候选后未能确认空闲服务已释放")
+			diagnostics.Log("warn", "controller", "После отмены локального кандидата не удалось подтвердить освобождение простаивающей службы")
 		}
 	}
 }
 
 func (d *desktopGateway) stopLocal(ctx context.Context, expected string) error {
 	if d.local == nil || expected == "" {
-		return errors.New("无法确认本机后台身份，请刷新本机状态")
+		return errors.New("Не удалось подтвердить идентичность локальной фоновой службы; обновите состояние этого компьютера")
 	}
 	st, err := d.local.Status(ctx)
 	if err != nil {
 		return err
 	}
 	if !st.Known || st.ControllerID != expected {
-		return errors.New("本机后台已变化，请刷新状态后再停止")
+		return errors.New("Локальная фоновая служба изменилась; обновите состояние и затем останавливайте")
 	}
 	return d.local.Release(ctx, st, true)
 }
@@ -320,11 +320,11 @@ func suspendLocalView(ctx context.Context, t *desktopTarget) error {
 	req.Header.Set("Content-Type", "application/json")
 	response, err := session.Client.Do(req)
 	if err != nil {
-		return errors.New("未能锁定本机会话，请重新连接本机工作台")
+		return errors.New("Не удалось заблокировать локальный сеанс; переподключитесь к локальной рабочей среде")
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK && response.StatusCode != http.StatusNoContent && response.StatusCode != http.StatusLocked {
-		return errors.New("本机工作台未确认账户锁定")
+		return errors.New("Локальная рабочая среда не подтвердила блокировку аккаунта")
 	}
 	return nil
 }
@@ -344,7 +344,7 @@ func (d *desktopGateway) leaveLocal(ctx context.Context, in switchRequest, old *
 		}
 		st, err := d.local.Status(ctx)
 		if err != nil || !st.Known || st.Running || st.Busy || st.LiveTerminals > 0 {
-			return errors.New("本机环境可能仍有任务，请选择保留运行或停止本机")
+			return errors.New("В локальной среде могут оставаться задачи; выберите «оставить работать» или остановите этот компьютер")
 		}
 		if !st.ServiceRunning {
 			return nil
@@ -358,7 +358,7 @@ func (d *desktopGateway) leaveLocal(ctx context.Context, in switchRequest, old *
 		}
 		return nil
 	default:
-		return errors.New("本机处理方式无效")
+		return errors.New("Неверный способ обработки на этом компьютере")
 	}
 }
 
@@ -370,7 +370,7 @@ func (d *desktopGateway) commit(ctx context.Context, in switchRequest) error {
 		return err
 	}
 	if _, err = t.acquire(); err != nil {
-		return errors.New("候选工作台尚未连接，当前工作台已保留")
+		return errors.New("Рабочая среда-кандидат ещё не подключена, текущая рабочая среда сохранена")
 	}
 	old := d.active
 	if old != nil && old.mode == "local" {
@@ -383,7 +383,7 @@ func (d *desktopGateway) commit(ctx context.Context, in switchRequest) error {
 		}
 	}
 	if _, err = t.acquire(); err != nil {
-		return errors.New("候选工作台连接已中断，请重新连接")
+		return errors.New("Подключение к рабочей среде-кандидату прервалось; переподключитесь")
 	}
 	d.mu.Lock()
 	d.generation, d.active, d.pending = t.id, t, nil
@@ -485,7 +485,7 @@ func (d *desktopGateway) handle(path string, w http.ResponseWriter, r *http.Requ
 	switch path {
 	case "candidate", "commit", "cancel", "disconnect", "local-stop":
 	case "local", "connect":
-		http.Error(w, "请通过候选连接选择工作环境", http.StatusConflict)
+		http.Error(w, "Выберите рабочую среду через подключение-кандидат", http.StatusConflict)
 		return true
 	default:
 		return false

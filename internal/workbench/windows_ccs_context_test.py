@@ -49,7 +49,7 @@ class ActualContextTests(unittest.TestCase):
                      'state_file':state_file,'save':lambda path,value:path.write_text(json.dumps(value))}
             with patch.dict(os.environ,{'CAGE_CLI_BINARY':'trusted-native.exe','CAGE_CLI_IDENTITY_HELPER':'fixture-identity.py','DYNAMIC_PROXY_TOKEN':'fixture-only'}),patch.object(runpy,'run_path',return_value=identity),patch.dict(actual.__globals__,{'CliProcess':Process}):
                 if failure and resume:
-                    with self.assertRaisesRegex(ValueError,'暂时无法核验'):actual(str(request),channel)
+                    with self.assertRaisesRegex(ValueError,'проверить'):actual(str(request),channel)
                 else:self.assertEqual(actual(str(request),channel),0)
             self.assertFalse(request.exists());self.assertEqual(set(folder.glob('*.settings.json')),{source})
             return events,runs,state,args

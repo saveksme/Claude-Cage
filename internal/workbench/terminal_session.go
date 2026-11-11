@@ -170,7 +170,7 @@ func (t *terminalSession) subscribe() *terminalSubscription {
 	}
 	history := append([]byte(nil), t.history...)
 	if t.kind == "claude-login" {
-		history = []byte("请在 Cage 浏览器的临时登录页完成授权。若页面提供验证码，可返回此终端输入。\r\n")
+		history = []byte("Завершите авторизацию на временной странице входа в браузере Cage. Если страница покажет код подтверждения, вернитесь в этот терминал и введите его.\r\n")
 	}
 	return &terminalSubscription{History: history, Output: channel, CLIStartup: t.cliStartupDone,
 		CLIStarting: t.cliStartupPendingLocked(), session: t, channel: channel}

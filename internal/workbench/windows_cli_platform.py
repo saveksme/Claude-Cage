@@ -71,13 +71,13 @@ def terminate_cli(pid, force=False):
     expected = os.environ.get("CAGE_CLI_BINARY")
     own = wintypes.DWORD()
     if not fingerprint or not expected or not kernel.ProcessIdToSessionId(os.getpid(), ctypes.byref(own)) or fingerprint[2] != own.value or fingerprint[1] != os.path.normcase(str(Path(expected).resolve())):
-        raise ValueError("原生 Claude 进程身份不匹配，未停止其他程序")
+        raise ValueError("Идентичность нативного процесса Claude не совпадает, другие программы не остановлены")
     handle = kernel.OpenProcess(0x1001, False, int(pid))
     if not handle:
         raise ProcessLookupError("CLI process no longer exists")
     try:
         if process_fingerprint(pid) != fingerprint or not kernel.TerminateProcess(handle, 130):
-            raise ValueError("无法停止已核验的原生 Claude 进程")
+            raise ValueError("Не удалось остановить проверенный нативный процесс Claude")
     finally:
         kernel.CloseHandle(handle)
 
@@ -124,7 +124,7 @@ def launch_cli(args, request, connection, state_file):
     if request.get("subject"):
         reading = account["identity"](args[0], env, Path.cwd(), account["settings_flags"](args[1:]))
         if account["subject"](reading) != request["subject"]:
-            raise ValueError("项目与所选 Claude 账号身份不一致")
+            raise ValueError("Проект и выбранный аккаунт Claude имеют разные идентичности")
     child = CliProcess(args, env)
     with state_file(connection) as state:
         state["pid"] = child.pid
@@ -221,7 +221,7 @@ def launch_ccs_parent(request, channel):
             '--resume' if request.get('resume') else '--session-id', sid, '--setting-sources', 'user']
     with channel['state_file'](connection) as state:
         if channel['live'](state.get('pid')) and not state.get('closed'):
-            raise ValueError('目标会话已有进程，未重复启动')
+            raise ValueError('В целевом сеансе уже есть процесс, повторный запуск не выполнялся')
         state.update(cli_id=sid, config=str(Path(env.get('CLAUDE_CONFIG_DIR') or Path.home()/'.claude')),
                      workspace=str(Path.cwd()), closed=False, busy=False, channel_pid=None,
                      pid=os.getpid(), updated_at=__import__('time').time(), native_ccs_pending=True)
@@ -249,26 +249,26 @@ def launch_ccs_live(filename, channel):
     import sys
     source = Path(filename)
     if source.is_symlink() or source.stat().st_size > 1 << 20:
-        raise ValueError('CCS 实际启动记录无效')
+        raise ValueError('Неверная запись фактического запуска CCS')
     metadata = json.loads(source.read_text(encoding='utf-8'))
     connection = channel['identifier'](metadata['id'])
     sid = channel['identifier'](metadata['session_id'])
     folder = channel['ROOT'] / connection
     if source.parent.resolve() != folder.resolve() or not source.name.startswith('ccs-actual-'):
-        raise ValueError('CCS 实际启动记录不属于此会话')
+        raise ValueError('Запись фактического запуска CCS не относится к этому сеансу')
     source.unlink()
     context = channel['read_json'](folder/'ccs-launch.json')
     if context['id'] != connection or context['session_id'] != sid or context['profile'] != metadata['profile']:
-        raise ValueError('CCS 实际启动记录已变化')
+        raise ValueError('Запись фактического запуска CCS изменилась')
     original = metadata['actual_args']
     if not isinstance(original, list) or any(not isinstance(arg, str) for arg in original):
-        raise ValueError('CCS 参数无效')
+        raise ValueError('Неверные параметры CCS')
     binary = os.environ['CAGE_CLI_BINARY']
     args = original.copy()
     identity = runpy.run_path(os.environ['CAGE_CLI_IDENTITY_HELPER'])
     snapshot = tempfile.NamedTemporaryFile(dir=folder, suffix='.settings.json', delete=False)
     verified = False
-    notice = '此 CCS 配置尚未通过共享身份核验，终端仍可使用。'
+    notice = 'Эта конфигурация CCS ещё не прошла проверку общей идентичности, терминалом можно пользоваться.'
     try:
         try:
             settings_file = Path(metadata['settings_source'])
@@ -300,10 +300,10 @@ def launch_ccs_live(filename, channel):
             identity['bind'](sid, context['resume'], material)
             verified = True; notice = ''
         except identity['Changed']:
-            raise ValueError('CCS 账号或配置身份已变化，聊天记录已保留，请新建会话。')
+            raise ValueError('Аккаунт или конфигурация CCS изменились, история чата сохранена; создайте новый сеанс.')
         except (identity['Unverified'], OSError, ValueError, KeyError, TypeError, IndexError, subprocess.SubprocessError):
             if context['resume']:
-                raise ValueError('CCS 原会话身份暂时无法核验，聊天记录已保留。')
+                raise ValueError('Идентичность исходного сеанса CCS пока не удаётся проверить, история чата сохранена.')
             # Unverified identity already prevents channel use. Do not label
             # it as a managed policy that actually disabled Channels.
             args, env, disabled = original, dict(os.environ), False

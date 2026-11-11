@@ -213,7 +213,7 @@ func (m *mobileCLIStore) record(profile, id string) (*mobileRecord, error) {
 		return nil, err
 	}
 	if info.Size() > 4<<20 {
-		return nil, errors.New("CLI 会话记录过大")
+		return nil, errors.New("Запись сеанса CLI слишком большая")
 	}
 	b, err := os.ReadFile(path)
 	if err != nil {
@@ -221,7 +221,7 @@ func (m *mobileCLIStore) record(profile, id string) (*mobileRecord, error) {
 	}
 	var record mobileRecord
 	if json.Unmarshal(b, &record) != nil || record.ID != id || !validCLIUUID(record.CLIID) || record.Workspace == "" || record.Turns == nil {
-		return nil, errors.New("CLI 会话记录无效，请从备份恢复")
+		return nil, errors.New("Запись сеанса CLI недействительна; восстановите из резервной копии")
 	}
 	// Older "delete" actions only hid the row and kept the CLI transcript.
 	if record.Deleted && !record.Purged {
@@ -234,7 +234,7 @@ func (m *mobileCLIStore) record(profile, id string) (*mobileRecord, error) {
 	if n := len(record.Turns); n > 0 && !record.Terminal {
 		turn := &record.Turns[n-1]
 		if turn.Status == "running" || turn.Status == "stopping" {
-			turn.Status, turn.Error = "interrupted", "主机服务重新启动。请检查本轮结果后再发送消息。"
+			turn.Status, turn.Error = "interrupted", "Служба хоста перезапустилась. Проверьте результат раунда, затем отправляйте сообщения."
 			record.changed()
 			if err := writePrivate(path, &record); err != nil {
 				return nil, err
@@ -293,17 +293,17 @@ func (m *mobileCLIStore) create(profile, workspace, id string) (mobileSession, e
 	record, err := m.record(profile, id)
 	if err == nil {
 		if record.Deleted || record.Archived {
-			return mobileSession{}, errors.New("此会话已归档或删除，请从已归档会话恢复或新建会话")
+			return mobileSession{}, errors.New("Этот сеанс архивирован или удалён; восстановите его из архива или создайте новый сеанс")
 		}
 		if record.Workspace != workspace {
-			return mobileSession{}, errors.New("创建请求已用于其他项目")
+			return mobileSession{}, errors.New("Запрос создания уже использован для другого проекта")
 		}
 		return record.snapshot(), nil
 	}
 	if !errors.Is(err, os.ErrNotExist) {
 		return mobileSession{}, err
 	}
-	record = &mobileRecord{mobileSession: mobileSession{mobileSummary: mobileSummary{ID: id, Workspace: workspace, Title: "新会话"}, Turns: []mobileTurn{}}, CLIID: uuid.NewString()}
+	record = &mobileRecord{mobileSession: mobileSession{mobileSummary: mobileSummary{ID: id, Workspace: workspace, Title: "Новый сеанс"}, Turns: []mobileTurn{}}, CLIID: uuid.NewString()}
 	record.Generation = m.epochLocked()
 	record.changed()
 	err = writePrivate(mobileRecordPath(profile, id), record)

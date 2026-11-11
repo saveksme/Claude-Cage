@@ -26,7 +26,7 @@ func (s *Server) restoreNetworkIntent() error {
 			PauseVersion *uint64 `json:"pause_version"`
 		}
 		if json.Unmarshal(data, &record) != nil || record.Version != 1 || record.Paused == nil || record.PauseVersion == nil {
-			err = errors.New("保存的网络暂停状态无效")
+			err = errors.New("Сохранённое состояние приостановки сети недействительно")
 		} else {
 			paused, generation = *record.Paused, *record.PauseVersion
 		}
@@ -35,7 +35,7 @@ func (s *Server) restoreNetworkIntent() error {
 	defer s.mu.Unlock()
 	s.networkPaused, s.safety.pauseVersion = paused, generation
 	if err != nil && !os.IsNotExist(err) {
-		s.networkIntentError = "无法读取网络暂停状态，外网保持关闭；请确认后手动恢复。"
+		s.networkIntentError = "Не удалось прочитать состояние приостановки сети, внешняя сеть остаётся закрытой; проверьте и восстановите вручную."
 		return errors.New(s.networkIntentError)
 	}
 	s.networkIntentError = ""
@@ -46,8 +46,8 @@ func (s *Server) restoreNetworkIntent() error {
 func (s *Server) saveNetworkIntentLocked(paused bool) error {
 	if err := writePrivate(filepath.Join(s.profile, "network-intent.json"), networkIntent{Version: 1, Paused: paused, PauseVersion: s.safety.pauseVersion}); err != nil {
 		s.networkPaused = true
-		s.networkIntentError = "无法保存网络暂停状态，外网保持关闭；请解决配置写入问题后重试。"
-		return fmt.Errorf("无法保存网络暂停状态，当前外网保持关闭；请解决配置写入问题后重试：%w", err)
+		s.networkIntentError = "Не удалось сохранить состояние приостановки сети, внешняя сеть остаётся закрытой; устраните проблему записи конфигурации и повторите."
+		return fmt.Errorf("Не удалось сохранить состояние приостановки сети, внешняя сеть остаётся закрытой; устраните проблему записи конфигурации и повторите: %w", err)
 	}
 	s.networkPaused = paused
 	s.networkIntentError = ""
@@ -63,7 +63,7 @@ func (s *Server) resumeNetworkIntentAt(generation uint64) error {
 	err := s.saveNetworkIntentLocked(false)
 	s.mu.Unlock()
 	if err != nil {
-		_ = s.closeProxyGate("网络恢复意图无法保存，外网保持关闭")
+		_ = s.closeProxyGate("Не удалось сохранить намерение восстановить сеть, внешняя сеть остаётся закрытой")
 	}
 	return err
 }

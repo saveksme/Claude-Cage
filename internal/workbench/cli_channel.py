@@ -252,9 +252,9 @@ def view(config, session_id, path=None):
     modified = max(path.stat().st_mtime if path else 0, float(state.get("updated_at", 0)))
     notice = state.get("native_ccs_notice", "")
     if state.get("blocked"):
-        notice = "这台主机的 Claude Code 管理策略关闭了 Channels，请由主机管理员处理。"
+        notice = "Политика управления Claude Code на этом хосте отключила Channels; обратитесь к администратору хоста."
     elif state.get("policy_unavailable"):
-        notice = "Cage 默认环境的通道配置未能更新，请在电脑更新环境组件。"
+        notice = "Не удалось обновить конфигурацию каналов среды Cage по умолчанию; обновите компоненты среды на компьютере."
     return {"cli_id": session_id, "config": str(config), "connection": connection, "native_ccs_unverified": bool(state.get("native_ccs_unverified")),
             "workspace": workspace or state.get("workspace", ""), "title": title or (turns[0]["prompt"][:40] if turns else "Claude Code"),
             "updated_at": modified, "turns": turns, "running": bool(running), "active": bool(running and (state.get("busy") or state.get("approvals"))), "channel_ready": bool(channel), "can_send": bool(channel and not state.get("resume_task")), "has_history": has_history, "history_truncated": shortened,
@@ -353,9 +353,9 @@ def hook(connection):
     with state_file(connection) as state:
         if state.get("account_switch"):
             if event == "UserPromptSubmit":
-                return {"decision": "block", "reason": "Cage 正在切换账号，请在目标会话中继续。"}
+                return {"decision": "block", "reason": "Cage переключает аккаунт; продолжайте в целевом сеансе."}
             if event == "PreToolUse":
-                return {"hookSpecificOutput": {"hookEventName": event, "permissionDecision": "deny", "permissionDecisionReason": "Cage 正在切换账号。"}}
+                return {"hookSpecificOutput": {"hookEventName": event, "permissionDecision": "deny", "permissionDecisionReason": "Cage переключает аккаунт."}}
         state["updated_at"] = time.time()
         state["cli_id"] = identifier(payload["session_id"])
         state["workspace"] = payload.get("cwd", state.get("workspace", ""))
@@ -441,7 +441,7 @@ def running_sessions(config=""):
         env["CLAUDE_CONFIG_DIR"] = config
     listing = subprocess.run(["claude", "agents", "--json"], env=env, capture_output=True, text=True, timeout=10)
     if listing.returncode != 0:
-        raise ValueError("无法检查原会话是否仍在运行")
+        raise ValueError("Не удалось проверить, работает ли исходный сеанс")
     return [row for row in json.loads(listing.stdout) if live(row.get("pid"))]
 
 
@@ -456,7 +456,7 @@ def handoff_session(request):
         return {"running": True, "channel_ready": True}
     for row in rows:
         if row.get("cwd") != workspace:
-            raise ValueError("原会话的项目已变化，请重新读取会话列表")
+            raise ValueError("Проект исходного сеанса изменился; перечитайте список сеансов")
         # A waiting CLI has no executing tool. Resume its task on the shared
         # channel so any permission decision is requested again on the phone.
         if row.get("status") not in ("idle", "waiting") or row.get("kind") != "interactive":
@@ -500,16 +500,16 @@ def prepare_account_switch(request):
     if receipt.exists():
         saved = read_json(receipt)
         if saved["binding"] != binding:
-            raise ValueError("账号交接编号已用于另一项操作")
+            raise ValueError("Номер передачи аккаунта уже использован для другой операции")
         return {"transcript": str(folder / "history.jsonl")}
     with state_file(connection) as state:
         if state.get("cli_id") != sid or state.get("config") != str(config) or state.get("workspace") != workspace:
-            raise ValueError("原会话身份或项目已变化，请刷新后重试")
+            raise ValueError("Идентичность или проект исходного сеанса изменились; обновите и повторите")
         if state.get("busy") or state.get("approvals") or state.get("pending_send") or state.get("sent"):
-            raise ValueError("原会话仍有任务、待发消息或审批，请结束后再切换账号")
+            raise ValueError("В исходном сеансе ещё есть задачи, неотправленные сообщения или подтверждения; завершите их и затем переключайте аккаунт")
         existing = state.get("account_switch")
         if existing and existing != switch_id:
-            raise ValueError("此会话已有账号交接尚未完成")
+            raise ValueError("В этом сеансе уже есть незавершённая передача аккаунта")
         state["account_switch"] = switch_id
         save(ROOT / connection / "state.json", state)
     rows = active_sessions(sid, str(config))
@@ -517,12 +517,12 @@ def prepare_account_switch(request):
     # child of the source. The registry does not expose a complete ancestry.
     listing = subprocess.run(["claude", "agents", "--json"], env={**os.environ, "CLAUDE_CONFIG_DIR": str(config)}, capture_output=True, text=True, timeout=10)
     if listing.returncode != 0:
-        raise ValueError("无法确认后台任务，未切换账号")
+        raise ValueError("Не удалось подтвердить фоновые задачи, аккаунт не переключён")
     if any(row.get("sessionId") != sid and live(row.get("pid")) for row in json.loads(listing.stdout)):
-        raise ValueError("原账号仍有其他执行任务，请结束后台任务后再交接")
+        raise ValueError("У исходного аккаунта ещё есть задачи выполнения; завершите фоновые задачи и затем передавайте аккаунт")
     for row in rows:
         if row.get("cwd") != workspace or row.get("status") != "idle" or row.get("kind") != "interactive":
-            raise ValueError("原 Claude Code 尚未安全停止，请先结束本轮任务")
+            raise ValueError("Исходный Claude Code ещё не остановлен безопасно; сначала завершите текущий раунд")
     pid = state.get("pid")
     fingerprint = process_fingerprint(pid) if live(pid) else ""
     def executing():
@@ -533,7 +533,7 @@ def prepare_account_switch(request):
         status = subprocess.run(["ps", "-o", "stat=", "-p", str(pid)], capture_output=True, text=True, timeout=2)
         return bool(status.stdout.strip()) and not status.stdout.lstrip().startswith("Z")
     if executing() and not any(row.get("pid") == pid for row in rows):
-        raise ValueError("无法核对原进程状态，请先退出原 Claude Code 后重试")
+        raise ValueError("Не удалось проверить состояние исходного процесса; сначала выйдите из исходного Claude Code и повторите")
     for row in rows:
         terminate_cli(row["pid"])
     deadline = time.monotonic() + 5
@@ -550,17 +550,17 @@ def prepare_account_switch(request):
             while executing() and time.monotonic() < deadline:
                 time.sleep(.05)
     if executing():
-        raise ValueError("原进程尚未退出，未启动目标账号")
+        raise ValueError("Исходный процесс ещё не завершился, целевой аккаунт не запущен")
     path = next((config / "projects").glob("*/" + sid + ".jsonl"), None)
     if path is None or path.is_symlink():
-        raise ValueError("原会话历史不可用，未切换账号")
+        raise ValueError("История исходного сеанса недоступна, аккаунт не переключён")
     pending = set()
     for line in path.read_text().splitlines():
         row = json.loads(line)
         if row.get("isSidechain"):
             continue
         if row.get("cwd") and row["cwd"] != workspace:
-            raise ValueError("历史项目与当前项目不一致")
+            raise ValueError("Исторический проект не совпадает с текущим")
         blocks = (row.get("message") or {}).get("content", [])
         if not isinstance(blocks, list):
             continue
@@ -570,7 +570,7 @@ def prepare_account_switch(request):
             elif block.get("type") == "tool_result":
                 pending.discard(block.get("tool_use_id"))
     if pending:
-        raise ValueError("历史仍有结果未确认的工具，不能自动接续")
+        raise ValueError("В истории остались инструменты с неподтверждённым результатом; автоматическое продолжение невозможно")
     folder.mkdir(mode=0o700, parents=True, exist_ok=True)
     target = folder / "history.jsonl"
     with tempfile.NamedTemporaryFile(dir=folder, delete=False) as stream:
@@ -588,7 +588,7 @@ def cancel_account_switch(request):
     switch_id = identifier(request["switch_id"])
     with state_file(connection) as state:
         if state.get("cli_id") != identifier(request["cli_id"]) or state.get("account_switch") not in (None, switch_id):
-            raise ValueError("原会话交接已变化")
+            raise ValueError("Передача исходного сеанса изменилась")
         state.pop("account_switch", None)
     # The source may already be stopped, but it remains resumable. Remove only
     # this operation's frozen copy so a later retry cannot use stale history.
@@ -604,21 +604,21 @@ def purge_session(request):
     config = config.resolve()
     workspace = request["workspace"].rstrip("/")
     if active_session(session_id, str(config)):
-        raise ValueError("Claude Code 仍在运行这段会话，请先结束原终端中的 Claude Code")
+        raise ValueError("Claude Code всё ещё выполняет этот сеанс; сначала завершите Claude Code в исходном терминале")
     projects = config / "projects"
     if projects.is_symlink():
-        raise ValueError("会话目录是符号链接，请检查主机配置")
+        raise ValueError("Каталог сеанса является символической ссылкой; проверьте конфигурацию хоста")
     paths = list(projects.glob("*/" + session_id + ".jsonl"))
     for path in paths:
         if path.is_symlink() or path.parent.is_symlink():
-            raise ValueError("会话历史路径已变化，请检查主机配置")
+            raise ValueError("Путь истории сеанса изменился; проверьте конфигурацию хоста")
         directory, _ = history_summary(path)
         if not workspace_within(directory, workspace):
-            raise ValueError("会话历史与已授权项目不一致")
+            raise ValueError("История сеанса не соответствует авторизованному проекту")
     key = hashlib.sha256((str(config) + "\n" + session_id).encode()).hexdigest()
     receipt = ROOT.parent / "cli-deleted" / (key + ".json")
     if not paths and request.get("expect_history") and not receipt.exists():
-        raise ValueError("当前账号配置中未找到原始会话，请核对主机配置后重试")
+        raise ValueError("В конфигурации текущего аккаунта не найден исходный сеанс; сверьте конфигурацию хоста и повторите")
     # The SDK's delete_session removes the transcript and its sibling session
     # directory. Keep a content-free receipt so a lost response can be retried.
     save(receipt, {"cli_id": session_id, "config": str(config), "complete": False})
@@ -633,7 +633,7 @@ def purge_session(request):
         state = read_json(path, {})
         if state.get("cli_id") == session_id and state.get("config") == str(config):
             if live(state.get("pid")) and not state.get("closed"):
-                raise ValueError("会话通道尚未退出，请稍后重试")
+                raise ValueError("Канал сеанса ещё не завершился; повторите позже")
             shutil.rmtree(path.parent)
     identity = ROOT.parent / "mobile-cli-identities" / session_id
     identity.unlink(missing_ok=True)
@@ -669,7 +669,7 @@ def launch(request):
     _, previous = connection_for(session_id, config_directory("default"))
     if request.get("resume"):
         if active_session(request["resume"]):
-            raise ValueError("原会话仍在电脑终端运行，请先结束该终端中的 Claude Code 再接续")
+            raise ValueError("Исходный сеанс всё ещё работает в терминале компьютера; сначала завершите Claude Code в этом терминале, затем продолжайте")
     command = shlex.join([sys.executable, *(["-X", "utf8"] if os.name == "nt" else []), "-I", str(Path(__file__).resolve()), "hook", connection])
     events = ("SessionStart", "UserPromptSubmit", "MessageDisplay", "PreToolUse", "PostToolUse", "PostToolUseFailure", "Stop", "StopFailure", "SessionEnd")
     handler = {"type": "command", "command": command, "timeout": 5}
@@ -692,7 +692,7 @@ def launch(request):
     save(folder / "mcp.json", config)
     with state_file(connection) as state:
         if live(state.get("pid")) and not state.get("closed"):
-            raise ValueError("目标会话已有进程，未重复启动")
+            raise ValueError("В целевом сеансе уже есть процесс, повторный запуск не выполнялся")
         state.update(cli_id=session_id, config=str(config_directory("default")),
                      workspace=str(Path.cwd()), pid=os.getpid(), closed=False, updated_at=time.time(), approvals=[], busy=False,
                      channel_pid=None, pending_send=None, display=None, stopped=False,
@@ -723,7 +723,7 @@ def launch(request):
     if request.get("resume_transcript"):
         expected = ROOT.parent / "cli-account-switches" / identifier(request["switch_id"]) / "history.jsonl"
         if Path(request["resume_transcript"]) != expected or not expected.is_file():
-            raise ValueError("账号交接历史无效")
+            raise ValueError("История передачи аккаунта недействительна")
         args += ["--resume", str(expected), "--fork-session", "--session-id", session_id]
     else:
         args += ["--resume", session_id] if request.get("resume") else ["--session-id", session_id]
@@ -761,24 +761,24 @@ def serve(connection):
                 request = json.loads(self.rfile.readline(72 << 10))
                 with state_file(connection) as state:
                     if request["cli_id"] != state.get("cli_id") or state.get("closed"):
-                        raise ValueError("终端已切换会话，请重新读取列表")
+                        raise ValueError("Терминал переключил сеанс; перечитайте список")
                     action = request["action"]
                     if state.get("account_switch"):
-                        raise ValueError("此会话正在切换账号，请等待交接完成")
+                        raise ValueError("В этом сеансе переключается аккаунт; дождитесь завершения передачи")
                     if action == "send":
                         request_id = identifier(request["request_id"])
                         text = request["text"]
                         if not text.strip() or len(text.encode()) > PROMPT_LIMIT:
-                            raise ValueError("消息为空或过长")
+                            raise ValueError("Сообщение пустое или слишком длинное")
                         digest = hashlib.sha256(text.encode()).hexdigest()
                         requests = state.setdefault("requests", {})
                         previous = requests.get(request_id)
                         if previous is not None:
                             if previous != digest:
-                                raise ValueError("同一发送编号已用于另一条消息")
+                                raise ValueError("Этот номер отправки уже использован для другого сообщения")
                         else:
                             if state.get("busy") or state.get("pending_send"):
-                                raise ValueError("这段会话已有消息正在处理，请等待后重试")
+                                raise ValueError("В этом сеансе уже обрабатывается сообщение; подождите и повторите")
                             state.pop("stopped", None)
                             state["pending_send"] = request_id
                             requests[request_id] = digest
@@ -790,7 +790,7 @@ def serve(connection):
                     elif action == "approve":
                         pending = state.get("approvals", [])
                         if not pending or pending[0]["id"] != request["approval_id"] or type(request["allow"]) is not bool:
-                            raise ValueError("审批已结束，请重新读取会话")
+                            raise ValueError("Подтверждение завершено; перечитайте сеанс")
                         approval = pending.pop(0)
                         emit({"method": "notifications/claude/channel/permission", "params": {
                             "request_id": approval["relay_id"], "behavior": "allow" if request["allow"] else "deny"}})
@@ -827,7 +827,7 @@ def serve(connection):
             except ConnectionRefusedError:
                 Path(address).unlink()
             else:
-                raise ValueError("会话通道已在运行")
+                raise ValueError("Канал сеанса уже работает")
     with socketserver.ThreadingUnixStreamServer(address, Handler) as server:
         server.daemon_threads = True
         os.chmod(address, 0o600)

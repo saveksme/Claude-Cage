@@ -20,7 +20,7 @@ import (
 func (s *Server) browserStateForHost(body []byte) ([]byte, error) {
 	var state map[string]json.RawMessage
 	if err := json.Unmarshal(body, &state); err != nil {
-		return nil, errors.New("浏览器状态无效")
+		return nil, errors.New("Неверное состояние браузера")
 	}
 	// Cache completed default saves on the host so Open/Reveal continue to work
 	// after the VM stops. A user-selected Save As location always wins.
@@ -76,11 +76,11 @@ func (s *Server) browserStateForHost(body []byte) ([]byte, error) {
 	}
 	var tabs []map[string]json.RawMessage
 	if err := json.Unmarshal(state["tabs"], &tabs); err != nil {
-		return nil, errors.New("浏览器标签状态无效")
+		return nil, errors.New("Неверное состояние вкладки браузера")
 	}
 	authorized, err := s.projectPaths()
 	if err != nil {
-		return nil, errors.New("无法读取项目列表")
+		return nil, errors.New("Не удалось прочитать список проектов")
 	}
 	byGuest := make(map[string]string, len(authorized))
 	for _, hostPath := range authorized {
@@ -155,7 +155,7 @@ func (s *Server) writeBrowserEvents(ctx context.Context, w http.ResponseWriter, 
 			line = append([]byte("data: "), mapped...)
 		}
 		if len(line) > browserResponseLimit+len("data: ") {
-			return errors.New("浏览器事件超出大小限制")
+			return errors.New("Событие браузера превышает ограничение размера")
 		}
 		_ = controller.SetWriteDeadline(time.Now().Add(10 * time.Second))
 		if err := ctx.Err(); err != nil {

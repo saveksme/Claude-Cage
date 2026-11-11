@@ -32,11 +32,11 @@ func (s *Server) pasteInputStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if input.Target == "browser" && (input.ID == "" || len(input.ID) > 256) {
-		http.Error(w, "请选择粘贴的网页", http.StatusBadRequest)
+		http.Error(w, "Выберите веб-страницу для вставки", http.StatusBadRequest)
 		return
 	}
 	if !s.fileTargetReady(input.Target, input.ID) {
-		http.Error(w, "粘贴接收位置已关闭，请重新点击输入框", http.StatusConflict)
+		http.Error(w, "Место приёма вставки закрыто; снова нажмите поле ввода", http.StatusConflict)
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
@@ -50,7 +50,7 @@ func (s *Server) pasteInputStart(w http.ResponseWriter, r *http.Request) {
 		result, err := s.guestFiles(ctx, "desktop", "POST", "/start", bytes.NewReader(body), "")
 		id, _ := result["id"].(string)
 		if err != nil || !browserFileID.MatchString(id) {
-			http.Error(w, "粘贴目标未能绑定，请重新点击输入框。旧客机需要先同步环境组件", http.StatusConflict)
+			http.Error(w, "Не удалось привязать цель вставки; снова нажмите поле ввода. В старой гостевой системе сначала синхронизируйте компоненты среды", http.StatusConflict)
 			return
 		}
 		jsonReply(w, map[string]any{"available": true, "transfer": id})
@@ -62,7 +62,7 @@ func (s *Server) pasteInputStart(w http.ResponseWriter, r *http.Request) {
 			Transfer string `json:"transfer"`
 		}
 		if err != nil || json.Unmarshal(data, &result) != nil || !validInputToken(result.Transfer) {
-			http.Error(w, "粘贴目标未能绑定，请重新点击输入框。旧客机需要先同步环境组件", http.StatusConflict)
+			http.Error(w, "Не удалось привязать цель вставки; снова нажмите поле ввода. В старой гостевой системе сначала синхронизируйте компоненты среды", http.StatusConflict)
 			return
 		}
 		jsonReply(w, map[string]any{"available": true, "transfer": result.Transfer})
@@ -74,7 +74,7 @@ func (s *Server) pasteInputStart(w http.ResponseWriter, r *http.Request) {
 		Context   string `json:"context"`
 	}
 	if err != nil || json.Unmarshal(data, &state) != nil || !state.Available || !validInputToken(state.Context) {
-		http.Error(w, "图片接收位置尚未聚焦，请点击输入框后重试", http.StatusConflict)
+		http.Error(w, "Место приёма изображения ещё не в фокусе; нажмите поле ввода и повторите", http.StatusConflict)
 		return
 	}
 	jsonReply(w, map[string]any{"available": true, "context": state.Context})
@@ -102,11 +102,11 @@ func (s *Server) textInput(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if input.Target != "browser" || input.ID == "" || len(input.ID) > 256 || input.Text == nil || len(*input.Text) > 2<<20 {
-		http.Error(w, "粘贴文字或目标无效，文本最多 2 MiB", http.StatusBadRequest)
+		http.Error(w, "Неверный текст вставки или цель; текст не должен превышать 2 MiB", http.StatusBadRequest)
 		return
 	}
 	if !s.fileTargetReady("browser", input.ID) {
-		http.Error(w, "网页已关闭或环境尚未就绪", http.StatusConflict)
+		http.Error(w, "Веб-страница закрыта или среда ещё не готова", http.StatusConflict)
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
@@ -118,13 +118,13 @@ func (s *Server) textInput(w http.ResponseWriter, r *http.Request) {
 	var err error
 	if s.macosGuest != nil || s.windowsGuest != nil {
 		if !validInputToken(input.Transfer) {
-			http.Error(w, "粘贴目标尚未绑定，请重新点击输入框", http.StatusConflict)
+			http.Error(w, "Цель вставки ещё не привязана; снова нажмите поле ввода", http.StatusConflict)
 			return
 		}
 		_, err = s.nativeBrowserClient().pasteData(ctx, input.ID, []byte(*input.Text), input.Transfer, "text/plain")
 	} else {
 		if !validInputToken(input.Context) {
-			http.Error(w, "粘贴目标尚未绑定，请重新点击输入框", http.StatusConflict)
+			http.Error(w, "Цель вставки ещё не привязана; снова нажмите поле ввода", http.StatusConflict)
 			return
 		}
 		body, _ := json.Marshal(map[string]string{"id": input.ID, "text": *input.Text, "context": input.Context})
@@ -134,7 +134,7 @@ func (s *Server) textInput(w http.ResponseWriter, r *http.Request) {
 		_, err = s.guestAPI(ctx, token, "POST", "/paste-text", body)
 	}
 	if err != nil {
-		http.Error(w, "文字未能交给原输入位置，请核对页面与客机组件后重试", http.StatusConflict)
+		http.Error(w, "Текст не удалось передать в исходное место ввода; проверьте страницу и компоненты гостевой системы и повторите", http.StatusConflict)
 		return
 	}
 	jsonReply(w, map[string]bool{"ok": true})
@@ -142,25 +142,25 @@ func (s *Server) textInput(w http.ResponseWriter, r *http.Request) {
 
 func decodeInputImage(encoded string) ([]byte, error) {
 	if len(encoded) > base64.StdEncoding.EncodedLen(maxImageBytes) {
-		return nil, errors.New("图片不能超过 20 MB")
+		return nil, errors.New("Изображение не должно превышать 20 МБ")
 	}
 	data, err := base64.StdEncoding.Strict().DecodeString(encoded)
 	if err != nil || len(data) == 0 || len(data) > maxImageBytes {
-		return nil, errors.New("图片数据无效")
+		return nil, errors.New("Неверные данные изображения")
 	}
 	return validateInputImage(data)
 }
 
 func validateInputImage(data []byte) ([]byte, error) {
 	if len(data) == 0 || len(data) > maxImageBytes {
-		return nil, errors.New("图片数据无效")
+		return nil, errors.New("Неверные данные изображения")
 	}
 	config, err := png.DecodeConfig(bytes.NewReader(data))
 	if err != nil || config.Width <= 0 || config.Height <= 0 || int64(config.Width)*int64(config.Height) > 40_000_000 {
-		return nil, errors.New("需要有效的 PNG 图片，且不能超过 4000 万像素")
+		return nil, errors.New("Нужно корректное PNG-изображение не более 40 миллионов пикселей")
 	}
 	if _, err := png.Decode(bytes.NewReader(data)); err != nil {
-		return nil, errors.New("图片已损坏，请重新复制或选择图片")
+		return nil, errors.New("Изображение повреждено; скопируйте или выберите его заново")
 	}
 	return data, nil
 }
@@ -171,26 +171,26 @@ func (s *Server) imageInput(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if (input.Target != "browser" && input.Target != "desktop" && input.Target != "terminal") || (input.Target != "desktop" && input.ID == "") || len(input.ID) > 256 {
-		http.Error(w, "图片目标无效", 400)
+		http.Error(w, "Неверная цель изображения", 400)
 		return
 	}
 	s.mu.Lock()
 	ready, token, terminal := s.ready, s.credentials.Token, s.terminals.get(input.ID)
 	s.mu.Unlock()
 	if !ready {
-		http.Error(w, "环境尚未就绪", 409)
+		http.Error(w, "Среда ещё не готова", 409)
 		return
 	}
 	if input.Target == "terminal" {
 		if terminal == nil {
-			http.Error(w, "终端已关闭", 409)
+			http.Error(w, "Терминал закрыт", 409)
 			return
 		}
 		terminal.mu.Lock()
 		closed := terminal.closed
 		terminal.mu.Unlock()
 		if closed {
-			http.Error(w, "终端已关闭", 409)
+			http.Error(w, "Терминал закрыт", 409)
 			return
 		}
 	}
@@ -209,13 +209,13 @@ func (s *Server) imageInput(w http.ResponseWriter, r *http.Request) {
 				Context   string `json:"context"`
 			}
 			if checkErr != nil || json.Unmarshal(state, &current) != nil || !current.Available || current.Context != input.Context {
-				http.Error(w, "图片接收位置已变化，请重新粘贴", http.StatusConflict)
+				http.Error(w, "Место приёма изображения изменилось; вставьте заново", http.StatusConflict)
 				return
 			}
 		}
 		body, _ := json.Marshal(map[string]string{"id": input.ID, "png": input.PNG, "transfer": input.Transfer})
 		if _, err = s.guestAPI(ctx, token, "POST", "/paste-image", body); err != nil {
-			http.Error(w, "图片未能粘贴，请点击支持图片的输入框后重试；环境组件过旧时请先更新环境", 502)
+			http.Error(w, "Не удалось вставить изображение; нажмите поле ввода, поддерживающее изображения, и повторите; если компоненты среды устарели, сначала обновите среду", 502)
 			return
 		}
 		jsonReply(w, map[string]bool{"ok": true})
@@ -223,7 +223,7 @@ func (s *Server) imageInput(w http.ResponseWriter, r *http.Request) {
 	}
 	if input.Target == "desktop" {
 		if !browserFileID.MatchString(input.Transfer) {
-			http.Error(w, "图片目标尚未绑定，请重新点击输入框后粘贴", http.StatusConflict)
+			http.Error(w, "Цель изображения ещё не привязана; снова нажмите поле ввода и вставьте", http.StatusConflict)
 			return
 		}
 		if _, err = s.guestFiles(ctx, "desktop", "POST", "/upload?id="+input.Transfer, bytes.NewReader(data), "image.png"); err == nil {
@@ -235,7 +235,7 @@ func (s *Server) imageInput(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		http.Error(w, "图片未能交给原输入位置，请核对窗口和客机组件后重新粘贴", http.StatusConflict)
+		http.Error(w, "Изображение не удалось передать в исходное место ввода; проверьте окно и компоненты гостевой системы и вставьте заново", http.StatusConflict)
 		return
 	}
 	result, err := s.guestImage(ctx, input.Target, data, macOSWindowRequest{Window: input.Window, PID: input.PID})
@@ -257,7 +257,7 @@ func (s *Server) guestImage(ctx context.Context, target string, data []byte, win
 		}
 		path, _ := result["path"].(string)
 		if !s.validMacOSAttachmentPath(path, "image.png") {
-			return nil, errors.New("图片保存路径无效")
+			return nil, errors.New("Неверный путь сохранения изображения")
 		}
 		return result, nil
 	}
@@ -280,25 +280,25 @@ func (s *Server) guestImage(ctx context.Context, target string, data []byte, win
 		return nil, err
 	}
 	if err = cmd.Start(); err != nil {
-		return nil, errors.New("无法连接 Cage 环境")
+		return nil, errors.New("Не удалось подключиться к среде Cage")
 	}
 	output, readErr := io.ReadAll(io.LimitReader(pipe, 4097))
 	if readErr != nil || len(output) > 4096 {
 		_ = cmd.Process.Kill()
 		_ = cmd.Wait()
-		return nil, errors.New("图片传递响应无效")
+		return nil, errors.New("Неверный ответ передачи изображения")
 	}
 	if err = cmd.Wait(); err != nil {
-		return nil, errors.New("图片未能传入 Cage，请确认目标已打开并支持图片；环境组件过旧时请先更新环境")
+		return nil, errors.New("Изображение не удалось передать в Cage; убедитесь, что цель открыта и поддерживает изображения; если компоненты среды устарели, сначала обновите среду")
 	}
 	var result map[string]any
 	if json.Unmarshal(output, &result) != nil {
-		return nil, errors.New("图片传递响应无效")
+		return nil, errors.New("Неверный ответ передачи изображения")
 	}
 	if target == "terminal" {
 		path, ok := result["path"].(string)
 		if !ok || !strings.HasPrefix(path, "/home/cage/.local/share/cage/attachments/image-") || strings.ContainsAny(path, "'\r\n\x00") {
-			return nil, errors.New("图片保存路径无效")
+			return nil, errors.New("Неверный путь сохранения изображения")
 		}
 	}
 	return result, nil

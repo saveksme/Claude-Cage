@@ -23,7 +23,7 @@ var mobileCCSProfile = regexp.MustCompile("^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$")
 
 type mobileEpochKey struct{}
 
-var errMobileLocked = errors.New("Cage 已锁定，请重新解锁后操作")
+var errMobileLocked = errors.New("Cage заблокирован; разблокируйте заново и повторите действие")
 
 // Caller holds the account mutex. An operation begun under an old unlock
 // must not gain authority from a later unlock of the same account.
@@ -36,19 +36,19 @@ func mobileLaunchArgs(launcher string, account claudeSelection) ([]string, error
 	parts := strings.Fields(launcher)
 	if len(parts) == 2 && parts[0] == "ccs" && mobileCCSProfile.MatchString(parts[1]) {
 		if account.ID != "" {
-			return nil, errors.New("当前账号池需要直接使用 claude 启动命令")
+			return nil, errors.New("Текущему пулу аккаунтов нужна прямая команда запуска claude")
 		}
 		return parts, nil
 	}
 	if len(parts) != 1 || parts[0] != "claude" {
-		return nil, errors.New("移动会话支持 claude 或 ccs 配置名，请在主机检查 Claude 启动命令")
+		return nil, errors.New("Мобильный сеанс поддерживает имена конфигурации claude или ccs; проверьте команду запуска Claude на хосте")
 	}
 	if account.ID == "" && account.GuestID == "" {
 		return parts, nil
 	}
 	boundDefault := account.ID == "" && account.GuestID == "default"
 	if (!boundDefault && !validClaudeID(account.ID)) || !validClaudeGuestID(account.GuestID) || len(account.Subject) != 64 {
-		return nil, errors.New("Claude 账号身份无效")
+		return nil, errors.New("Неверная учётная запись Claude")
 	}
 	return []string{"env", "CAGE_CLAUDE_SUBJECT=" + account.Subject, "/usr/local/bin/cage-claude-account", "run", account.GuestID}, nil
 }
@@ -106,7 +106,7 @@ func (s *Server) prepareMobileLaunch(record *mobileRecord) (claudeSelection, str
 			}
 		}
 	} else if launcher != configured {
-		return selection, "", empty, errors.New("主机已更改 Claude 启动命令。请恢复原配置或新建会话")
+		return selection, "", empty, errors.New("Хост изменил команду запуска Claude. Восстановите исходную конфигурацию или создайте новый сеанс")
 	}
 	if selection.ID != "" {
 		if update {
@@ -120,7 +120,7 @@ func (s *Server) prepareMobileLaunch(record *mobileRecord) (claudeSelection, str
 		}
 		account := list.find(selection.ID)
 		if account == nil || !account.Enabled || account.Status != "ready" || account.guestID() != selection.GuestID || claudeIdentityHash(account.Email, account.Organization) != selection.Subject {
-			return selection, "", empty, errors.New("原会话的 Claude 账号已停用或发生变化")
+			return selection, "", empty, errors.New("Аккаунт Claude исходного сеанса отключён или изменился")
 		}
 		if _, err = s.terminals.existingClaudeLogin(selection.ID, false); err != nil {
 			return selection, "", empty, err
@@ -157,24 +157,24 @@ func (s *Server) submitMobileTurn(ctx context.Context, id, requestID, prompt str
 	}
 	if record.Archived {
 		m.mu.Unlock()
-		return empty, errors.New("此会话已归档，请先撤销归档")
+		return empty, errors.New("Этот сеанс архивирован; сначала отмените архивирование")
 	}
 	if previous := findMobileTurn(record, requestID); previous != nil {
 		view := record.snapshot()
 		m.mu.Unlock()
 		if previous.Prompt != prompt {
-			return empty, errors.New("同一发送编号已用于另一条消息")
+			return empty, errors.New("Этот номер отправки уже использован для другого сообщения")
 		}
 		return view, nil
 	}
 	if m.active[id] != nil || len(m.active) >= 4 {
 		m.mu.Unlock()
-		return empty, errors.New("已有轮次在运行，请等待或停止后重试")
+		return empty, errors.New("Уже выполняется раунд; дождитесь или остановите его и повторите")
 	}
 	size := len(prompt) + mobileReplyLimit
 	if record.SingleTurn {
 		m.mu.Unlock()
-		return empty, errors.New("此配置只能进行单轮对话，请新建会话")
+		return empty, errors.New("Эта конфигурация поддерживает только один раунд; создайте новый сеанс")
 	}
 	for _, t := range record.Turns {
 		size += len(t.Prompt) + len(t.Text)
@@ -184,7 +184,7 @@ func (s *Server) submitMobileTurn(ctx context.Context, id, requestID, prompt str
 	}
 	if size > mobileHistoryLimit || len(record.Turns) >= 256 {
 		m.mu.Unlock()
-		return empty, errors.New("会话已达到移动历史容量，请新建会话继续")
+		return empty, errors.New("Сеанс достиг предела мобильной истории; создайте новый сеанс")
 	}
 	m.mu.Unlock()
 
@@ -232,7 +232,7 @@ func (s *Server) admitMobileTurn(request context.Context, record *mobileRecord, 
 		s.account.mu.Unlock()
 		cancel()
 		finish()
-		return empty, errors.New("无法保存消息，未启动执行")
+		return empty, errors.New("Не удалось сохранить сообщение, выполнение не запущено")
 	}
 	run := &mobileRun{record: record, cancel: cancel, done: make(chan struct{}), approvalGate: make(chan struct{}, 1)}
 	if m.active == nil {
@@ -294,7 +294,7 @@ func (s *Server) admitMobileTurn(request context.Context, record *mobileRecord, 
 		if err := writePrivate(mobileRecordPath(s.profile, record.ID), record); err != nil {
 			// Keep the error and result available in this process. The pre-launch
 			// marker remains on disk to prevent replay after a restart.
-			turn.Error = "本轮结果未能保存，请检查主机磁盘后重新读取会话"
+			turn.Error = "Результат раунда не сохранён; проверьте диск хоста и перечитайте сеанс"
 			turn.Status = "failed"
 			run.cancel = nil
 		} else {

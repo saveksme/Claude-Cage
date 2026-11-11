@@ -41,27 +41,27 @@ func (c *controllerClient) localControl(ctx context.Context, action string, inpu
 	switch status {
 	case http.StatusOK:
 		if action == "status" && (reply.OwnerID != localControllerID(c.record.Token) || reply.Identity.PID != c.record.PID || reply.Identity.Protocol != controlProtocol || !reply.Identity.matches(c.record.Controller) || !remoteInstanceID.MatchString(reply.InstanceID)) {
-			return reply, errors.New("无法确认本机控制服务身份")
+			return reply, errors.New("Не удалось подтвердить идентичность локальной службы управления")
 		}
 		return reply, nil
 	case http.StatusLocked:
 		return reply, errDesktopLocalLocked
 	case http.StatusNotFound:
-		return reply, errors.New("当前本机后台版本不支持环境切换，请先在原工作台保存任务并完成后台更新")
+		return reply, errors.New("Текущая версия локальной фоновой службы не поддерживает переключение среды; сначала сохраните задачи в исходной рабочей среде и завершите обновление фоновой службы")
 	case http.StatusConflict:
-		return reply, errors.New("本机仍有操作或状态已变化，请重新确认")
+		return reply, errors.New("На этом компьютере ещё выполняется действие или состояние изменилось; подтвердите заново")
 	default:
-		return reply, errors.New("本机控制服务未接受此操作")
+		return reply, errors.New("Локальная служба управления не приняла это действие")
 	}
 }
 
 // offlineStatus uses only existing private records. A live lock, orphan VM,
 // or proxy without a reachable controller is unknown, never a released state.
 func (d *desktopLocal) offlineStatus(ctx context.Context, available bool) DesktopLocalStatus {
-	st := DesktopLocalStatus{Available: available, Message: "本机状态待确认，请返回本机检查已有后台"}
+	st := DesktopLocalStatus{Available: available, Message: "Состояние этого компьютера требует подтверждения; вернитесь на этот компьютер и проверьте существующую фоновую службу"}
 	free, err := controllerLockStatus(d.profile)
 	if err != nil {
-		st.Message = "无法检查本机控制锁或修复旧版权限，请检查配置目录的访问权限：" + err.Error()
+		st.Message = "Не удалось проверить локальную блокировку управления или исправить права старой версии; проверьте доступ к каталогу конфигурации: " + err.Error()
 		return st
 	}
 	if !free {
@@ -96,7 +96,7 @@ func (d *desktopLocal) Status(ctx context.Context) (DesktopLocalStatus, error) {
 		return d.offlineStatus(ctx, available), nil
 	}
 	if err != nil {
-		return DesktopLocalStatus{Available: available, Message: "本机后台记录无效，请检查本机配置"}, nil
+		return DesktopLocalStatus{Available: available, Message: "Неверная запись локальной фоновой службы; проверьте конфигурацию этого компьютера"}, nil
 	}
 	defer c.close()
 	view, err := c.localControl(ctx, "status", desktopLocalRequest{})
@@ -104,7 +104,7 @@ func (d *desktopLocal) Status(ctx context.Context) (DesktopLocalStatus, error) {
 		if !processExists(c.record.PID) {
 			return d.offlineStatus(ctx, available), nil
 		}
-		return DesktopLocalStatus{Available: available, ServiceRunning: true, Message: "无法确认已有本机后台的状态或版本"}, nil
+		return DesktopLocalStatus{Available: available, ServiceRunning: true, Message: "Не удалось определить состояние или версию существующей локальной фоновой службы"}, nil
 	}
 	view.Available = available
 	return view.DesktopLocalStatus, nil
@@ -116,7 +116,7 @@ func (d *desktopLocal) Connect(ctx context.Context) (_ *remotehost.Session, retu
 		return nil, err
 	}
 	if !st.Available {
-		return nil, errors.New("此安装缺少本机运行组件")
+		return nil, errors.New("В этой установке отсутствует локальный компонент выполнения")
 	}
 	if !st.Known && st.ServiceRunning && st.ControllerID == "" {
 		wait, cancel := context.WithTimeout(ctx, 12*time.Second)
@@ -141,7 +141,7 @@ func (d *desktopLocal) Connect(ctx context.Context) (_ *remotehost.Session, retu
 		if handed {
 			st, err = d.Status(ctx)
 			if err != nil || !st.Known || st.ServiceRunning {
-				return nil, errors.New("已有本机服务尚未完全退出，请刷新状态后重试")
+				return nil, errors.New("Существующая локальная служба ещё не завершилась; обновите состояние и повторите")
 			}
 		}
 	}
@@ -174,7 +174,7 @@ func (d *desktopLocal) Connect(ctx context.Context) (_ *remotehost.Session, retu
 			if probeErr == nil {
 				defer c.close()
 				if st.ControllerID != "" && view.ControllerID != st.ControllerID {
-					return nil, errors.New("本机后台已变化，请重新选择")
+					return nil, errors.New("Локальная фоновая служба изменилась; выберите заново")
 				}
 				life := ctx
 				if launchID != "" && view.LaunchID == launchID {
@@ -197,7 +197,7 @@ func (d *desktopLocal) Connect(ctx context.Context) (_ *remotehost.Session, retu
 		}
 		select {
 		case <-bootstrap.Done():
-			return nil, errors.New("无法连接本机控制服务，请检查本机状态")
+			return nil, errors.New("Не удалось подключиться к локальной службе управления; проверьте состояние этого компьютера")
 		case <-time.After(100 * time.Millisecond):
 		}
 	}
@@ -227,7 +227,7 @@ func (d *desktopLocal) ReleaseOwnedIdle(ctx context.Context, expected DesktopLoc
 		return false, nil
 	}
 	if !expected.Known || !view.Known || view.ControllerID != expected.ControllerID || view.Busy || view.Running || view.LiveTerminals > 0 {
-		return false, errors.New("本机后台或任务状态已变化，请重新确认")
+		return false, errors.New("Состояние локальной фоновой службы или задачи изменилось; подтвердите заново")
 	}
 	if err := d.Release(ctx, expected, false); err != nil {
 		return false, err
@@ -292,20 +292,20 @@ func (d *desktopLocal) localSession(life, bootstrap context.Context, c *controll
 	var launch launchResponse
 	status, err := c.callContext(bootstrap, "POST", "/api/launch", map[string]string{"token": c.record.Token}, &launch)
 	if err != nil || status != http.StatusOK || launch.Controller != view.Identity {
-		return nil, errors.New("本机后台身份已变化，请重新选择")
+		return nil, errors.New("Идентичность локальной фоновой службы изменилась; выберите заново")
 	}
 	u, err := url.Parse(launch.URL)
 	if err != nil || u.Scheme+"://"+u.Host != c.origin || u.User != nil || u.Fragment == "" {
-		return nil, errors.New("本机连接入口无效")
+		return nil, errors.New("Неверная точка входа локального подключения")
 	}
 	status, err = c.callContext(bootstrap, "POST", "/api/session", map[string]string{"token": u.Fragment}, nil)
 	if err != nil || status != http.StatusOK {
-		return nil, errors.New("本机会话认证失败")
+		return nil, errors.New("Не удалось проверить подлинность локального сеанса")
 	}
 	var m RemoteEntry
 	status, err = c.callContext(bootstrap, "GET", "/api/remote/manifest", nil, &m)
 	if err != nil || status != http.StatusOK || m.InstanceID != view.InstanceID || m.APIProtocol != remoteAPIProtocol || m.Origin != c.origin || m.Platform != runtime.GOOS {
-		return nil, errors.New("本机工作台版本或环境身份不符")
+		return nil, errors.New("Версия локальной рабочей среды или идентичность среды не совпадают")
 	}
 	manifest := remotehost.PublicManifest{APIProtocol: m.APIProtocol, InstanceID: m.InstanceID, Version: m.Version, Platform: m.Platform, Runtime: m.Runtime, Capabilities: m.Capabilities}
 	c.client.Jar.SetCookies(u, []*http.Cookie{{
@@ -317,11 +317,11 @@ func (d *desktopLocal) localSession(life, bootstrap context.Context, c *controll
 
 func (d *desktopLocal) Release(ctx context.Context, expected DesktopLocalStatus, stop bool) error {
 	if !expected.Known || !expected.ServiceRunning || expected.ControllerID == "" {
-		return errors.New("请先确认本机控制服务身份")
+		return errors.New("Сначала подтвердите идентичность локальной службы управления")
 	}
 	c, err := openController(d.profile)
 	if err != nil {
-		return errors.New("本机控制服务已变化，请刷新后重试")
+		return errors.New("Локальная служба управления изменилась; обновите и повторите")
 	}
 	defer c.close()
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
@@ -334,7 +334,7 @@ func (d *desktopLocal) Release(ctx context.Context, expected DesktopLocalStatus,
 	if reply.JobRunning {
 		jobID := reply.JobID
 		if jobID == "" || !stop {
-			return errors.New("本机停止作业身份无效")
+			return errors.New("Неверная идентичность локальной задачи остановки")
 		}
 		for {
 			select {
@@ -347,13 +347,13 @@ func (d *desktopLocal) Release(ctx context.Context, expected DesktopLocalStatus,
 				return err
 			}
 			if view.JobID != jobID || view.JobFailed {
-				return errors.New("本机停止作业已变化或失败，请回到本机确认状态")
+				return errors.New("Локальная задача остановки изменилась или завершилась ошибкой; вернитесь на этот компьютер и проверьте состояние")
 			}
 			if view.JobRunning {
 				continue
 			}
 			if !view.Known || view.Busy || view.Running || view.LiveTerminals != 0 {
-				return errors.New("本机工作尚未完全停止")
+				return errors.New("Работа на этом компьютере ещё не полностью остановлена")
 			}
 			_, err = c.localControl(ctx, "release", desktopLocalRequest{ControllerID: view.ControllerID, JobID: jobID})
 			if err != nil {
@@ -368,17 +368,17 @@ func (d *desktopLocal) Release(ctx context.Context, expected DesktopLocalStatus,
 	for processExists(c.record.PID) {
 		select {
 		case <-ctx.Done():
-			return errors.New("本机控制进程仍未退出")
+			return errors.New("Процесс локального управления всё ещё работает")
 		case <-time.After(75 * time.Millisecond):
 		}
 	}
 	// Unlike a cold selector probe, this explicit release may query an existing
 	// local container engine to verify that its workload actually stopped.
 	if _, err := os.Lstat(filepath.Join(d.profile, "control.json")); !os.IsNotExist(err) || !controllerLockFree(d.profile) {
-		return errors.New("本机控制服务状态已变化，请重新确认")
+		return errors.New("Состояние локальной службы управления изменилось; подтвердите заново")
 	}
 	if running, err := controllerVMState(d.profile); err != nil || running || managedproxy.ConfirmStopped(ctx, d.profile) != nil {
-		return errors.New("本机资源状态待确认")
+		return errors.New("Состояние локальных ресурсов требует подтверждения")
 	}
 	return nil
 }

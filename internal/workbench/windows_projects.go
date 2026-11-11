@@ -73,14 +73,14 @@ func startWindowsProjectTransport(cmd *exec.Cmd, hostPath string, binding window
 		_ = input.Close()
 		_ = output.Close()
 		_ = cmd.Wait()
-		return nil, errors.New("Windows 项目助手尚未准备好挂载")
+		return nil, errors.New("Помощник проектов Windows ещё не готов к монтированию")
 	}
 	if !cancelWindowsAdmissionDeadline(timeout, timeoutDone) {
 		_ = cmd.Process.Kill()
 		_ = input.Close()
 		_ = output.Close()
 		_ = cmd.Wait()
-		return nil, errors.New("Windows 项目连接超时")
+		return nil, errors.New("Истекло время подключения проекта Windows")
 	}
 	admitted = true
 	binding.Path = started.Path
@@ -110,12 +110,12 @@ func (s *Server) windowsProjectRequest(ctx context.Context, action string, bindi
 	var output bytes.Buffer
 	cmd.Stdout = &boundedWindowsStatusWriter{buffer: &output, remaining: 16384}
 	if err = cmd.Run(); err != nil {
-		return nil, errors.New("Windows 项目助手尚未连接")
+		return nil, errors.New("Помощник проектов Windows не подключён")
 	}
 	var result map[string]any
 	decoder := json.NewDecoder(&output)
 	if decoder.Decode(&result) != nil || decoder.Decode(new(any)) != io.EOF || result["error"] != nil {
-		return nil, errors.New("Windows 项目助手返回无效结果")
+		return nil, errors.New("Помощник проектов Windows вернул недействительный результат")
 	}
 	return result, nil
 }
@@ -133,7 +133,7 @@ func (s *Server) ensureWindowsProjectShare(hostPath string) error {
 	}
 	probe, err := os.CreateTemp(hostPath, ".cage-mount-probe-*")
 	if err != nil {
-		return errors.New("无法验证项目目录读写权限")
+		return errors.New("Не удалось проверить права чтения и записи каталога проекта")
 	}
 	defer os.Remove(probe.Name())
 	challenge := randomToken()
@@ -168,9 +168,9 @@ func (s *Server) ensureWindowsProjectShare(hostPath string) error {
 		}
 		select {
 		case <-ctx.Done():
-			return errors.New("Windows 项目文件夹连接超时，原有环境和会话保持运行")
+			return errors.New("Истекло время подключения папки проекта Windows, исходная среда и сеансы продолжают работать")
 		case <-share.done:
-			return errors.New("Windows 项目挂载未能连接")
+			return errors.New("Не удалось подключить монтирование проекта Windows")
 		case <-time.After(100 * time.Millisecond):
 		}
 	}
@@ -194,11 +194,11 @@ func (s *Server) windowsProjectForHost(hostPath string) (*windowsProjectBinding,
 	share := s.projectShares[hostPath]
 	s.mu.Unlock()
 	if share == nil || share.windowsProject == nil {
-		return nil, errors.New("Windows 项目尚未授权或已经断开")
+		return nil, errors.New("Проект Windows не авторизован или уже отключён")
 	}
 	select {
 	case <-share.done:
-		return nil, errors.New("Windows 项目连接已撤销")
+		return nil, errors.New("Подключение проекта Windows отозвано")
 	default:
 	}
 	binding := *share.windowsProject

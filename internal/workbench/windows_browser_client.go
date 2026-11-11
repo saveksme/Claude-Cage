@@ -43,7 +43,7 @@ func newWindowsBrowserClient(parent context.Context, profile string) *windowsBro
 			return nil, err
 		}
 		if binding == nil {
-			return nil, errors.New("此配置尚未绑定 客机")
+			return nil, errors.New("Эта конфигурация ещё не привязана к гостевой системе")
 		}
 		return exec.CommandContext(ctx, binding.RelayExecutable, "--relay-profile", guestos.WindowsProfilePath(profile), "browser"), nil
 	}}
@@ -78,7 +78,7 @@ var windowsBrowserRoutes = map[string]bool{
 type windowsPhoneBrowserError struct{ status int }
 
 func (e windowsPhoneBrowserError) Error() string {
-	return "手机浏览器操作未完成，请核对授权和最新画面"
+	return "Действие в браузере телефона не завершено; проверьте авторизацию и последнее изображение"
 }
 
 func (c *windowsBrowserClient) pasteImage(ctx context.Context, id string, png []byte, transfer string) ([]byte, error) {
@@ -91,7 +91,7 @@ func (c *windowsBrowserClient) pasteData(ctx context.Context, id string, data []
 		limit = 2 << 20
 	}
 	if !validInputToken(id) || len(data) == 0 || len(data) > limit || (mime != "text/plain" && mime != "image/png") {
-		return nil, browserInputError{errors.New("图片或浏览器目标无效")}
+		return nil, browserInputError{errors.New("Неверное изображение или цель браузера")}
 	}
 	if transfer == "" {
 		reply, err := c.request(ctx, "POST", "/paste-start", map[string]any{"id": id, "length": len(data), "mime": mime})
@@ -102,12 +102,12 @@ func (c *windowsBrowserClient) pasteData(ctx context.Context, id string, data []
 			Transfer string `json:"transfer"`
 		}
 		if json.Unmarshal(reply, &opened) != nil {
-			return nil, errors.New("客机图片接收会话无效")
+			return nil, errors.New("Неверный сеанс приёма изображения в гостевой системе")
 		}
 		transfer = opened.Transfer
 	}
 	if !validInputToken(transfer) {
-		return nil, errors.New("客机图片接收会话无效")
+		return nil, errors.New("Неверный сеанс приёма изображения в гостевой системе")
 	}
 	completed := false
 	defer func() {
@@ -129,7 +129,7 @@ func (c *windowsBrowserClient) pasteData(ctx context.Context, id string, data []
 			Ack int `json:"ack"`
 		}
 		if json.Unmarshal(chunk, &ack) != nil || ack.Ack != sequence+1 {
-			return nil, errors.New("客机图片数据接收未确认")
+			return nil, errors.New("Приём данных изображения в гостевой системе не подтверждён")
 		}
 		sequence++
 	}
@@ -139,7 +139,7 @@ func (c *windowsBrowserClient) pasteData(ctx context.Context, id string, data []
 			OK bool `json:"ok"`
 		}
 		if json.Unmarshal(result, &receipt) != nil || !receipt.OK {
-			err = errors.New("客机图片粘贴未确认")
+			err = errors.New("Вставка изображения в гостевой системе не подтверждена")
 		}
 	}
 	completed = err == nil
@@ -179,7 +179,7 @@ func (c *windowsBrowserClient) releaseViewerInput() {
 
 func (c *windowsBrowserClient) request(ctx context.Context, method, path string, input any) ([]byte, error) {
 	if !validWindowsBrowserRoute(method, path) {
-		return nil, browserInputError{errors.New("客机浏览器操作无效")}
+		return nil, browserInputError{errors.New("Неверная операция браузера гостевой системы")}
 	}
 	body, err := json.Marshal(struct {
 		Method string `json:"method"`
@@ -187,7 +187,7 @@ func (c *windowsBrowserClient) request(ctx context.Context, method, path string,
 		Input  any    `json:"input,omitempty"`
 	}{method, path, input})
 	if err != nil || len(body) > 128<<10 {
-		return nil, browserInputError{errors.New("客机浏览器请求过大或格式无效")}
+		return nil, browserInputError{errors.New("Запрос браузера гостевой системы слишком большой или имеет неверный формат")}
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -214,7 +214,7 @@ func (c *windowsBrowserClient) request(ctx context.Context, method, path string,
 		if err := cmd.Start(); err != nil {
 			_ = in.Close()
 			_ = out.Close()
-			return nil, errors.New("无法连接 客机浏览器，请核对 GUI 登录、配对与部署组件")
+			return nil, errors.New("Не удалось подключиться к браузеру гостевой системы; проверьте вход в GUI, сопряжение и компоненты развёртывания")
 		}
 		c.cmd, c.input = cmd, in
 		c.output = bufio.NewScanner(out)
@@ -243,7 +243,7 @@ func (c *windowsBrowserClient) request(ctx context.Context, method, path string,
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
-		return nil, errors.New("客机浏览器连接已关闭，请恢复连接后核对操作结果")
+		return nil, errors.New("Подключение браузера гостевой системы закрыто; восстановите подключение и проверьте результат действия")
 	}
 	data := append([]byte(nil), c.output.Bytes()...)
 	if err := ctx.Err(); err != nil {
@@ -261,7 +261,7 @@ func (c *windowsBrowserClient) request(ctx context.Context, method, path string,
 	}
 	if json.Unmarshal(data, &result) != nil {
 		c.disconnectLocked()
-		return nil, errors.New("客机浏览器返回了无效结果")
+		return nil, errors.New("Браузер гостевой системы вернул недействительный результат")
 	}
 	if result.Service != nil && result.Service.Version == 1 && result.Service.Persistent {
 		c.ownsBrowser = false
@@ -275,30 +275,30 @@ func (c *windowsBrowserClient) request(ctx context.Context, method, path string,
 			return nil, windowsPhoneBrowserError{status: status}
 		}
 		known := map[string]string{
-			"network_unavailable":         "客机受控网络代理尚未配置",
-			"browser_network_unavailable": "客机受控网络代理尚未配置",
-			"browser_unavailable":         "客机图形浏览器未就绪，请核对 GUI 登录与组件安装",
-			"browser_components_missing":  "客机浏览器组件尚未完整安装",
-			"requires_gui_login":          "请先登录并解锁 客机桌面",
-			"editor_unavailable":          "客机编辑器或项目授权尚未接通",
-			"editor_components_missing":   "客机编辑器运行组件尚未完整安装",
-			"project_grant_unavailable":   "此项目授权已断开，请重新连接后再操作",
-			"extensions_unavailable":      "客机浏览器扩展管理未就绪，请核对浏览器版本和安装组件",
-			"clipboard_copy_not_observed": "尚未确认客机剪贴板发生复制，请重新选择内容后复制",
-			"copy_unavailable":            "未收到新的复制内容，请重新选择后复制",
-			"copy_changed":                "复制来源已切换，请重新复制",
-			"copy_limit":                  "复制内容超过大小限制",
-			"copy_image_invalid":          "复制的 PNG 图片无效",
-			"action_unavailable":          "客机浏览器尚未支持这项操作",
-			"target_changed":              "接收操作的网页已经切换，请回到原网页重试",
-			"browser_target_changed":      "客机浏览器窗口已变化，请在新画面中重试",
-			"browser_focus_required":      "客机浏览器未能获得前台焦点，请先激活浏览器或关闭阻挡操作的弹窗",
-			"desktop_target_changed":      "弹窗正在切换，正在重新读取画面",
-			"desktop_capture_busy":        "弹窗画面正在准备",
-			"desktop_empty_frame":         "弹窗尚未返回画面",
-			"frame_unavailable":           "浏览器画面流尚未就绪",
-			"transfer_changed":            "文件传递已经关闭，请重新选择文件",
-			"frame_limit":                 "浏览器画面过大，请缩小窗口后重试",
+			"network_unavailable":         "Управляемый сетевой прокси гостевой системы не настроен",
+			"browser_network_unavailable": "Управляемый сетевой прокси гостевой системы не настроен",
+			"browser_unavailable":         "Графический браузер гостевой системы не готов; проверьте вход в GUI и установку компонентов",
+			"browser_components_missing":  "Компоненты браузера гостевой системы установлены не полностью",
+			"requires_gui_login":          "Сначала войдите и разблокируйте рабочий стол гостевой системы",
+			"editor_unavailable":          "Редактор гостевой системы или авторизация проекта ещё не подключены",
+			"editor_components_missing":   "Компоненты выполнения редактора гостевой системы установлены не полностью",
+			"project_grant_unavailable":   "Авторизация этого проекта разорвана; переподключите его и повторите действие",
+			"extensions_unavailable":      "Управление расширениями браузера гостевой системы не готово; проверьте версию браузера и установленные компоненты",
+			"clipboard_copy_not_observed": "Копирование в буфер обмена гостевой системы не подтверждено; выберите содержимое заново и скопируйте",
+			"copy_unavailable":            "Новое скопированное содержимое не получено; выберите заново и скопируйте",
+			"copy_changed":                "Источник копирования сменился; скопируйте заново",
+			"copy_limit":                  "Скопированное содержимое превышает ограничение размера",
+			"copy_image_invalid":          "Скопированное PNG-изображение недействительно",
+			"action_unavailable":          "Браузер гостевой системы пока не поддерживает это действие",
+			"target_changed":              "Страница, принимающая действие, сменилась; вернитесь на исходную страницу и повторите",
+			"browser_target_changed":      "Окно браузера гостевой системы изменилось; повторите на новом изображении",
+			"browser_focus_required":      "Браузер гостевой системы не получил фокус переднего плана; активируйте браузер или закройте блокирующее окно",
+			"desktop_target_changed":      "Окно переключается, изображение считывается заново",
+			"desktop_capture_busy":        "Изображение окна подготавливается",
+			"desktop_empty_frame":         "Окно ещё не вернуло изображение",
+			"frame_unavailable":           "Поток изображения браузера ещё не готов",
+			"transfer_changed":            "Передача файлов закрыта; выберите файл заново",
+			"frame_limit":                 "Изображение браузера слишком большое; уменьшите окно и повторите",
 		}
 		code := result.Code
 		if code == "" {
@@ -310,14 +310,14 @@ func (c *windowsBrowserClient) request(ctx context.Context, method, path string,
 		if reason := known[code]; reason != "" {
 			return nil, windowsBrowserFailure{code: code, message: reason}
 		}
-		return nil, errors.New("客机浏览器操作未完成，请恢复连接后核对结果")
+		return nil, errors.New("Действие браузера гостевой системы не завершено; восстановите подключение и проверьте результат")
 	}
 	return data, nil
 }
 
 func (c *windowsBrowserClient) upload(ctx context.Context, id, name string, body io.Reader, length int64) ([]byte, error) {
 	if !browserFileID.MatchString(id) || !browserFileName(name) || length < -1 || length > browserFileLimit {
-		return nil, browserInputError{errors.New("上传文件名、大小或窗口无效")}
+		return nil, browserInputError{errors.New("Неверное имя файла, размер или окно загрузки")}
 	}
 	result, received, err := c.sendUpload(ctx, map[string]any{"direction": "upload", "id": id, "name": name, "length": length}, body, length, browserFileLimit)
 	if err == nil {
@@ -327,7 +327,7 @@ func (c *windowsBrowserClient) upload(ctx context.Context, id, name string, body
 			Name string `json:"name"`
 		}
 		if json.Unmarshal(result, &receipt) != nil || !receipt.OK || receipt.Size != received || receipt.Name != name {
-			err = errors.New("客机文件接收未确认")
+			err = errors.New("Приём файла в гостевой системе не подтверждён")
 		}
 	}
 	return result, err
@@ -335,7 +335,7 @@ func (c *windowsBrowserClient) upload(ctx context.Context, id, name string, body
 
 func (c *windowsBrowserClient) uploadExtension(ctx context.Context, body io.Reader, length int64) ([]byte, error) {
 	if length < -1 || length > 32<<20 {
-		return nil, browserInputError{errors.New("扩展 ZIP 不能超过 32 MB")}
+		return nil, browserInputError{errors.New("ZIP-архив расширения не должен превышать 32 МБ")}
 	}
 	result, _, err := c.sendUpload(ctx, map[string]any{"direction": "extension", "length": length}, body, length, 32<<20)
 	if err == nil {
@@ -345,7 +345,7 @@ func (c *windowsBrowserClient) uploadExtension(ctx context.Context, body io.Read
 			Version string `json:"version"`
 		}
 		if json.Unmarshal(result, &preview) != nil || !browserFileID.MatchString(preview.Session) || preview.Name == "" || preview.Version == "" {
-			err = errors.New("客机没有返回有效的扩展权限预览")
+			err = errors.New("Гостевая система не вернула корректный предпросмотр разрешений расширения")
 		}
 	}
 	return result, err
@@ -360,7 +360,7 @@ func (c *windowsBrowserClient) sendUpload(ctx context.Context, input map[string]
 		Transfer string `json:"transfer"`
 	}
 	if json.Unmarshal(data, &opened) != nil || !validInputToken(opened.Transfer) {
-		return nil, 0, errors.New("客机没有返回有效的上传会话")
+		return nil, 0, errors.New("Гостевая система не вернула корректный сеанс загрузки")
 	}
 	completed := false
 	defer func() {
@@ -378,7 +378,7 @@ func (c *windowsBrowserClient) sendUpload(ctx context.Context, input map[string]
 		if count > 0 {
 			received += int64(count)
 			if received > limit || length >= 0 && received > length {
-				return nil, received, errors.New("上传文件超过声明大小或大小限制")
+				return nil, received, errors.New("Загружаемый файл превышает заявленный размер или ограничение")
 			}
 			response, err := c.request(ctx, "POST", "/file-chunk", map[string]any{"transfer": opened.Transfer, "sequence": sequence, "data": base64.StdEncoding.EncodeToString(buffer[:count])})
 			if err != nil {
@@ -388,7 +388,7 @@ func (c *windowsBrowserClient) sendUpload(ctx context.Context, input map[string]
 				Ack int `json:"ack"`
 			}
 			if json.Unmarshal(response, &ack) != nil || ack.Ack != sequence+1 {
-				return nil, received, errors.New("客机文件接收确认无效")
+				return nil, received, errors.New("Неверное подтверждение приёма файла гостевой системой")
 			}
 			sequence++
 		}
@@ -400,7 +400,7 @@ func (c *windowsBrowserClient) sendUpload(ctx context.Context, input map[string]
 		}
 	}
 	if length >= 0 && received != length {
-		return nil, received, errors.New("上传文件没有完整读入")
+		return nil, received, errors.New("Загружаемый файл прочитан не полностью")
 	}
 	result, err := c.request(ctx, "POST", "/file-finish", map[string]any{"transfer": opened.Transfer, "sequence": sequence})
 	completed = err == nil
@@ -442,7 +442,7 @@ func (c *windowsBrowserClient) downloadClipboard(ctx context.Context, input brow
 
 func openNativeFileDownload(ctx context.Context, id string, request func(context.Context, string, string, any) ([]byte, error)) (io.ReadCloser, int64, string, error) {
 	if !browserFileID.MatchString(id) {
-		return nil, 0, "", browserInputError{errors.New("下载标识无效")}
+		return nil, 0, "", browserInputError{errors.New("Неверный идентификатор загрузки")}
 	}
 	data, err := request(ctx, "POST", "/file-open", map[string]any{"direction": "download", "id": id})
 	if err != nil {
@@ -459,7 +459,7 @@ func openNativeFileDownload(ctx context.Context, id string, request func(context
 			defer cancel()
 			_, _ = request(cleanup, "POST", "/file-close", map[string]any{"transfer": opened.Transfer})
 		}
-		return nil, 0, "", errors.New("客机没有返回有效的下载会话")
+		return nil, 0, "", errors.New("Гостевая система не вернула корректный сеанс загрузки")
 	}
 	return &windowsBrowserDownload{request: request, ctx: ctx, transfer: opened.Transfer, remaining: opened.Size}, opened.Size, opened.Name, nil
 }
@@ -482,11 +482,11 @@ func (d *windowsBrowserDownload) Read(output []byte) (int, error) {
 			EOF      bool   `json:"eof"`
 		}
 		if json.Unmarshal(data, &chunk) != nil || chunk.Sequence != d.sequence+1 || len(chunk.Data) > 87384 {
-			return 0, errors.New("客机下载数据块无效")
+			return 0, errors.New("Неверный блок данных загрузки из гостевой системы")
 		}
 		bytes, err := base64.StdEncoding.Strict().DecodeString(chunk.Data)
 		if err != nil || len(bytes) > 64<<10 || int64(len(bytes)) > d.remaining || len(bytes) == 0 && !chunk.EOF {
-			return 0, errors.New("客机下载数据块无效")
+			return 0, errors.New("Неверный блок данных загрузки из гостевой системы")
 		}
 		d.remaining -= int64(len(bytes))
 		if chunk.EOF && d.remaining != 0 || !chunk.EOF && d.remaining == 0 {

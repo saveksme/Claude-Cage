@@ -108,7 +108,7 @@ func (s *Server) applyResources(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if containerenv.Configured(s.profile) {
-		http.Error(w, "容器资源由服务器部署配置管理", http.StatusBadRequest)
+		http.Error(w, "Ресурсы контейнера управляются конфигурацией развёртывания сервера", http.StatusBadRequest)
 		return
 	}
 	if input.Allocation != nil {
@@ -117,7 +117,7 @@ func (s *Server) applyResources(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if !s.op.TryLock() {
-			http.Error(w, "另一个操作仍在进行，请稍候", http.StatusConflict)
+			http.Error(w, "Выполняется другое действие; подождите", http.StatusConflict)
 			return
 		}
 		err := writePrivate(cage.ResourceAllocationPath(s.configPath), input.Allocation)

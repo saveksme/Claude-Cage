@@ -54,7 +54,7 @@ func (s *Server) remoteInput(w http.ResponseWriter, r *http.Request) {
 	}
 	if s.windowsGuest != nil && input.Target == "desktop" {
 		if input.ID != "desktop" || len(input.Text) > 8192 {
-			http.Error(w, "输入目标或文字无效", 400)
+			http.Error(w, "Неверная цель ввода или текст", 400)
 			return
 		}
 		body, _ := json.Marshal(input)

@@ -10,7 +10,7 @@ import (
 
 func nativeDesktopDownloadInput(method, path string, input any) (map[string]any, error) {
 	if method != "POST" || (path != "/file-open" && path != "/file-read" && path != "/file-close") {
-		return nil, errors.New("客机下载操作无效")
+		return nil, errors.New("Неверная операция загрузки в гостевой системе")
 	}
 	data, err := json.Marshal(input)
 	if err != nil {
@@ -112,19 +112,19 @@ func (s *Server) openNativeDesktopDownload(ctx context.Context, id string) (io.R
 func desktopDownloadFailure(reason string) error {
 	switch reason {
 	case "desktop_download_incomplete":
-		return errors.New("Claude Desktop 尚未完整保存文件，请回到应用重新下载")
+		return errors.New("Claude Desktop ещё не сохранил файл полностью; вернитесь в приложение и загрузите заново")
 	case "desktop_download_changed":
-		return errors.New("Claude Desktop 下载文件在传输中发生变化，请重新下载")
+		return errors.New("Загружаемый файл Claude Desktop изменился во время передачи; загрузите заново")
 	case "desktop_download_unavailable", "desktop_download_transfer_invalid":
-		return errors.New("Claude Desktop 下载文件已不可用，请确认客机已解锁后重新下载")
+		return errors.New("Загружаемый файл Claude Desktop больше недоступен; убедитесь, что гостевая система разблокирована, и загрузите заново")
 	case "desktop_download_limit":
-		return errors.New("待保存的 Claude Desktop 文件过多，请先完成现有下载后重试")
+		return errors.New("Слишком много файлов Claude Desktop ожидают сохранения; завершите текущие загрузки и повторите")
 	case "file_open_target_changed":
-		return errors.New("文件或 Claude 窗口已变化，请回到原窗口重新打开文件")
+		return errors.New("Файл или окно Claude изменились; вернитесь в исходное окно и откройте файл заново")
 	case "file_open_request_invalid", "file_open_request_unavailable":
-		return errors.New("文件打开请求已失效，请确认客机已解锁后重新操作")
+		return errors.New("Запрос открытия файла устарел; убедитесь, что гостевая система разблокирована, и повторите")
 	case "file_open_request_limit":
-		return errors.New("正在处理的文件打开请求过多，请稍后重试")
+		return errors.New("Слишком много запросов открытия файлов в обработке; повторите позже")
 	default:
 		return nil
 	}

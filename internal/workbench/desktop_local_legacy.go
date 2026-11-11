@@ -11,7 +11,7 @@ import (
 	"os"
 )
 
-const previousLocalWorkbench = "请用 cage desktop --existing 打开已有本机工作台，保存并停止任务后重试"
+const previousLocalWorkbench = "Откройте существующую локальную рабочую среду командой cage desktop --existing, сохраните и остановите задачи, затем повторите"
 
 // Only explicit local selection calls this path. An older full controller
 // can release an idle profile via its own authenticated update handoff. Its
@@ -19,17 +19,17 @@ const previousLocalWorkbench = "请用 cage desktop --existing 打开已有本�
 func (d *desktopLocal) handoffOldLocal(ctx context.Context) (bool, error) {
 	c, err := connectController(d.profile)
 	if err != nil {
-		return false, errors.New("无法认证已有本机后台。" + previousLocalWorkbench)
+		return false, errors.New("Не удалось подтвердить подлинность существующей локальной фоновой службы." + previousLocalWorkbench)
 	}
 	defer c.close()
 	id := c.launch.Controller
 	if c.launch.DesktopGateway || id.Protocol != controlProtocol || id.PID != c.record.PID || !id.matches(c.record.Controller) || !remoteInstanceID.MatchString(id.Build) {
-		return false, errors.New("已有本机后台身份或协议不兼容。" + previousLocalWorkbench)
+		return false, errors.New("Идентичность или протокол существующей локальной фоновой службы несовместимы." + previousLocalWorkbench)
 	}
 	u, _ := url.Parse(c.launch.URL) // connectController verified the origin and ticket.
 	status, err := c.callContext(ctx, "POST", "/api/session", map[string]string{"token": u.Fragment}, nil)
 	if err != nil || status != http.StatusOK || len(c.client.Jar.Cookies(u)) == 0 {
-		return false, errors.New("无法建立已有本机后台的会话。" + previousLocalWorkbench)
+		return false, errors.New("Не удалось установить сеанс с существующей локальной фоновой службой." + previousLocalWorkbench)
 	}
 	// Old controllers can answer 401 before the cookie and 423 while locked,
 	// even for an unknown route. A working modern route must never be replaced.
@@ -42,7 +42,7 @@ func (d *desktopLocal) handoffOldLocal(ctx context.Context) (bool, error) {
 		return false, nil
 	case http.StatusNotFound, http.StatusMethodNotAllowed, http.StatusLocked:
 	default:
-		return false, errors.New("无法确认已有本机后台版本。" + previousLocalWorkbench)
+		return false, errors.New("Не удалось определить версию существующей локальной фоновой службы." + previousLocalWorkbench)
 	}
 	f, err := os.Open(d.executable)
 	if err != nil {
@@ -54,22 +54,22 @@ func (d *desktopLocal) handoffOldLocal(ctx context.Context) (bool, error) {
 		return false, err
 	}
 	if id.Build == fmt.Sprintf("%x", h.Sum(nil)) {
-		return false, errors.New("本机后台的启动器接口不可用。" + previousLocalWorkbench)
+		return false, errors.New("Интерфейс запуска локальной фоновой службы недоступен." + previousLocalWorkbench)
 	}
 	var selection ClientContext
 	status, err = c.callContext(ctx, "GET", "/api/client/context", nil, &selection)
 	if err != nil || (status != http.StatusOK && status != http.StatusNotFound && status != http.StatusLocked) {
-		return false, errors.New("无法确认旧工作台的连接状态。" + previousLocalWorkbench)
+		return false, errors.New("Не удалось определить состояние подключения старой рабочей среды." + previousLocalWorkbench)
 	}
 	if status == http.StatusOK && (selection.ClientOnly || selection.Mode != "local") {
-		return false, errors.New("已有工作台正在管理其他连接。" + previousLocalWorkbench)
+		return false, errors.New("Существующая рабочая среда управляет другими подключениями." + previousLocalWorkbench)
 	}
 	var ack struct {
 		Stopping bool `json:"stopping"`
 	}
 	status, err = c.callContext(ctx, "POST", "/api/handoff", map[string]string{"token": c.record.Token}, &ack)
 	if err != nil || status != http.StatusOK || !ack.Stopping {
-		return false, errors.New("旧版本机后台仍在使用，或尚未确认空闲退出。" + previousLocalWorkbench)
+		return false, errors.New("Старая локальная фоновая служба всё ещё используется или не подтвердила выход после простоя." + previousLocalWorkbench)
 	}
 	if err := c.waitForExit(); err != nil {
 		return false, err

@@ -26,7 +26,7 @@ func (s *Server) windowsConversationInput(record *mobileRecord, input map[string
 	return nil
 }
 
-var errWindowsLegacyMobile = errors.New("这段历史来自尚未适配 Windows 的旧移动会话，记录已保留；请在原运行环境接续，或在 Windows 新建共享会话")
+var errWindowsLegacyMobile = errors.New("Эта история относится к старому мобильному сеансу, ещё не адаптированному для Windows; запись сохранена. Продолжите в исходной среде выполнения или создайте новый общий сеанс в Windows")
 
 func windowsCLIAbsolutePath(value string) bool {
 	return len(value) > 3 && ((value[0] >= 'A' && value[0] <= 'Z') || (value[0] >= 'a' && value[0] <= 'z')) && value[1] == ':' && (value[2] == '\\' || value[2] == '/')

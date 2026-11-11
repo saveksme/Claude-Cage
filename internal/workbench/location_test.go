@@ -137,7 +137,7 @@ func TestLocationRejectsInvalidBackupAndKeepsErrorsPrivate(t *testing.T) {
 			return locationResponse(200, body), nil
 		})}
 		loc, err := lookupLocation(context.Background(), client, net.ParseIP("8.8.8.8"))
-		if err == nil || loc != (Location{}) || strings.Contains(err.Error(), "private-secret") || !strings.Contains(err.Error(), "位置查询均失败") {
+		if err == nil || loc != (Location{}) || strings.Contains(err.Error(), "private-secret") || !strings.Contains(err.Error(), "все запросы местоположения не удались") {
 			t.Fatalf("invalid backup accepted or error leaked: %+v, %v", loc, err)
 		}
 	}

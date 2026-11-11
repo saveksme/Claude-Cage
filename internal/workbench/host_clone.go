@@ -37,7 +37,7 @@ func (s *Server) hostClonePlan(ctx context.Context) (hostimage.Plan, error) {
 
 func (s *Server) hostClone(w http.ResponseWriter, r *http.Request) {
 	if !s.hasTrustedView(r) || !s.localVMStorage() {
-		http.Error(w, "请在本机 Cage 窗口选择系统创建方式", http.StatusForbidden)
+		http.Error(w, "Выберите способ создания системы в окне Cage на этом компьютере", http.StatusForbidden)
 		return
 	}
 	view, err := s.guestInstallView()
@@ -46,11 +46,11 @@ func (s *Server) hostClone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !view.Available || (!view.Fresh && view.Pending == nil) {
-		requestError(w, errors.New("当前环境无法创建新的本机系统"))
+		requestError(w, errors.New("Текущая среда не может создать новую локальную систему"))
 		return
 	}
 	if view.Pending != nil && view.Pending.SourceKind == "linux-image" {
-		requestError(w, errors.New("请继续已选择的 Ubuntu 安装，不能改为自动匹配本机系统版本"))
+		requestError(w, errors.New("Продолжите выбранную установку Ubuntu; переключиться на автоматическое сопоставление версии локальной системы нельзя"))
 		return
 	}
 	var plan hostimage.Plan

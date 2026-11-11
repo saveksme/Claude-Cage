@@ -41,7 +41,7 @@ func readMacOSFrame(reader io.Reader) (macOSFrameHeader, []byte, error) {
 		return header, nil, err
 	}
 	if size == 0 || size > 16<<10 {
-		return header, nil, errors.New("窗口画面元数据过大")
+		return header, nil, errors.New("Метаданные изображения окна слишком большие")
 	}
 	metadata := make([]byte, size)
 	if _, err := io.ReadFull(reader, metadata); err != nil {
@@ -51,11 +51,11 @@ func readMacOSFrame(reader io.Reader) (macOSFrameHeader, []byte, error) {
 		return header, nil, err
 	}
 	if header.ImageLength < 0 || header.ImageLength >= 8<<20 || len(header.Sequence) > 128 || len(header.Geometry) > 128 {
-		return header, nil, errors.New("窗口画面元数据无效")
+		return header, nil, errors.New("Неверные метаданные изображения окна")
 	}
 	if header.Error != "" || header.Unchanged {
 		if header.ImageLength != 0 {
-			return header, nil, errors.New("窗口状态包含无效画面")
+			return header, nil, errors.New("Состояние окна содержит неверное изображение")
 		}
 		return header, nil, nil
 	}
@@ -63,7 +63,7 @@ func readMacOSFrame(reader io.Reader) (macOSFrameHeader, []byte, error) {
 		header.ContentWidth <= 0 || header.ContentHeight <= 0 || header.ContentWidth > 8192 || header.ContentHeight > 8192 ||
 		header.PixelWidth < 1 || header.PixelHeight < 1 || header.PixelWidth > 8192 || header.PixelHeight > 8192 ||
 		int64(header.PixelWidth)*int64(header.PixelHeight) > 40_000_000 {
-		return header, nil, errors.New("窗口画面尺寸无效")
+		return header, nil, errors.New("Неверный размер изображения окна")
 	}
 	data := make([]byte, header.ImageLength)
 	if _, err := io.ReadFull(reader, data); err != nil {
@@ -72,7 +72,7 @@ func readMacOSFrame(reader io.Reader) (macOSFrameHeader, []byte, error) {
 	config, format, err := image.DecodeConfig(bytes.NewReader(data))
 	if err != nil || (format != "png" && format != "jpeg") || header.MIME != "image/"+format ||
 		config.Width != header.PixelWidth || config.Height != header.PixelHeight {
-		return header, nil, errors.New("窗口画面编码无效")
+		return header, nil, errors.New("Неверное кодирование изображения окна")
 	}
 	return header, data, nil
 }

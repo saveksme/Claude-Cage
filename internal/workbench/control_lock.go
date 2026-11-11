@@ -16,7 +16,7 @@ func openControllerLock(profile string, flags int) (*os.File, error) {
 	path := filepath.Join(profile, "control.lock")
 	if info, err := os.Lstat(path); err == nil {
 		if !info.Mode().IsRegular() {
-			return nil, errors.New("控制锁必须是普通文件")
+			return nil, errors.New("Блокировка управления должна быть обычным файлом")
 		}
 	} else if !os.IsNotExist(err) {
 		return nil, err
@@ -29,7 +29,7 @@ func openControllerLock(profile string, flags int) (*os.File, error) {
 	current, pathErr := os.Lstat(path)
 	if statErr != nil || pathErr != nil || !current.Mode().IsRegular() || !os.SameFile(opened, current) {
 		f.Close()
-		return nil, errors.New("控制锁路径已变化，请重试")
+		return nil, errors.New("Путь блокировки управления изменился; повторите")
 	}
 	return f, nil
 }

@@ -80,7 +80,7 @@ func (s *Server) nativeEnvironmentVersions(w http.ResponseWriter, r *http.Reques
 		components.Status = "update_required"
 		installed = snapshot.Installed
 		if err != nil {
-			detail = "客机组件版本暂时无法核验。旧环境可以同步环境组件；请先登录客机，再重试。"
+			detail = "Версию компонентов гостевой системы пока не удаётся проверить. В старой среде можно синхронизировать компоненты; сначала войдите в гостевую систему и повторите."
 		} else {
 			detail = snapshot.Error
 			if snapshot.Manifest != nil && kitError == nil && snapshot.Installed && snapshot.Manifest.Protocol == required.Protocol && snapshot.Manifest.Revision == required.Revision {
@@ -93,14 +93,14 @@ func (s *Server) nativeEnvironmentVersions(w http.ResponseWriter, r *http.Reques
 				tools[name] = item
 			}
 			if len(snapshot.Missing) > 0 {
-				detail = "部分客机组件缺失或内容已变化，请同步环境组件。"
+				detail = "Часть компонентов гостевой системы отсутствует или изменилась; синхронизируйте компоненты среды."
 			}
 		}
 	}
 	if kitError != nil {
 		components.Status = "unknown"
 		components.UpdateRequired = false
-		detail = "此应用的原生组件包无法核验，请重新安装完整的 Cage 应用。"
+		detail = "Пакет нативных компонентов приложения не удаётся проверить; переустановите приложение Cage полностью."
 	}
 	s.mu.Lock()
 	busy := s.jobs.snapshot().Running
@@ -116,10 +116,10 @@ func (s *Server) nativeMaintenancePreflight() error {
 		return nil
 	}
 	if s.terminals.hasLive() || len(s.mobileCLI.activeAccounts()) != 0 {
-		return errors.New("请先保存工作，结束正在运行的终端和 Claude Code 轮次，再重试更新。更新会重启客机连接组件；聊天历史、项目和登录资料会保留。")
+		return errors.New("Сначала сохраните работу, завершите работающие терминалы и раунды Claude Code, затем повторите обновление. Обновление перезапустит компоненты подключения гостевой системы; история чатов, проекты и данные входа сохранятся.")
 	}
 	if !s.vmRunning() {
-		return errors.New("请先启动并登录客机，再更新环境组件。")
+		return errors.New("Сначала запустите гостевую систему и войдите в неё, затем обновляйте компоненты среды.")
 	}
 	return nil
 }
@@ -146,18 +146,18 @@ func (s *Server) maintainNativeComponents(tools bool) error {
 	if err != nil {
 		return err
 	}
-	if err = s.closeProxyGate("正在更新原生客机组件，外网等待重新检查"); err != nil {
+	if err = s.closeProxyGate("Идёт обновление нативных компонентов гостевой системы, внешняя сеть ожидает повторной проверки"); err != nil {
 		return err
 	}
 	s.mu.Lock()
 	s.ready = false
 	s.guestUpdateRequired = true
-	s.guestUpdateError = "原生组件更新尚未完成，可以保留当前环境重试。"
+	s.guestUpdateError = "Обновление нативных компонентов не завершено; можно сохранить текущую среду и повторить."
 	s.mu.Unlock()
 	s.closeWindowsBrowser()
 	s.closeWindowsNetwork()
 	s.closeProjectShares()
-	s.setMessage("正在更新原生客机组件，保留系统磁盘、账户和项目数据…")
+	s.setMessage("Идёт обновление нативных компонентов гостевой системы, системный диск, аккаунт и данные проектов сохраняются…")
 	var command *exec.Cmd
 	if system == guestos.MacOS {
 		command = exec.CommandContext(s.operationContext(), s.exe, "guest-os", "macos", "update-components", "--manifest", file.Name())
@@ -173,13 +173,13 @@ func (s *Server) maintainNativeComponents(tools bool) error {
 	}
 	command.Stdout, command.Stderr = s.jobs.execution(), s.jobs.execution()
 	if err = command.Run(); err != nil {
-		return executionFailure("更新原生客机组件", err, s.jobs.snapshot().Log)
+		return executionFailure("обновление нативных компонентов гостевой системы", err, s.jobs.snapshot().Log)
 	}
 	ctx, cancel := context.WithTimeout(s.operationContext(), 25*time.Second)
 	snapshot, err := s.readNativeComponents(ctx)
 	cancel()
 	if err != nil || snapshot.Manifest == nil || !snapshot.Installed || snapshot.Manifest.Revision != manifest.Revision || snapshot.Manifest.Protocol != manifest.Protocol {
-		return errors.New("更新后的客机组件未通过实际文件核验，请保留环境并重试同步组件。")
+		return errors.New("Обновлённые компоненты гостевой системы не прошли проверку фактических файлов; сохраните среду и повторите синхронизацию компонентов.")
 	}
 	if err = s.attach(); err != nil {
 		return err

@@ -50,7 +50,7 @@ func TestHostGitRequiresExplicitAuthorizedConsent(t *testing.T) {
 		t.Fatal("read or rejected request modified global configuration")
 	}
 	// The lifecycle gate runs before proxy activation, downloads, or VM work.
-	if err := s.startEnvironment(true); err == nil || !strings.Contains(err.Error(), "Git 安全保护") {
+	if err := s.startEnvironment(true); err == nil || !strings.Contains(err.Error(), "защиту локального Git") {
 		t.Fatalf("first startup did not stop at host preflight: %v", err)
 	}
 	w = request(s, "POST", "/api/host/git", s.origin, `{"confirm":true}`, true)

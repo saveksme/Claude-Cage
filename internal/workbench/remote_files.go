@@ -33,16 +33,16 @@ func (c *controllerClient) bindConnection(expected string) (ClientContext, error
 		return ClientContext{Mode: "local", ConnectionID: "local"}, nil
 	}
 	if err != nil || status != http.StatusOK {
-		return current, errors.New("无法核对当前文件传递连接")
+		return current, errors.New("Не удалось проверить текущее подключение передачи файлов")
 	}
 	if current.DesktopGateway && (expected == "" || current.Mode == "none") {
-		return current, errors.New("请先选择工作环境，再重新进行文件操作")
+		return current, errors.New("Сначала выберите рабочую среду, затем повторите файловую операцию")
 	}
 	if current.Mode == "remote" && (expected == "" || current.State.State != "connected") {
-		return current, errors.New("远程连接不可用，请重新连接后选择文件")
+		return current, errors.New("Удалённое подключение недоступно; переподключитесь и выберите файл")
 	}
 	if expected != "" && expected != current.ConnectionID {
-		return current, errors.New("连接已经切换，请在当前主机重新选择文件")
+		return current, errors.New("Подключение переключилось; выберите файл заново на текущем хосте")
 	}
 	c.connectionID = current.ConnectionID
 	c.client.Transport = connectionTransport{base: c.client.Transport, id: current.ConnectionID}
@@ -54,7 +54,7 @@ func clientDownloadProfile(profile string, current ClientContext) (string, error
 		return profile, nil
 	}
 	if !remoteInstanceID.MatchString(current.InstanceID) {
-		return "", errors.New("远程实例身份无效")
+		return "", errors.New("Неверная идентичность удалённого экземпляра")
 	}
 	return filepath.Join(profile, "remote-downloads", current.InstanceID), nil
 }

@@ -30,7 +30,7 @@ func processExists(pid int) bool {
 	return windows.GetExitCodeProcess(h, &code) != nil || code == 259
 }
 func terminateLegacy(pid int) error {
-	return errors.New("Windows 不支持接管未验证的旧版后台")
+	return errors.New("Windows не поддерживает перехват непроверенной старой фоновой службы")
 }
 func detachController(cmd *exec.Cmd) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: windows.CREATE_NEW_PROCESS_GROUP | windows.CREATE_NO_WINDOW}

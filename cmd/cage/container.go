@@ -20,7 +20,7 @@ import (
 
 func configureContainer(configPath string) error {
 	if runtime.GOOS != "linux" {
-		return errors.New("容器服务端需要 Linux；本机可使用轻量客户端连接")
+		return errors.New("Серверу контейнеров требуется Linux; на этом компьютере можно подключиться облегчённым клиентом")
 	}
 	profile := filepath.Dir(configPath)
 	entries, err := os.ReadDir(filepath.Join(profile, "state", "lima"))
@@ -28,17 +28,17 @@ func configureContainer(configPath string) error {
 		return err
 	}
 	if len(entries) > 0 {
-		return errors.New("此配置已有虚拟机数据；请为云端容器使用独立配置，原有数据保持不变")
+		return errors.New("В этой конфигурации уже есть данные виртуальной машины; для облачного контейнера используйте отдельную конфигурацию, существующие данные не изменятся")
 	}
 	var config containerenv.Config
 	decoder := json.NewDecoder(io.LimitReader(os.Stdin, 64<<10))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&config); err != nil {
-		return errors.New("容器配置格式无效")
+		return errors.New("Неверный формат конфигурации контейнера")
 	}
 	var extra any
 	if decoder.Decode(&extra) != io.EOF {
-		return errors.New("只接受一份容器配置")
+		return errors.New("Принимается только одна конфигурация контейнера")
 	}
 	if _, err := containerenv.Configure(profile, config); err != nil {
 		return err
@@ -57,13 +57,13 @@ func containerOperation(configPath string, args []string, cfg cage.Config) (bool
 		return false, nil
 	}
 	if runtime.GOOS != "linux" {
-		return true, errors.New("容器运行环境只能在 Linux 服务端使用")
+		return true, errors.New("Среда выполнения контейнера доступна только на сервере Linux")
 	}
 	if args[0] == "access" {
-		return true, errors.New("容器工作环境使用 Cage 工作台的受认证入口，不提供旧版独立查看器凭据")
+		return true, errors.New("Рабочая среда контейнера использует аутентифицированную точку входа рабочей среды Cage и не предоставляет учётные данные старого отдельного просмотрщика")
 	}
 	if args[0] != "run" && args[0] != "claude" && len(args) != 1 {
-		return true, errors.New("该容器管理命令不接受额外参数")
+		return true, errors.New("Эта команда управления контейнером не принимает дополнительных аргументов")
 	}
 	environment, err := containerenv.Load(profile)
 	if err != nil {
@@ -74,7 +74,7 @@ func containerOperation(configPath string, args []string, cfg cage.Config) (bool
 	switch args[0] {
 	case "stop":
 		if len(args) != 1 {
-			return true, errors.New("容器配置只管理自身的持久环境")
+			return true, errors.New("Конфигурация контейнера управляет только собственной постоянной средой")
 		}
 		if err := environment.Stop(ctx); err != nil {
 			return true, err
@@ -125,7 +125,7 @@ func containerOperation(configPath string, args []string, cfg cage.Config) (bool
 	}
 	switch args[0] {
 	case "up":
-		fmt.Println("Cage 容器服务已启动；工作台完成网络检查后才会放行外网。")
+		fmt.Println("Служба контейнеров Cage запущена; внешняя сеть откроется только после сетевой проверки рабочей среды.")
 		return true, nil
 	case "update-tools":
 		return true, workbench.RunMaintenanceScript(ctx, configPath, cage.ToolsUpdateScript(), os.Stdout, os.Stderr)
@@ -137,7 +137,7 @@ func containerOperation(configPath string, args []string, cfg cage.Config) (bool
 		return true, workbench.RunEnvironmentCommand(ctx, configPath, append([]string{"claude"}, args[1:]...), os.Stdin, os.Stdout, os.Stderr, true)
 	case "run":
 		if len(args) < 2 {
-			return true, errors.New("cage run 需要指定命令")
+			return true, errors.New("cage run требует указать команду")
 		}
 		return true, workbench.RunEnvironmentCommand(ctx, configPath, args[1:], os.Stdin, os.Stdout, os.Stderr, false)
 	}

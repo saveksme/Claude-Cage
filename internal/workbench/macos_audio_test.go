@@ -89,7 +89,7 @@ func TestMacOSAudioUsesBoundTransportAndClosesCapture(t *testing.T) {
 	}
 	message, _ := io.ReadAll(response.Body)
 	response.Body.Close()
-	if response.StatusCode != http.StatusConflict || !strings.Contains(string(message), "Cage Guest Window") || !strings.Contains(string(message), "系统声音") {
+	if response.StatusCode != http.StatusConflict || !strings.Contains(string(message), "Cage Guest Window") || !strings.Contains(string(message), "системного звука") {
 		t.Fatal("missing guest permission did not return an actionable error")
 	}
 }

@@ -50,13 +50,13 @@ func (s *Server) guestSettingsOK(v guestObservation, cfg cage.Config) bool {
 func (s *Server) browserSettingsIssue(v browserObservation, cfg cage.Config) string {
 	if s.windowsGuest != nil {
 		if !strings.HasPrefix(v.Platform, "Win") {
-			return "客机浏览器没有报告 Windows 平台"
+			return "Браузер гостевой системы не сообщил платформу Windows"
 		}
 		if effectiveWindowsZone(v.Timezone) != effectiveWindowsZone(cfg.Timezone) || effectiveWindowsZone(v.ExpectedTimezone) != effectiveWindowsZone(cfg.Timezone) {
-			return "客机浏览器实际时区与配置不符"
+			return "Фактический часовой пояс браузера гостевой системы не соответствует конфигурации"
 		}
 		if !strings.EqualFold(v.Language, cfg.BrowserLanguage) {
-			return "客机浏览器实际语言与配置不符"
+			return "Фактический язык браузера гостевой системы не соответствует конфигурации"
 		}
 		return ""
 	}
@@ -64,15 +64,15 @@ func (s *Server) browserSettingsIssue(v browserObservation, cfg cage.Config) str
 		return browserSettingsMismatch(v, cfg)
 	}
 	if !strings.HasPrefix(v.Platform, "Mac") {
-		return "客机浏览器没有报告 macOS 平台"
+		return "Браузер гостевой системы не сообщил платформу macOS"
 	}
 	// Intl canonicalizes IANA aliases, including Etc/UTC -> UTC. The browser
 	// must independently report the same effective zone as the applied config.
 	if macOSZone(v.Timezone) != macOSZone(cfg.Timezone) || macOSZone(v.ExpectedTimezone) != macOSZone(cfg.Timezone) {
-		return "客机浏览器实际时区与配置不符"
+		return "Фактический часовой пояс браузера гостевой системы не соответствует конфигурации"
 	}
 	if !strings.EqualFold(v.Language, cfg.BrowserLanguage) {
-		return "客机浏览器实际语言与配置不符"
+		return "Фактический язык браузера гостевой системы не соответствует конфигурации"
 	}
 	return ""
 }
@@ -86,7 +86,7 @@ func (s *Server) macOSGuestObservation(ctx context.Context, in map[string]any) (
 	node := "/usr/local/libexec/cage-workbench-browser-4.145.0-pw1.65.0/editor/lib/node"
 	out, err := s.guestControl(ctx, "exec "+shellescape.QuoteCommand([]string{node, "-e", macOSSafetyProbe, base64.StdEncoding.EncodeToString(data)}), "safety-probe")
 	if err != nil || json.Unmarshal(out, &result) != nil {
-		return result, errors.New("macOS 客机未返回完整的网络观测")
+		return result, errors.New("Гостевая система macOS не вернула полные сетевые наблюдения")
 	}
 	if in["stage"] == "boundary" {
 		private, _ := in["private_file"].(string)
@@ -218,7 +218,7 @@ func (s *Server) macOSBrowserObservation(ctx context.Context, cfg cage.Config, n
 	var observation browserObservation
 	data, err := s.nativeBrowserClient().request(ctx, "POST", "/audit", map[string]any{"timezone": cfg.Timezone, "network": network})
 	if err != nil || json.Unmarshal(data, &observation) != nil || observation.Platform == "" {
-		return observation, errors.New("无法在虚拟 Mac 的实际浏览器页面读取观测结果")
+		return observation, errors.New("Не удалось прочитать результаты наблюдений на фактической странице браузера виртуального Mac")
 	}
 	return observation, nil
 }
@@ -255,7 +255,7 @@ func (s *Server) checkMacOSNetwork() error {
 		return err
 	}
 	if store.Selected == "" || store.Revision != cfg.ProxyRevision || store.Endpoint() != cfg.ProxyURL {
-		return errors.New("请先为这台 macOS 客机选择并应用代理节点")
+		return errors.New("Сначала выберите и примените узел прокси для этой гостевой системы macOS")
 	}
 	if s.vmRunning() {
 		client, err := s.gateClient()
@@ -267,7 +267,7 @@ func (s *Server) checkMacOSNetwork() error {
 			return err
 		}
 		if state.Configuration != cfg.Fingerprint() {
-			return errors.New("网络设置已保存，请重启 macOS 客机，登录后重新检测")
+			return errors.New("Сетевые настройки сохранены; перезапустите гостевую систему macOS, войдите и повторите проверку")
 		}
 	}
 	ctx := s.operationContext()

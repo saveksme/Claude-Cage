@@ -86,9 +86,9 @@ func (s *Server) vaultMutation(w http.ResponseWriter, r *http.Request) {
 					return nil
 				}
 			}
-			return errors.New("密码记录不存在")
+			return errors.New("Запись пароля не существует")
 		default:
-			return errors.New("密码保险箱操作无效")
+			return errors.New("Неверная операция с хранилищем паролей")
 		}
 		return nil
 	})
@@ -111,21 +111,21 @@ func (s *Server) guestVault(ctx context.Context, input vaultBrowserInput, out an
 	data, err := s.guestAPI(ctx, token, http.MethodPost, "/vault", body)
 	defer clear(data)
 	if err != nil {
-		return errors.New("浏览器密码功能暂不可用，请更新环境组件后重试")
+		return errors.New("Функция паролей браузера временно недоступна; обновите компоненты среды и повторите")
 	}
 	var failure struct {
 		Error string `json:"vaultError"`
 	}
 	if json.Unmarshal(data, &failure) == nil && failure.Error != "" {
 		switch failure.Error {
-		case "登录记录已过期，请重新登录", "当前网页已切换", "未找到可填写的登录框，或页面已变化", "保险箱已锁定，请重试", "登录页面已变化，请稍后重试":
+		case "Срок действия записи входа истёк. Войдите заново", "Текущая страница изменилась", "Не найдено поле входа, доступное для заполнения, или страница изменилась", "Хранилище паролей заблокировано. Повторите попытку", "Страница входа изменилась. Повторите попытку позже":
 			return errors.New(failure.Error)
 		default:
-			return errors.New("网页未能处理密码操作，请刷新后重试")
+			return errors.New("Веб-страница не обработала операцию с паролем; обновите и повторите")
 		}
 	}
 	if json.Unmarshal(data, out) != nil {
-		return errors.New("浏览器密码响应无效")
+		return errors.New("Неверный ответ функции паролей браузера")
 	}
 	return nil
 }
@@ -144,7 +144,7 @@ func (s *Server) vaultBrowser(w http.ResponseWriter, r *http.Request) {
 	var result any = map[string]bool{"ok": true}
 	err := s.account.withVault(r.Context(), input.Action == "save" || input.Action == "never", func(db *vaultData) error {
 		if lease == "" || lease != s.account.vaultLease {
-			return errors.New("请重新解锁后重试")
+			return errors.New("Разблокируйте заново и повторите")
 		}
 		switch input.Action {
 		case "status":
@@ -188,7 +188,7 @@ func (s *Server) vaultBrowser(w http.ResponseWriter, r *http.Request) {
 					return s.guestVault(r.Context(), input, &reply)
 				}
 			}
-			return errors.New("密码记录不存在")
+			return errors.New("Запись пароля не существует")
 		case "save", "never":
 			request := input
 			request.Action = "candidate"
@@ -198,7 +198,7 @@ func (s *Server) vaultBrowser(w http.ResponseWriter, r *http.Request) {
 			}
 			origin, err := vaultOrigin(candidate.Origin)
 			if err != nil || origin != candidate.Origin || candidate.ID != input.Candidate {
-				return errors.New("登录记录已失效，请重新登录")
+				return errors.New("Запись входа недействительна; войдите снова")
 			}
 			if input.Action == "never" {
 				if !slices.Contains(db.Blocked, origin) {
@@ -217,7 +217,7 @@ func (s *Server) vaultBrowser(w http.ResponseWriter, r *http.Request) {
 			var reply map[string]any
 			return s.guestVault(r.Context(), input, &reply)
 		default:
-			return errors.New("密码保险箱操作无效")
+			return errors.New("Неверная операция с хранилищем паролей")
 		}
 		return nil
 	})

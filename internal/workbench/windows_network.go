@@ -28,7 +28,7 @@ type windowsHostNetwork struct {
 	done   chan struct{}
 }
 
-const windowsPacketDisconnectedReason = "Windows 客机网络通道已断开，等待重新检查"
+const windowsPacketDisconnectedReason = "Сетевой канал гостевой системы Windows разорван, ожидается повторная проверка"
 
 func (s *Server) startWindowsNetwork() error {
 	s.mu.Lock()
@@ -43,7 +43,7 @@ func (s *Server) startWindowsNetwork() error {
 	}
 	if s.closing || s.exe == "" {
 		s.mu.Unlock()
-		return errors.New("Windows 客机网络服务尚未准备好")
+		return errors.New("Сетевая служба гостевой системы Windows ещё не готова")
 	}
 	ctx, cancel := context.WithCancel(s.lifetimeContextLocked())
 	process := &windowsHostNetwork{cancel: cancel, done: make(chan struct{})}
@@ -72,11 +72,11 @@ func (s *Server) startWindowsNetwork() error {
 		}
 		select {
 		case <-process.done:
-			return errors.New("Windows 客机网络服务未能启动")
+			return errors.New("Сетевая служба гостевой системы Windows не запустилась")
 		case <-wait.Done():
 			cancel()
 			<-process.done
-			return errors.New("Windows 客机网络服务启动超时")
+			return errors.New("Истекло время запуска сетевой службы гостевой системы Windows")
 		case <-time.After(100 * time.Millisecond):
 		}
 	}
@@ -97,7 +97,7 @@ func (s *Server) closeWindowsNetwork() {
 // hostagent does. Process exit also retires gvisor's listeners and goroutines.
 func ServeWindowsPacketNetwork(configPath string) error {
 	if runtime.GOOS != "windows" {
-		return errors.New("Windows 客机网络需要 Windows Hyper-V 主机")
+		return errors.New("Сети гостевой системы Windows требуется хост с Windows Hyper-V")
 	}
 	if err := containWindowsNetworkProcess(); err != nil {
 		return err
@@ -105,7 +105,7 @@ func ServeWindowsPacketNetwork(configPath string) error {
 	profile := filepath.Dir(configPath)
 	binding, err := guestos.LoadWindowsProfile(profile)
 	if err != nil || binding == nil {
-		return errors.New("Windows 客机尚未绑定")
+		return errors.New("Гостевая система Windows не привязана")
 	}
 	cfg, err := loadConfig(configPath)
 	if err != nil {
@@ -117,7 +117,7 @@ func ServeWindowsPacketNetwork(configPath string) error {
 	}
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
-	defer gate.Close("Windows 客机网络已停止")
+	defer gate.Close("Сеть гостевой системы Windows остановлена")
 	var stop func()
 	defer func() {
 		if stop != nil {
@@ -203,7 +203,7 @@ func openWindowsPacketRelay(parent context.Context, cmd *exec.Cmd, binding *gues
 		diagnostic.Close()
 		_ = cmd.Process.Kill()
 		_ = cmd.Wait()
-		return nil, errors.New("Windows 专用网络尚未建立，外网保持关闭")
+		return nil, errors.New("Выделенная сеть Windows ещё не установлена, внешняя сеть остаётся закрытой")
 	}
 	diagnosticDone := make(chan struct{})
 	go func() { defer close(diagnosticDone); _, _ = io.Copy(io.Discard, reader) }()
@@ -252,7 +252,7 @@ func readWindowsPacketReady(reader *bufio.Reader, binding *guestos.WindowsProfil
 		Available bool   `json:"available"`
 	}
 	if json.Unmarshal(line, &ready) != nil || binding == nil || !ready.Ready || ready.Version != 1 || ready.VMID != binding.VMID.String() || ready.SID != binding.GUIUserSID || ready.Network != "packet" || !ready.Available || len(ready.Session) == 0 || len(ready.Session) > 128 {
-		return errors.New("Windows 专用网络身份或就绪回执无效")
+		return errors.New("Неверная идентичность выделенной сети Windows или подтверждение готовности")
 	}
 	return nil
 }

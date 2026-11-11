@@ -44,7 +44,7 @@ func TestNetworkStatusImmediatelyAfterManualGrant(t *testing.T) {
 				}
 				errorMatches := status.NetworkError == wantError
 				if wantMode == cage.GateClosed && tc.failure == "exit probe" {
-					errorMatches = strings.HasPrefix(status.NetworkError, wantError+"；") && strings.Contains(status.NetworkError, "自动重检")
+					errorMatches = strings.HasPrefix(status.NetworkError, wantError+"; ") && strings.Contains(status.NetworkError, "Автоматическая проверка")
 				}
 				if status.Safety.Gate == nil || status.Safety.Gate.Mode != wantMode || !errorMatches {
 					t.Fatalf("expected %s and %q, got %+v", wantMode, wantError, status)
@@ -57,7 +57,7 @@ func TestNetworkStatusImmediatelyAfterManualGrant(t *testing.T) {
 			issue := "代理出口探测超时"
 			if tc.failure == "proxy core" {
 				s.checkProxyHealth() // The isolated profile has no running proxy core.
-				issue = "内置代理未就绪；外网保持关闭"
+				issue = "Встроенный прокси не готов; внешняя сеть остаётся закрытой"
 			} else {
 				s.finishSafetyObservation(t.Context(), client, openBeforeFailure, "", issue, true)
 			}

@@ -224,7 +224,7 @@ func TestWindowsPhoneDesktopReadinessAndCapabilities(t *testing.T) {
 			if got.Code != test.want {
 				t.Fatalf("%s: %d %s", test.name, got.Code, got.Body.String())
 			}
-			if test.name == "locked" && !strings.Contains(got.Body.String(), "Windows 客机账户") {
+			if test.name == "locked" && !strings.Contains(got.Body.String(), "гостевой системы Windows") {
 				t.Fatal("locked GUI did not explain how to recover")
 			}
 			if s.phones.desktop.nativeDesktop != nil || s.phones.desktop.session != nil {

@@ -28,19 +28,19 @@ const appleImageBytes int64 = 19769902281
 func installMacWorkbench(ctx context.Context, profile, state string, l *vm.Lima) error {
 	i, err := guestos.LoadInstallation(profile)
 	if err != nil || i == nil || i.System != guestos.MacOS {
-		return errors.New("缺少这台虚拟 Mac 的首次安装记录")
+		return errors.New("Отсутствует запись первой установки этого виртуального Mac")
 	}
 	pw, err := io.ReadAll(io.LimitReader(os.Stdin, 257))
 	if err != nil || !guestos.ValidMacOSInstallPassword(string(pw)) {
-		return errors.New("客机初始密码需使用 8 至 256 个英文键盘可输入的字母、数字、空格或符号")
+		return errors.New("Начальный пароль гостевой системы должен содержать от 8 до 256 символов, доступных на английской клавиатуре: букв, цифр, пробелов или знаков")
 	}
 	defer clear(pw)
 	ordinaryUser := os.Getenv("CAGE_MACOS_ACCOUNT")
 	if !guestos.ValidMacOSAccountName(ordinaryUser) {
-		return errors.New("请从 Cage 注册共用账密后继续安装 macOS 客机")
+		return errors.New("Зарегистрируйте общие учётные данные в Cage и продолжите установку гостевой системы macOS")
 	}
 	if !macGuestLoginAvailable() {
-		return errors.New("此 Cage 构建缺少虚拟 Mac 登录组件")
+		return errors.New("В этой сборке Cage отсутствует компонент входа виртуального Mac")
 	}
 	exe, err := os.Executable()
 	if err != nil {
@@ -72,18 +72,18 @@ func installMacWorkbench(ctx context.Context, profile, state string, l *vm.Lima)
 	media := i.Media
 	if media == "" {
 		media = filepath.Join(cache, "MacOS.ipsw")
-		fmt.Fprintln(os.Stdout, "正在从 Apple 下载并校验 macOS 26.5.2（19.77 GB）…")
+		fmt.Fprintln(os.Stdout, "Загрузка и проверка macOS 26.5.2 из Apple (19,77 ГБ)…")
 		err = prepareMacRestoreMedia(ctx, media, appleImageURL, appleImageDigest, appleImageBytes, os.Stdout)
 		if err != nil {
-			return fmt.Errorf("Apple 恢复镜像下载失败：%w", err)
+			return fmt.Errorf("Не удалось загрузить образ восстановления Apple: %w", err)
 		}
 	}
-	fmt.Fprintln(os.Stdout, "正在准备客机应用和开发工具…")
+	fmt.Fprintln(os.Stdout, "Подготовка приложений и инструментов разработки гостевой системы…")
 	fmt.Fprintln(os.Stdout, "CAGE_GUEST_STAGE macos media")
 	if err := local("/bin/bash", filepath.Join(kit, "prepare-macos-media.sh"), cache); err != nil {
-		return fmt.Errorf("准备客机应用失败：%w", err)
+		return fmt.Errorf("Не удалось подготовить приложения гостевой системы: %w", err)
 	}
-	fmt.Fprintln(os.Stdout, "正在恢复虚拟 Mac…")
+	fmt.Fprintln(os.Stdout, "Восстановление виртуального Mac…")
 	fmt.Fprintln(os.Stdout, "CAGE_GUEST_STAGE macos restore")
 	if err := runMacGuest(ctx, profile, state, []string{"create", media}); err != nil {
 		return err
@@ -99,7 +99,7 @@ func installMacWorkbench(ctx context.Context, profile, state string, l *vm.Lima)
 		return err
 	}
 	if provision != "cageprovision" {
-		return errors.New("此开发客机的置备身份不匹配")
+		return errors.New("Идентичность подготовки этой гостевой системы разработки не совпадает")
 	}
 	adminPassword := " < /Users/" + provision + "/password"
 	args, err := guestos.MacOSSSHArgs(profile, provision)
@@ -115,14 +115,14 @@ func installMacWorkbench(ctx context.Context, profile, state string, l *vm.Lima)
 	out, err := guestCommand(ctx, `umask 077; test "$(uname -s)" = Darwin; test "$(id -un)" = `+provision+`; mktemp -d /private/var/tmp/cage-install.XXXXXXXX`).Output()
 	remote := strings.TrimSpace(string(out))
 	if err != nil || !regexp.MustCompile(`^/private/var/tmp/cage-install\.[A-Za-z0-9]{8}$`).MatchString(remote) {
-		return errors.New("无法在已验证的虚拟 Mac 中准备安装目录")
+		return errors.New("Не удалось подготовить каталог установки в проверенном виртуальном Mac")
 	}
 	defer func() {
 		clean, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		_ = guestCommand(clean, `sudo -S -p '' /bin/rm -rf `+remote+adminPassword).Run()
 	}()
-	fmt.Fprintln(os.Stdout, "正在将开发组件送入已验证的离线虚拟 Mac…")
+	fmt.Fprintln(os.Stdout, "Передача компонентов разработки в проверенный офлайн-виртуальный Mac…")
 	fmt.Fprintln(os.Stdout, "CAGE_GUEST_STAGE macos tools")
 	// Only the fixed subset of media is transferred. The IPSW stays on the host.
 	tar := exec.CommandContext(ctx, "/usr/bin/tar", "--no-mac-metadata", "-cf", "-", "-C", kit, ".", "-C", cache, "node.tgz", "editor.tgz", "playwright.tgz", "chrome.dmg", "claude.dmg", "cli", "macfuse.pkg", "-C", componentStage, "native-components.json")
@@ -140,19 +140,19 @@ func installMacWorkbench(ctx context.Context, profile, state string, l *vm.Lima)
 	recvErr := receiver.Run()
 	_ = pipe.Close()
 	if err := errors.Join(recvErr, tar.Wait()); err != nil {
-		return fmt.Errorf("客机组件传输失败：%w", err)
+		return fmt.Errorf("Не удалось передать компоненты гостевой системы: %w", err)
 	}
 	// The staging directory belongs exclusively to the provisioning account.
 	// Before invoking the installer, root takes ownership and restricts access.
 	auth := guestCommand(ctx, `umask 077; cat > `+remote+`/login-input; sudo -S -p '' /usr/sbin/chown -R root:wheel `+remote+adminPassword)
 	auth.Stdin = io.MultiReader(bytes.NewReader(pw), strings.NewReader("\n"))
 	if err := auth.Run(); err != nil {
-		return errors.New("无法准备虚拟 Mac 账户")
+		return errors.New("Не удалось подготовить аккаунт виртуального Mac")
 	}
 	cmd := guestCommand(ctx, `sudo -S -p '' /bin/sh -ec `+shellescape.Quote(`cd `+remote+`; exec 4<login-input; rm login-input; /usr/bin/perl ./native-component-manifest.pl source ./native-components.json .; /bin/bash ./provision-macos-workbench.sh `+remote+` `+i.ID.String()+` `+provision+` `+ordinaryUser+` <&4; /usr/bin/perl ./native-component-manifest.pl publish ./native-components.json .`)+adminPassword)
 	cmd.Stdout = os.Stdout
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("安装虚拟 Mac 应用失败，可在工作台继续安装：%w", err)
+		return fmt.Errorf("Не удалось установить приложения виртуального Mac; установку можно продолжить в рабочей среде: %w", err)
 	}
 	ordinary, err := guestos.MacOSSSHArgs(profile, ordinaryUser)
 	if err != nil {
@@ -161,7 +161,7 @@ func installMacWorkbench(ctx context.Context, profile, state string, l *vm.Lima)
 	verify := exec.CommandContext(ctx, "/usr/bin/ssh", append(ordinary, "-T", "cage-macos", "--",
 		`test "$(id -un)" = `+ordinaryUser+` && test "$(uname -s)" = Darwin && ! id -Gn | /usr/bin/grep -qw admin`)...)
 	if err := verify.Run(); err != nil {
-		return errors.New("普通客机账户无法通过已验证的 SSH 通道连接，已保留安装进度")
+		return errors.New("Обычный аккаунт гостевой системы не может подключиться через проверенный канал SSH; прогресс установки сохранён")
 	}
 	key, err := guestos.MacOSInstallHostKey(profile)
 	if err != nil {
@@ -178,6 +178,6 @@ func installMacWorkbench(ctx context.Context, profile, state string, l *vm.Lima)
 	if err := guestos.BindNewMacOSProfile(profile, ordinaryUser, key, i.ID); err != nil {
 		return err
 	}
-	fmt.Fprintln(os.Stdout, "macOS 客机应用已安装，自动登录已准备。Cage 将继续完成首次授权。")
+	fmt.Fprintln(os.Stdout, "Приложения гостевой системы macOS установлены, автоматический вход подготовлен. Cage завершит первую авторизацию.")
 	return nil
 }

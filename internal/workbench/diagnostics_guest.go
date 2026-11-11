@@ -37,7 +37,7 @@ func (s *Server) nativeGuestDiagnostics(ctx context.Context) ([]byte, error) {
 		}
 		err = errors.Join(err, cmd.Wait())
 		if err != nil || len(data) > 64<<10 {
-			return nil, errors.New("Windows 客机诊断记录未完整返回")
+			return nil, errors.New("Диагностические записи гостевой системы Windows вернулись не полностью")
 		}
 	} else {
 		command := "exec " + shellescape.QuoteCommand([]string{macCLIInstall + "/bin/python3", "-I", "-c", macOSDiagnosticCollector})
@@ -51,7 +51,7 @@ func (s *Server) nativeGuestDiagnostics(ctx context.Context) ([]byte, error) {
 		Lines   string `json:"lines"`
 	}
 	if json.Unmarshal(data, &result) != nil || result.Version != 1 || len(result.Lines) > 48<<10 || strings.Count(result.Lines, "\n") > 150 {
-		return nil, errors.New("客机诊断记录格式或大小无效")
+		return nil, errors.New("Неверный формат или размер диагностических записей гостевой системы")
 	}
 	return []byte(result.Lines), nil
 }

@@ -49,7 +49,7 @@ func parseMacOSResourceSample(data []byte, memory uint64, cpus int) (macOSResour
 		sample.Available > sample.Total || sample.Free > sample.Total || sample.Inactive > sample.Total-sample.Free ||
 		sample.Available != sample.Free+sample.Inactive || sample.Wired > sample.Total || sample.Compressed > sample.Total ||
 		(sample.SwapTotal == nil) != (sample.SwapFree == nil) || sample.SwapTotal != nil && *sample.SwapFree > *sample.SwapTotal {
-		return sample, errors.New("macOS 客机返回的资源用量不完整或与启动配置不一致")
+		return sample, errors.New("Гостевая система macOS вернула неполные данные о ресурсах или они не соответствуют конфигурации запуска")
 	}
 	return sample, nil
 }
@@ -93,7 +93,7 @@ func (s *Server) readMacOSResources(ctx context.Context, memory uint64, cpus int
 	command := "exec " + shellescape.QuoteCommand([]string{macCLIInstall + "/bin/python3", "-I", "-c", macOSResourceProbe})
 	data, err := s.guestControl(ctx, command, "macos-resources")
 	if err != nil {
-		return nil, errors.New("暂时无法读取 macOS 客机资源用量，请确认客机已启动并完成组件安装")
+		return nil, errors.New("Пока не удалось прочитать расход ресурсов гостевой системы macOS; убедитесь, что гостевая система запущена и компоненты установлены")
 	}
 	sample, err := parseMacOSResourceSample(data, memory, cpus)
 	if err != nil {
@@ -136,12 +136,12 @@ func (s *Server) macOSResourceStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	data, err := os.ReadFile(filepath.Join(s.instanceDir(), "lima.yaml"))
 	if err != nil || yaml.Unmarshal(data, &configured) != nil {
-		requestError(w, errors.New("无法读取 macOS 客机启动配置"))
+		requestError(w, errors.New("Не удалось прочитать конфигурацию запуска гостевой системы macOS"))
 		return
 	}
 	maximum, err := units.RAMInBytes(configured.Memory)
 	if err != nil || maximum < 1<<30 || configured.CPUs < 1 {
-		requestError(w, errors.New("macOS 客机启动资源配置无效"))
+		requestError(w, errors.New("Неверная конфигурация ресурсов запуска гостевой системы macOS"))
 		return
 	}
 	running := s.vmRunning()

@@ -76,7 +76,7 @@ func TestJobManagerStopPreemptsAndFencesOldExecution(t *testing.T) {
 	awaitJobSignal(t, canceled)
 	awaitJobSignal(t, stopped)
 	state := awaitJobIdle(t, &manager)
-	if state.ID != stop.ID || state.Error != "" || state.Log != "" || state.Message != "已完成" {
+	if state.ID != stop.ID || state.Error != "" || state.Log != "" || state.Message != "Завершено" {
 		t.Fatalf("old execution changed stop result: %+v", state)
 	}
 
@@ -96,7 +96,7 @@ func TestJobManagerStopPreemptsAndFencesOldExecution(t *testing.T) {
 	_, _ = old.Write([]byte("late output"))
 	state = manager.snapshot()
 	close(release)
-	if state.Log != "" || state.Message != "正在准备…" {
+	if state.Log != "" || state.Message != "Идёт подготовка…" {
 		t.Fatalf("late output reached another job: %+v", state)
 	}
 }
@@ -118,7 +118,7 @@ func TestJobManagerCancellationWhileWaitingFinishesState(t *testing.T) {
 	operation.Unlock()
 	defer manager.close()
 	state := awaitJobIdle(t, &manager)
-	if ran.Load() || state.Message != "已取消" || state.Error != "" {
+	if ran.Load() || state.Message != "Отменено" || state.Error != "" {
 		t.Fatalf("cancelled waiting job executed or stayed running: %+v", state)
 	}
 }
@@ -233,7 +233,7 @@ func TestJobManagerCloseWaitsForCanceledAndSupersededWork(t *testing.T) {
 	awaitJobSignal(t, closed)
 	awaitJobSignal(t, closedAgain)
 	state := manager.snapshot()
-	if stopRan.Load() || state.Running || state.Message != "已取消" {
+	if stopRan.Load() || state.Running || state.Message != "Отменено" {
 		t.Fatalf("queued stop ran after shutdown: %+v", state)
 	}
 }

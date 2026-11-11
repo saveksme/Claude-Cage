@@ -43,7 +43,7 @@ type vaultEnvelope struct {
 func vaultOrigin(raw string) (string, error) {
 	u, err := url.Parse(raw)
 	if err != nil || u.Scheme != "https" || u.Hostname() == "" || u.User != nil || strings.ContainsAny(raw, "\x00\r\n") || len(raw) > 4096 {
-		return "", errors.New("密码保险箱只支持 HTTPS 网站地址")
+		return "", errors.New("Хранилище паролей поддерживает только адреса сайтов HTTPS")
 	}
 	host := strings.ToLower(u.Host)
 	if u.Port() == "443" {
@@ -58,7 +58,7 @@ func (a *localAccount) withVault(ctx context.Context, mutate bool, fn func(*vaul
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if len(a.key) != 32 || ctx.Err() != nil {
-		return errors.New("请先解锁 Cage")
+		return errors.New("Сначала разблокируйте Cage")
 	}
 	mac := hmac.New(sha256.New, a.key)
 	mac.Write([]byte(vaultDomain))
@@ -76,23 +76,23 @@ func (a *localAccount) withVault(ctx context.Context, mutate bool, fn func(*vaul
 	db := vaultData{Entries: []vaultEntry{}, Blocked: []string{}}
 	raw, err := os.ReadFile(path)
 	if err != nil && !os.IsNotExist(err) {
-		return errors.New("无法读取密码保险箱")
+		return errors.New("Не удалось прочитать хранилище паролей")
 	}
 	if err == nil {
 		if host.CheckPrivateFile(path) != nil {
-			return errors.New("密码保险箱文件权限不安全")
+			return errors.New("Права на файл хранилища паролей небезопасны")
 		}
 		var sealed vaultEnvelope
 		if len(raw) > vaultLimit*2 || json.Unmarshal(raw, &sealed) != nil || sealed.Version != 1 || len(sealed.Nonce) != aead.NonceSize() {
-			return errors.New("密码保险箱损坏，请从备份恢复；现有文件未修改")
+			return errors.New("Хранилище паролей повреждено; восстановите его из резервной копии, существующие файлы не изменены")
 		}
 		plain, err := aead.Open(nil, sealed.Nonce, sealed.Data, []byte(vaultDomain))
 		if err != nil {
-			return errors.New("密码保险箱无法解密；现有文件未修改")
+			return errors.New("Не удалось расшифровать хранилище паролей; существующие файлы не изменены")
 		}
 		defer clear(plain)
 		if len(plain) > vaultLimit || json.Unmarshal(plain, &db) != nil {
-			return errors.New("密码保险箱内容无效；现有文件未修改")
+			return errors.New("Содержимое хранилища паролей недействительно; существующие файлы не изменены")
 		}
 	}
 	if err = fn(&db); err != nil {
@@ -102,7 +102,7 @@ func (a *localAccount) withVault(ctx context.Context, mutate bool, fn func(*vaul
 		return nil
 	}
 	if ctx.Err() != nil {
-		return errors.New("操作已取消")
+		return errors.New("Действие отменено")
 	}
 	plain, err := json.Marshal(db)
 	if err != nil {
@@ -110,14 +110,14 @@ func (a *localAccount) withVault(ctx context.Context, mutate bool, fn func(*vaul
 	}
 	defer clear(plain)
 	if len(plain) > vaultLimit {
-		return errors.New("密码保险箱已满，请删除不再使用的记录")
+		return errors.New("Хранилище паролей заполнено; удалите неиспользуемые записи")
 	}
 	nonce := make([]byte, aead.NonceSize())
 	if _, err = rand.Read(nonce); err != nil {
 		return err
 	}
 	if err = writePrivate(path, vaultEnvelope{1, nonce, aead.Seal(nil, nonce, plain, []byte(vaultDomain))}); err != nil {
-		return errors.New("密码保险箱未能保存，请检查磁盘空间与权限")
+		return errors.New("Не удалось сохранить хранилище паролей; проверьте место на диске и права")
 	}
 	return nil
 }
@@ -129,7 +129,7 @@ func (db *vaultData) save(entry vaultEntry) error {
 	}
 	entry.Origin = origin
 	if len(entry.Username) > 1024 || len(entry.Password) > 8192 || strings.ContainsAny(entry.Username, "\x00\r\n") {
-		return errors.New("账号或密码过长或无效")
+		return errors.New("Аккаунт или пароль слишком длинные или недействительны")
 	}
 	index := -1
 	for i, old := range db.Entries {
@@ -137,17 +137,17 @@ func (db *vaultData) save(entry vaultEntry) error {
 			index = i
 		}
 		if old.Origin == origin && old.Username == entry.Username && old.ID != entry.ID {
-			return errors.New("此网站已有同名账号，请编辑已有记录")
+			return errors.New("На этом сайте уже есть аккаунт с таким именем; отредактируйте существующую запись")
 		}
 	}
 	if entry.ID != "" && index < 0 {
-		return errors.New("密码记录不存在，请刷新后重试")
+		return errors.New("Запись пароля не существует; обновите и повторите")
 	}
 	if index >= 0 && entry.Password == "" {
 		entry.Password = db.Entries[index].Password
 	}
 	if entry.Password == "" {
-		return errors.New("请输入密码")
+		return errors.New("Введите пароль")
 	}
 	entry.Updated = time.Now().UTC().Format(time.RFC3339)
 	if index >= 0 {
@@ -165,13 +165,13 @@ func (a *localAccount) verifyVaultPassword(password string) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if a.record != nil && a.record.TrustedDevice != "" {
-		return errors.New("查看或复制密码前，请在本机的「设置 → 账户」设置密码")
+		return errors.New("Чтобы просмотреть или скопировать пароль, задайте пароль на этом компьютере в разделе «Настройки → Аккаунт»")
 	}
 	if len(a.key) != 32 {
-		return errors.New("请先解锁 Cage")
+		return errors.New("Сначала разблокируйте Cage")
 	}
 	if time.Now().Before(a.nextAttempt) {
-		return errors.New("请稍后再试")
+		return errors.New("Повторите позже")
 	}
 	key, err := openAccountKey(a.record, password)
 	defer clear(key)

@@ -15,7 +15,7 @@ func TestFailedNetworkRecoveryShowsLatestCheckReason(t *testing.T) {
 		return errors.New("出口采样不完整：浏览器没有收到检测结果")
 	})
 	message := s.currentNetworkErrorLocked()
-	if err == nil || !strings.Contains(message, "浏览器没有收到检测结果") || !strings.Contains(message, "自动重检将在") || strings.Contains(message, "guest observation timed out") {
+	if err == nil || !strings.Contains(message, "浏览器没有收到检测结果") || !strings.Contains(message, "повторится через") || strings.Contains(message, "guest observation timed out") {
 		t.Fatalf("latest failure or next retry was hidden: %s error=%v", message, err)
 	}
 }
@@ -25,23 +25,23 @@ func TestNetworkRecoveryStatusExplainsWaitWithoutChangingPermission(t *testing.T
 	now := time.Now()
 	s.recovery.Next = now.Add(1500 * time.Millisecond)
 	before := gate.Status()
-	if message := s.networkRecoveryMessageLocked(now); !strings.Contains(message, "2 秒") {
+	if message := s.networkRecoveryMessageLocked(now); !strings.Contains(message, "2 с") {
 		t.Fatal("missing bounded countdown", message)
 	}
-	if message := s.networkRecoveryMessageLocked(now.Add(2 * time.Second)); !strings.Contains(message, "后台调度") {
+	if message := s.networkRecoveryMessageLocked(now.Add(2 * time.Second)); !strings.Contains(message, "фонового планирования") {
 		t.Fatal("missing scheduling wait", message)
 	}
 	s.recovery.Next = now.Add(-time.Second)
 	s.recovery.pressureLogged = true
-	if message := s.networkRecoveryMessageLocked(now); !strings.Contains(message, "内存压力") {
+	if message := s.networkRecoveryMessageLocked(now); !strings.Contains(message, "нагрузки на память") {
 		t.Fatal("missing memory wait", message)
 	}
 	s.setJobForTest(Job{Kind: "environment-tools", Running: true})
-	if message := s.networkRecoveryMessageLocked(now); !strings.Contains(message, "当前操作") {
+	if message := s.networkRecoveryMessageLocked(now); !strings.Contains(message, "текущего действия") {
 		t.Fatal("missing operation wait", message)
 	}
 	s.setJobForTest(Job{Kind: "network-recovery", Running: true})
-	if message := s.networkRecoveryMessageLocked(now); !strings.Contains(message, "完整重检") {
+	if message := s.networkRecoveryMessageLocked(now); !strings.Contains(message, "полная повторная проверка") {
 		t.Fatal("missing recovery progress", message)
 	}
 	s.setJobForTest(Job{})

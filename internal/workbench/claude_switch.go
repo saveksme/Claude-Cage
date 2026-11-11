@@ -57,7 +57,7 @@ func (s *Server) mobileSessionAccount(w http.ResponseWriter, r *http.Request) {
 	}
 	if input.Action == "switch" {
 		if !input.Confirm || !mobileID(input.RequestID) || !validCLIUUID(input.SourceID) {
-			http.Error(w, "请确认本次账号接续并提供当前会话标识", 400)
+			http.Error(w, "Подтвердите продолжение аккаунта и укажите идентификатор текущего сеанса", 400)
 			return
 		}
 		if err := s.switchClaudeAccount(r.Context(), view.ID, input, false); err != nil {
@@ -71,7 +71,7 @@ func (s *Server) mobileSessionAccount(w http.ResponseWriter, r *http.Request) {
 		}
 	} else if input.Action == "policy" {
 		if !validSwitchPolicy(input.Policy) {
-			http.Error(w, "切换授权无效", 400)
+			http.Error(w, "Неверная авторизация переключения", 400)
 			return
 		}
 		if !s.op.TryLock() {
@@ -89,7 +89,7 @@ func (s *Server) mobileSessionAccount(w http.ResponseWriter, r *http.Request) {
 		record, err := s.mobileCLI.record(s.profile, view.ID)
 		if err == nil {
 			if record.Switch != nil && record.Switch.Phase != "completed" {
-				err = errors.New("账号交接中，请等待完成后修改授权")
+				err = errors.New("Идёт передача аккаунта; дождитесь завершения, затем меняйте авторизацию")
 			} else {
 				record.SwitchPolicy = input.Policy
 				record.changed()
@@ -103,7 +103,7 @@ func (s *Server) mobileSessionAccount(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else if input.Action != "inspect" {
-		http.Error(w, "未知账号操作", 400)
+		http.Error(w, "Неизвестная операция с аккаунтом", 400)
 		return
 	}
 	if terminal {
@@ -174,16 +174,16 @@ func (s *Server) switchClaudeAccount(ctx context.Context, id string, input claud
 		return err
 	}
 	if record.Archived || record.Deleted || !record.Terminal || record.Launcher != "claude" {
-		return errors.New("此会话不能进行账号接续")
+		return errors.New("Этот сеанс не поддерживает продолжение аккаунта")
 	}
 	if sw := record.Switch; sw != nil && sw.ID == input.RequestID && sw.Phase == "completed" {
 		return nil
 	}
 	if record.Switch != nil && record.Switch.Phase != "completed" && record.Switch.ID != input.RequestID {
-		return errors.New("已有账号交接待恢复，请重试原操作")
+		return errors.New("Есть незавершённая передача аккаунта; повторите исходное действие")
 	}
 	if input.SourceID != record.CLIID && (record.Switch == nil || record.Switch.ID != input.RequestID || record.Switch.Source.CLIID != input.SourceID) {
-		return errors.New("会话账号已变化，请刷新后确认")
+		return errors.New("Аккаунт сеанса изменился; обновите и подтвердите")
 	}
 	if record.Switch == nil || record.Switch.ID != input.RequestID {
 		if automatic {
@@ -193,10 +193,10 @@ func (s *Server) switchClaudeAccount(ctx context.Context, id string, input claud
 			}
 			a := list.find(record.Account.ID)
 			if policy != "allow" || record.AccountFailure != "rate_limit" || a == nil {
-				return errors.New("当前会话需要手动确认切换")
+				return errors.New("Текущий сеанс требует ручного подтверждения переключения")
 			}
 			if _, available := a.headroom(time.Now()); available {
-				return errors.New("尚未确认订阅额度耗尽，保留原账号")
+				return errors.New("Исчерпание квоты подписки не подтверждено, исходный аккаунт сохранён")
 			}
 		}
 		found := false
@@ -206,18 +206,18 @@ func (s *Server) switchClaudeAccount(ctx context.Context, id string, input claud
 			}
 		}
 		if !found {
-			return errors.New("目标账号不可用，请将允许接续的账号设置为同一分组并检查额度")
+			return errors.New("Целевой аккаунт недоступен; назначьте аккаунтам, которым разрешено продолжение, одну группу и проверьте квоту")
 		}
 		a := list.find(input.Target)
 		selection := claudeSelection{ID: a.ID, GuestID: a.guestID(), Subject: claudeIdentityHash(a.Email, a.Organization)}
 		// Check the official CLI identity before stopping any existing work.
 		status, probeErr := s.probeClaude(ctx, selection.GuestID)
 		if probeErr != nil || status.subject() != selection.Subject {
-			return errors.New("无法确认目标账号登录，请先检查账号状态")
+			return errors.New("Не удалось подтвердить вход целевого аккаунта; сначала проверьте состояние аккаунта")
 		}
 		sourceStatus, sourceErr := s.probeClaude(ctx, record.Account.GuestID)
 		if sourceErr != nil || sourceStatus.subject() != record.Account.Subject {
-			return errors.New("原账号身份已改变，请先检查原会话登录")
+			return errors.New("Учётная запись исходного аккаунта изменилась; сначала проверьте вход исходного сеанса")
 		}
 		record.Switch = &claudeAccountSwitch{ID: input.RequestID, Phase: "preparing", Source: claudeExecution{record.CLIID, record.Account, record.GuestConfig}, Target: selection, TargetLabel: a.Label, TargetID: uuid.NewString(), Connection: record.Connection, Continue: input.Continue}
 		if err := s.saveClaudeSwitch(record); err != nil {
@@ -235,18 +235,18 @@ func (s *Server) switchClaudeAccount(ctx context.Context, id string, input claud
 			eligible = eligible || option.ID == sw.Target.ID
 		}
 		if !eligible || target == nil || target.guestID() != sw.Target.GuestID || claudeIdentityHash(target.Email, target.Organization) != sw.Target.Subject {
-			return fail(errors.New("目标账号或接续分组已变化，请取消本次交接后重新选择"))
+			return fail(errors.New("Целевой аккаунт или группа продолжения изменились; отмените эту передачу и выберите заново"))
 		}
 		status, err := s.probeClaude(ctx, sw.Target.GuestID)
 		if err != nil || status.subject() != sw.Target.Subject {
-			return fail(errors.New("目标账号登录已变化，请取消交接后检查账号"))
+			return fail(errors.New("Вход целевого аккаунта изменился; отмените передачу и проверьте аккаунт"))
 		}
 		var result struct {
 			Transcript string `json:"transcript"`
 			Error      string `json:"error"`
 		}
 		if sw.Source.Config == "" || sw.Connection == "" {
-			return fail(errors.New("原会话连接尚未就绪，请先打开原会话"))
+			return fail(errors.New("Подключение исходного сеанса ещё не готово; сначала откройте исходный сеанс"))
 		}
 		query := map[string]any{"cli_id": sw.Source.CLIID, "config": sw.Source.Config, "connection": sw.Connection, "workspace": record.GuestWorkspace, "target_cli_id": sw.TargetID, "switch_id": sw.ID}
 		if err := s.windowsConversationInput(record, query); err != nil {
@@ -260,7 +260,7 @@ func (s *Server) switchClaudeAccount(ctx context.Context, id string, input claud
 			return fail(errors.New(result.Error))
 		}
 		if !strings.HasPrefix(result.Transcript, "/") && !(s.windowsGuest != nil && windowsCLIAbsolutePath(result.Transcript)) {
-			return fail(errors.New("原会话历史未确认，未启动目标账号"))
+			return fail(errors.New("История исходного сеанса не подтверждена, целевой аккаунт не запущен"))
 		}
 		if old := s.terminals.get(record.TerminalID); old != nil {
 			s.terminals.remove(old.id)
@@ -296,7 +296,7 @@ func (s *Server) switchClaudeAccount(ctx context.Context, id string, input claud
 		}
 		status, err := s.probeClaude(ctx, record.Account.GuestID)
 		if err != nil || status.subject() != record.Account.Subject {
-			return fail(errors.New("目标账号身份无法确认，保留待恢复历史"))
+			return fail(errors.New("Не удалось подтвердить учётную запись целевого аккаунта; история сохранена для восстановления"))
 		}
 		_, err = s.createTerminalLocked(terminalRequest{Workspace: record.Workspace, Kind: "claude", sharedID: id, requestContext: ctx})
 		if err != nil {
@@ -343,7 +343,7 @@ func (s *Server) cancelClaudeSwitch(ctx context.Context, id, requestID string) e
 	}
 	sw := record.Switch
 	if sw.ID != requestID || sw.Phase != "preparing" {
-		return errors.New("目标账号已接管历史，请在当前会话继续")
+		return errors.New("Целевой аккаунт принял историю; продолжайте в текущем сеансе")
 	}
 	var response struct {
 		OK    bool   `json:"ok"`

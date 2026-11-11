@@ -20,7 +20,7 @@ type selectedHostFile struct {
 
 func openSelectedHostFiles(paths []string) ([]selectedHostFile, error) {
 	if len(paths) == 0 || len(paths) > 100 {
-		return nil, errors.New("请选择 1 至 100 个文件")
+		return nil, errors.New("Выберите от 1 до 100 файлов")
 	}
 	files := make([]selectedHostFile, 0, len(paths))
 	closeFiles := func() {
@@ -31,23 +31,23 @@ func openSelectedHostFiles(paths []string) ([]selectedHostFile, error) {
 	for _, path := range paths {
 		if !filepath.IsAbs(path) || !browserFileName(filepath.Base(path)) {
 			closeFiles()
-			return nil, errors.New("所选文件路径或名称无效")
+			return nil, errors.New("Неверный путь или имя выбранного файла")
 		}
 		before, err := os.Lstat(path)
 		if err != nil || !before.Mode().IsRegular() {
 			closeFiles()
-			return nil, errors.New("请选择本机普通文件；文件夹、链接或已删除的文件无法上传")
+			return nil, errors.New("Выберите обычные локальные файлы; папки, ссылки и удалённые файлы загрузить нельзя")
 		}
 		file, err := os.Open(path)
 		if err != nil {
 			closeFiles()
-			return nil, errors.New("无法读取所选文件，请检查文件权限")
+			return nil, errors.New("Не удалось прочитать выбранный файл; проверьте права на файл")
 		}
 		after, err := file.Stat()
 		if err != nil || !after.Mode().IsRegular() || !os.SameFile(before, after) || after.Size() > browserFileLimit {
 			file.Close()
 			closeFiles()
-			return nil, errors.New("所选文件已变化或超过 2 GB，请重新选择")
+			return nil, errors.New("Выбранный файл изменился или превышает 2 ГБ; выберите заново")
 		}
 		files = append(files, selectedHostFile{file: file, name: filepath.Base(path), size: after.Size()})
 	}
@@ -60,7 +60,7 @@ func streamSelectedHostFiles(client *http.Client, origin, target, id string, fil
 		path := origin + "/api/input/files/" + target + "/" + id + "?" + url.Values{"name": {file.name}}.Encode()
 		request, err := http.NewRequest("POST", path, io.NewSectionReader(file.file, 0, file.size))
 		if err != nil {
-			return nil, errors.New("文件传递请求无效")
+			return nil, errors.New("Неверный запрос передачи файла")
 		}
 		request.Header.Set("Origin", origin)
 		request.Header.Set("Content-Type", "application/octet-stream")
@@ -70,19 +70,19 @@ func streamSelectedHostFiles(client *http.Client, origin, target, id string, fil
 		}
 		response, err := client.Do(request)
 		if err != nil {
-			return nil, errors.New("文件传递中断，请重新选择文件后重试")
+			return nil, errors.New("Передача файла прервалась; выберите файл заново и повторите")
 		}
 		data, readErr := io.ReadAll(io.LimitReader(response.Body, 4097))
 		response.Body.Close()
 		if response.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("文件传递失败（%d），请重新发起上传", response.StatusCode)
+			return nil, fmt.Errorf("Не удалось передать файл (%d); начните загрузку заново", response.StatusCode)
 		}
 		var result struct {
 			OK   bool   `json:"ok"`
 			Path string `json:"path"`
 		}
 		if readErr != nil || len(data) > 4096 || json.Unmarshal(data, &result) != nil || !result.OK {
-			return nil, errors.New("文件传递未返回有效结果，请重试")
+			return nil, errors.New("Передача файла не вернула корректный результат; повторите")
 		}
 		if result.Path != "" {
 			paths = append(paths, result.Path)
@@ -99,7 +99,7 @@ func UploadHostFiles(configPath, target, id string, paths []string) (map[string]
 
 func UploadHostFilesForConnection(configPath, connectionID, target, id string, paths []string) (map[string]any, error) {
 	if (target != "browser" && target != "desktop" && target != "terminal") || !validFileTargetID(target, id) {
-		return nil, errors.New("文件上传目标无效")
+		return nil, errors.New("Неверная цель загрузки файла")
 	}
 	files, err := openSelectedHostFiles(paths)
 	if err != nil {
@@ -118,7 +118,7 @@ func UploadHostFilesForConnection(configPath, connectionID, target, id string, p
 	entry, _ := url.Parse(client.launch.URL)
 	status, err := client.call("POST", "/api/session", map[string]string{"token": entry.Fragment}, nil)
 	if err != nil || status != http.StatusOK {
-		return nil, errors.New("无法连接文件上传会话")
+		return nil, errors.New("Не удалось подключиться к сеансу загрузки файла")
 	}
 	if _, err = client.bindConnection(connectionID); err != nil {
 		return nil, err

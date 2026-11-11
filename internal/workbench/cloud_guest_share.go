@@ -22,7 +22,7 @@ import (
 const clientMountRoot = "/run/cage-client-projects"
 
 var clientMountID = regexp.MustCompile(`^[0-9a-f]{32}$`)
-var errClientMountGone = errors.New("本机项目共享已断开，请在本机重新选择文件夹")
+var errClientMountGone = errors.New("Общий доступ к локальному проекту отключён; снова выберите папку на этом компьютере")
 
 type guestClientMount struct {
 	ctx    context.Context
@@ -99,7 +99,7 @@ for p in "$root"/*; do
   sudo -n rmdir -- "$p" || true
 done`
 	if _, err := s.guest(ctx, recoverScript); err != nil {
-		return errors.New("无法清理上次连接遗留的本机项目挂载")
+		return errors.New("Не удалось очистить монтирование локального проекта, оставшееся от прошлого подключения")
 	}
 	s.mu.Lock()
 	if s.clientMounts == nil {
@@ -116,24 +116,24 @@ func (s *Server) guestClientShare(w http.ResponseWriter, r *http.Request) {
 	}
 	id := r.URL.Query().Get("id")
 	if !clientMountID.MatchString(id) {
-		http.Error(w, "本机项目标识无效", http.StatusBadRequest)
+		http.Error(w, "Неверный идентификатор локального проекта", http.StatusBadRequest)
 		return
 	}
 	path := clientMountRoot + "/" + id
 	if r.Method == http.MethodGet {
 		if _, err := s.clientMountWorkspace(path); err != nil {
-			http.Error(w, "本机项目尚未连接", http.StatusConflict)
+			http.Error(w, "Локальный проект не подключён", http.StatusConflict)
 			return
 		}
 		jsonReply(w, map[string]string{"workspace": path})
 		return
 	}
 	if !httpguts.HeaderValuesContainsToken(r.Header.Values("Connection"), "upgrade") || !strings.EqualFold(r.Header.Get("Upgrade"), "cage-sftp-v1") || r.ContentLength != 0 {
-		http.Error(w, "需要项目共享连接", http.StatusBadRequest)
+		http.Error(w, "Требуется подключение общего доступа к проекту", http.StatusBadRequest)
 		return
 	}
 	if !s.op.TryLock() {
-		http.Error(w, "环境正在处理其他操作", http.StatusConflict)
+		http.Error(w, "Среда выполняет другое действие", http.StatusConflict)
 		return
 	}
 	ctx, cancel := context.WithCancel(r.Context())
@@ -150,7 +150,7 @@ func (s *Server) guestClientShare(w http.ResponseWriter, r *http.Request) {
 	s.mu.Unlock()
 	s.op.Unlock()
 	if !available {
-		http.Error(w, "环境未就绪、共享已存在或已达共享上限", http.StatusConflict)
+		http.Error(w, "Среда не готова, общий доступ уже существует или достигнут предел", http.StatusConflict)
 		return
 	}
 	defer func() {
@@ -169,7 +169,7 @@ func (s *Server) guestClientShare(w http.ResponseWriter, r *http.Request) {
 	_, err := s.guest(setup, "sudo -n install -d -m 0755 "+clientMountRoot+" && sudo -n mkdir -m 000 -- "+target)
 	finishSetup()
 	if err != nil {
-		http.Error(w, "无法准备云端容器挂载位置", http.StatusConflict)
+		http.Error(w, "Не удалось подготовить точку монтирования облачного контейнера", http.StatusConflict)
 		return
 	}
 	defer func() {
@@ -179,7 +179,7 @@ func (s *Server) guestClientShare(w http.ResponseWriter, r *http.Request) {
 	}()
 	conn, buffer, err := http.NewResponseController(w).Hijack()
 	if err != nil {
-		http.Error(w, "无法建立项目共享数据流", http.StatusServiceUnavailable)
+		http.Error(w, "Не удалось установить поток данных общего доступа к проекту", http.StatusServiceUnavailable)
 		return
 	}
 	defer conn.Close()

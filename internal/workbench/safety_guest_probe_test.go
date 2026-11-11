@@ -115,7 +115,7 @@ func TestHostReachAndDNSBypassIssues(t *testing.T) {
 		t.Fatalf("confined resolvers rejected: %s", issue)
 	}
 	v.Resolvers.Confined = boolp(false)
-	if issue, confirmed := dnsBypassIssue(v, true); !confirmed || !strings.Contains(issue, "解析器") {
+	if issue, confirmed := dnsBypassIssue(v, true); !confirmed || !strings.Contains(issue, "Резолвер") {
 		t.Fatalf("resolver outside the environment not confirmed: %q %t", issue, confirmed)
 	}
 	v.Resolvers = resolverObservation{Count: intp(-1)}
@@ -137,7 +137,7 @@ func TestHostReachAndDNSBypassIssues(t *testing.T) {
 	if issue, _ := hostReachIssue(guestObservation{LinkLocalConnected: boolp(true)}, true, false); !strings.Contains(issue, "169.254.169.254") {
 		t.Fatalf("link-local reach not reported: %q", issue)
 	}
-	if issue, _ := hostReachIssue(guestObservation{ProxyEndpointConnected: boolp(true)}, true, true); !strings.Contains(issue, "代理端口") {
+	if issue, _ := hostReachIssue(guestObservation{ProxyEndpointConnected: boolp(true)}, true, true); !strings.Contains(issue, "пользовательского прокси") {
 		t.Fatalf("proxy endpoint reach not reported: %q", issue)
 	}
 }

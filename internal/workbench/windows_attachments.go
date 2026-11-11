@@ -85,13 +85,13 @@ func (s *Server) windowsUploadAttachment(ctx context.Context, name, id string, b
 	reader := bufio.NewScanner(output)
 	reader.Buffer(make([]byte, 4096), 65536)
 	if !reader.Scan() || json.Unmarshal(reader.Bytes(), &result) != nil {
-		return nil, errors.New("Windows 附件没有完整保存，请重新传递")
+		return nil, errors.New("Вложение Windows сохранено не полностью; передайте его заново")
 	}
 	err = cmd.Wait()
 	done = true
 	path, _ := result["path"].(string)
 	if err != nil || result["ok"] != true || result["scope"] != "attachments" || !validWindowsAttachmentPath(path, name) {
-		return nil, errors.New("Windows 附件保存失败，请确认客机仍已解锁，且文件名有效")
+		return nil, errors.New("Не удалось сохранить вложение Windows; убедитесь, что гостевая система всё ещё разблокирована, а имя файла допустимо")
 	}
 	if id != "" {
 		// Desktop batches are completed by the guest broker. Their paths are
@@ -100,7 +100,7 @@ func (s *Server) windowsUploadAttachment(ctx context.Context, name, id string, b
 		if raw, exists := result["size"]; exists {
 			size, ok := raw.(float64)
 			if !ok || size < 0 || size > float64(browserFileLimit) || size != float64(int64(size)) {
-				return nil, errors.New("Windows 附件保存结果无效")
+				return nil, errors.New("Неверный результат сохранения вложения Windows")
 			}
 			public["size"] = size
 		}
@@ -117,7 +117,7 @@ func writeWindowsAttachmentFrames(output io.Writer, input io.Reader) error {
 		n, err := input.Read(buffer)
 		count += int64(n)
 		if count > browserFileLimit {
-			return errors.New("每个文件不能超过 2 GB")
+			return errors.New("Каждый файл не должен превышать 2 ГБ")
 		}
 		if n > 0 {
 			binary.LittleEndian.PutUint32(header, uint32(n))

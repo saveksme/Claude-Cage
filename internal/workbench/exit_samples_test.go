@@ -10,12 +10,12 @@ import (
 func TestIncompleteExitSamplesIdentifyRoutesAndRedactPrivateErrors(t *testing.T) {
 	good := networkObservation{Status: 200, IP: "8.8.8.8"}
 	message := incompleteExitSamples("", context.DeadlineExceeded, good, nil, networkObservation{}, errors.New("浏览器请求失败 https://user:password@private.example/secret token=private-token /Users/alice/project"))
-	for _, want := range []string{"宿主", "超时", "浏览器", "出口采样不完整"} {
+	for _, want := range []string{"Хост", "истекло время ожидания", "Браузер", "Выборка выхода неполна"} {
 		if !strings.Contains(message, want) {
 			t.Fatalf("missing diagnostic %q: %s", want, message)
 		}
 	}
-	for _, unwanted := range []string{"虚拟机终端", "private.example", "private-token", "alice", "password"} {
+	for _, unwanted := range []string{"Терминал виртуальной машины", "private.example", "private-token", "alice", "password"} {
 		if strings.Contains(message, unwanted) {
 			t.Fatalf("successful route or private data included: %s", message)
 		}
@@ -27,12 +27,12 @@ func TestIncompleteExitSamplesIdentifyRoutesAndRedactPrivateErrors(t *testing.T)
 		observation networkObservation
 		want        string
 	}{
-		{networkObservation{}, "没有收到检测通道的响应"},
+		{networkObservation{}, "Ответ канала проверки не получен"},
 		{networkObservation{Status: 503}, "HTTP 503"},
-		{networkObservation{Status: 200}, "没有返回出口地址"},
+		{networkObservation{Status: 200}, "не вернул адрес выхода"},
 	} {
 		message := incompleteExitSamples("8.8.8.8", nil, tc.observation, nil, good, nil)
-		if !strings.Contains(message, "虚拟机终端：") || !strings.Contains(message, tc.want) || strings.Contains(message, "宿主：") || strings.Contains(message, "浏览器：") {
+		if !strings.Contains(message, "Терминал виртуальной машины: ") || !strings.Contains(message, tc.want) || strings.Contains(message, "Хост: ") || strings.Contains(message, "Браузер: ") {
 			t.Fatalf("wrong route or failure category: %s", message)
 		}
 	}

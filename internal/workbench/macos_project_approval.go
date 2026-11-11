@@ -51,14 +51,14 @@ func (s *Server) macOSProjectApproval(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !s.op.TryLock() {
-		http.Error(w, "正在处理其他客机操作，请重试", http.StatusConflict)
+		http.Error(w, "Выполняется другая операция с гостевой системой; повторите", http.StatusConflict)
 		return
 	}
 	defer s.op.Unlock()
 	if req.Action == "cancel" {
 		if !s.cancelMacOSProjectApproval(req.Workspace, req.Grant) {
 			w.Header().Set("X-Cage-Recovery", "project-approval-ended")
-			http.Error(w, "项目授权已结束", http.StatusConflict)
+			http.Error(w, "Авторизация проекта завершена", http.StatusConflict)
 			return
 		}
 		jsonReply(w, map[string]bool{"ok": true})
@@ -70,13 +70,13 @@ func (s *Server) macOSProjectApproval(w http.ResponseWriter, r *http.Request) {
 	s.mu.Unlock()
 	if !active {
 		w.Header().Set("X-Cage-Recovery", "project-approval-ended")
-		http.Error(w, "项目授权请求已失效，请重新请求授权。", http.StatusConflict)
+		http.Error(w, "Запрос авторизации проекта устарел; запросите авторизацию заново.", http.StatusConflict)
 		return
 	}
 	select {
 	case <-share.done:
 		w.Header().Set("X-Cage-Recovery", "project-approval-ended")
-		http.Error(w, "项目挂载已断开", http.StatusConflict)
+		http.Error(w, "Монтирование проекта отключено", http.StatusConflict)
 		return
 	default:
 	}
@@ -85,6 +85,6 @@ func (s *Server) macOSProjectApproval(w http.ResponseWriter, r *http.Request) {
 		input := macOSWindowRequest{Action: "project-" + req.Action, Project: macOSProjectPath(s.macosGuest.User, req.Workspace), Window: req.Window, PID: req.PID, Nonce: req.Nonce, X: req.X, Y: req.Y}
 		s.macOSWindowRPC(w, r, input)
 	default:
-		http.Error(w, "未知的项目授权操作", http.StatusBadRequest)
+		http.Error(w, "Неизвестная операция авторизации проекта", http.StatusBadRequest)
 	}
 }

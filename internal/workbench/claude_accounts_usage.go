@@ -11,7 +11,7 @@ const (
 	claudeUsageInterval = time.Minute
 )
 
-var errClaudeUsageBusy = errors.New("正在检查其他账号的额度，请稍后重试")
+var errClaudeUsageBusy = errors.New("Проверяется квота других аккаунтов; повторите позже")
 
 func claudeUsageDue(checked int64) bool {
 	return checked == 0 || time.Since(time.Unix(checked, 0)) >= claudeUsageInterval
@@ -108,11 +108,11 @@ func (s *Server) usageAvailability() error {
 	defer s.mu.Unlock()
 	switch {
 	case s.guestUpdateRequired:
-		return errors.New("请先同步环境组件后再查询额度")
+		return errors.New("Сначала синхронизируйте компоненты среды, затем запрашивайте квоту")
 	case s.closing || !s.ready:
-		return errors.New("请先启动 Cage 环境后再查询额度")
+		return errors.New("Сначала запустите среду Cage, затем запрашивайте квоту")
 	case s.networkPaused:
-		return errors.New("网络已暂停，恢复连接后可查询订阅额度")
+		return errors.New("Сеть приостановлена; квоту подписки можно запросить после восстановления подключения")
 	default:
 		return nil
 	}
@@ -128,7 +128,7 @@ func (s *Server) refreshClaudeUsage(ctx context.Context, input claudeAccountInpu
 			return err
 		}
 		if input.Identity == "" || current.subject() != input.Identity {
-			return errors.New("默认登录身份已经变化，请刷新账号面板")
+			return errors.New("Учётная запись входа по умолчанию изменилась; обновите панель аккаунтов")
 		}
 		return s.checkClaudeUsage(ctx, claudeUsageTarget{guest: "default", subject: input.Identity}, false)
 	}
@@ -141,7 +141,7 @@ func (s *Server) refreshClaudeUsage(ctx context.Context, input claudeAccountInpu
 	}
 	a := list.find(input.ID)
 	if a == nil {
-		return errors.New("未找到要检查的账号")
+		return errors.New("Аккаунт для проверки не найден")
 	}
 	if a.Email == "" {
 		if err = s.refreshClaudeAccount(ctx, input.ID); err != nil {
@@ -155,7 +155,7 @@ func (s *Server) refreshClaudeUsage(ctx context.Context, input claudeAccountInpu
 		}
 		a = list.find(input.ID)
 		if a == nil || a.Email == "" {
-			return errors.New("尚未检测到此账号的有效订阅登录")
+			return errors.New("Для этого аккаунта не обнаружен действующий вход по подписке")
 		}
 	}
 	return s.checkClaudeUsage(ctx, claudeUsageTarget{a.ID, a.guestID(), claudeIdentityHash(a.Email, a.Organization)}, false)
@@ -191,7 +191,7 @@ func (s *Server) checkClaudeUsage(parent context.Context, target claudeUsageTarg
 	owner := s.usageOwner(list, target)
 	if owner == nil {
 		m.mu.Unlock()
-		return errors.New("账号来源或身份已变化，请刷新面板")
+		return errors.New("Источник или учётная запись аккаунта изменились; обновите панель")
 	}
 	if automatic && !claudeUsageDue(owner.UsageCheckedAt) {
 		m.mu.Unlock()
@@ -246,7 +246,7 @@ func (s *Server) checkClaudeUsage(parent context.Context, target claudeUsageTarg
 	}
 	owner = s.usageOwner(list, target)
 	if owner == nil {
-		err = errors.New("账号来源或身份已变化，未记录此次额度")
+		err = errors.New("Источник или учётная запись аккаунта изменились, эта квота не записана")
 		return err
 	}
 	now := time.Now()

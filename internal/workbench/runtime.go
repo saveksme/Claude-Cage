@@ -76,7 +76,7 @@ func (s *Server) sshCommandWithForwarding(ctx context.Context, args ...string) *
 }
 func (s *Server) sshCommandOptions(ctx context.Context, maintenance bool, args ...string) *exec.Cmd {
 	if s.windowsGuest != nil {
-		return &exec.Cmd{Err: errors.New("Windows 客机不支持 Linux SSH 控制脚本")}
+		return &exec.Cmd{Err: errors.New("Гостевая система Windows не поддерживает управляющие скрипты Linux SSH")}
 	}
 	if s.macosGuest != nil {
 		return s.macOSSSHCommand(ctx, args...)
@@ -102,7 +102,7 @@ func (s *Server) guest(ctx context.Context, script string) ([]byte, error) {
 
 func (s *Server) guestControl(ctx context.Context, script, diagnosticSource string) ([]byte, error) {
 	if s.windowsGuest != nil {
-		return nil, errors.New("Windows 客机不支持 Linux 控制脚本")
+		return nil, errors.New("Гостевая система Windows не поддерживает управляющие скрипты Linux")
 	}
 	// SSH enters the user's default shell. Run control scripts in Bash so
 	// zsh initialization cannot change their redirection or error behavior.
@@ -157,26 +157,26 @@ func (s *Server) attach() error {
 			return err
 		}
 		if !state.Running {
-			return errors.New("环境尚未启动")
+			return errors.New("Среда ещё не запущена")
 		}
 		if !state.Ready {
 			s.mu.Lock()
 			s.ready = false
 			s.mu.Unlock()
 			if !state.MountsReady {
-				return errors.New("容器项目共享需要初始化，请保存工作后完整停止并重新启动环境")
+				return errors.New("Общий доступ к проектам контейнера требует инициализации; сохраните работу, полностью остановите и снова запустите среду")
 			}
 			if !state.ResourcesVerified {
-				return errors.New("容器资源限制尚未通过核验，请检查服务器资源配置")
+				return errors.New("Ограничения ресурсов контейнера ещё не проверены; проверьте конфигурацию ресурсов сервера")
 			}
-			return errors.New("容器网络与文件连接尚未就绪，请重试启动")
+			return errors.New("Сетевые и файловые подключения контейнера ещё не готовы; повторите запуск")
 		}
 	} else if !s.vmRunning() {
-		return errors.New("环境尚未启动")
+		return errors.New("Среда ещё не запущена")
 	}
 	b, err := s.guest(ctx, guestConnectionSnapshot)
 	if err != nil {
-		return errors.New("环境尚未准备好")
+		return errors.New("Среда ещё не готова")
 	}
 	credentials, manifest, err := parseGuestConnection(b)
 	s.mu.Lock()
@@ -190,7 +190,7 @@ func (s *Server) attach() error {
 	s.mu.Unlock()
 	if err != nil {
 		if errors.Is(err, errGuestUpdateRequired) {
-			_ = s.closeProxyGate("环境组件需要更新，外网保持关闭")
+			_ = s.closeProxyGate("Компоненты среды требуют обновления, внешняя сеть остаётся закрытой")
 		}
 		return err
 	}
@@ -291,18 +291,18 @@ func (s *Server) runCage(args ...string) error {
 		if errors.Is(ctx.Err(), context.Canceled) {
 			return context.Canceled
 		}
-		action := map[string]string{"setup": "准备 Linux 环境", "up": "启动环境", "down": "停止环境", "stop": "停止环境"}[args[0]]
+		action := map[string]string{"setup": "подготовка среды Linux", "up": "запуск среды", "down": "остановка среды", "stop": "остановка среды"}[args[0]]
 		if action == "" {
-			action = "执行环境操作"
+			action = "действие со средой"
 		}
 		if p := s.jobs.snapshot().SetupProgress; p != nil && p.Label != "" {
-			action = strings.TrimPrefix(p.Label, "正在")
+			action = p.Label
 		}
 		// CLI failures can include the original QEMU stderr before a generic
 		// "Failed to start base VM" footer. Surface that reason in job.error.
 		for _, line := range strings.Split(s.jobs.snapshot().Log, "\n") {
 			if _, reason, ok := strings.Cut(line, "Error: QEMU 启动失败："); ok {
-				return fmt.Errorf("%s失败：虚拟机未能启动。QEMU 启动失败：%s。请查看操作详情；仍无法启动时，在设置中导出诊断包。", action, reason)
+				return fmt.Errorf("Не удалось выполнить «%s»: виртуальная машина не запустилась. QEMU не запустился: %s. Посмотрите подробности операции; если запуск по-прежнему невозможен, экспортируйте диагностический пакет в настройках.", action, reason)
 			}
 		}
 		diagnostics.Log("error", "environment-operation", fmt.Sprintf("operation=%s error=%v context=%v", args[0], err, ctx.Err()))
@@ -327,7 +327,7 @@ func (s *Server) startEnvironment(syncTimezone bool) error {
 	}
 	pending, err := guestos.LoadInstallation(s.profile)
 	if err != nil || (pending != nil && !hostimage.IsLinux(pending.System)) {
-		return errors.New("请从首次安装入口继续原生客户机安装")
+		return errors.New("Продолжите установку нативной гостевой системы через мастер первой установки")
 	}
 	linuxSystem, err := s.installedLinuxSystem()
 	if err != nil {
@@ -336,7 +336,7 @@ func (s *Server) startEnvironment(syncTimezone bool) error {
 	if pending != nil {
 		prepared, err := hostimage.Load(filepath.Join(s.profile, "state", "guest-media"))
 		if err != nil || pending.Media == "" || prepared != pending.Source {
-			return errors.New("请从首次安装入口完成本机系统材料准备")
+			return errors.New("Завершите подготовку материалов системы этого компьютера через мастер первой установки")
 		}
 	}
 	// Check before proxy activation or the first image download. The UI cannot
@@ -360,7 +360,7 @@ func (s *Server) startEnvironment(syncTimezone bool) error {
 			s.mu.Lock()
 			s.ready = false
 			s.mu.Unlock()
-			return errors.New("容器项目共享需要初始化，请保存工作后先停止环境，再重新启动；项目和登录数据会保留")
+			return errors.New("Общий доступ к проектам контейнера требует инициализации; сохраните работу, сначала остановите среду, затем запустите её снова; проекты и данные входа сохранятся")
 		}
 	}
 	cfg, err := loadConfig(s.configPath)
@@ -377,7 +377,7 @@ func (s *Server) startEnvironment(syncTimezone bool) error {
 			return e
 		}
 		if p.Selected == "" || p.Endpoint() != cfg.ProxyURL || p.Revision != cfg.ProxyRevision {
-			return errors.New("内置代理配置未应用，请重新选择节点")
+			return errors.New("Конфигурация встроенного прокси не применена; выберите узел заново")
 		}
 		name, e := physicalProxyInterface(s.operationContext())
 		if e != nil {
@@ -413,7 +413,7 @@ func (s *Server) startEnvironment(syncTimezone bool) error {
 				return s.checkNetworkIfWanted()
 			}
 		}
-		s.setMessage("正在重启环境以加载 VM 外网络门槛…")
+		s.setMessage("Перезапуск среды для загрузки внешнего сетевого шлюза виртуальной машины…")
 		if err := s.stopEnvironment(); err != nil {
 			return err
 		}
@@ -422,7 +422,7 @@ func (s *Server) startEnvironment(syncTimezone bool) error {
 	preferences := s.preferences
 	auto := preferences.AutoTimezone || preferences.AutoLanguage
 	s.mu.Unlock()
-	s.setMessage("正在验证代理出口…")
+	s.setMessage("Проверка выхода через прокси…")
 	loc, probeErr := probeEnvironmentLocation(s.operationContext(), cfg, preferences)
 	if s.operationContext().Err() != nil {
 		return s.operationContext().Err()
@@ -451,7 +451,7 @@ func (s *Server) startEnvironment(syncTimezone bool) error {
 		}
 		if updated != cfg {
 			// Changing a live hostagent's profile is forbidden. Stop before replacing it.
-			s.setMessage("正在应用出口所在地的时区与语言建议…")
+			s.setMessage("Применение рекомендаций часового пояса и языка для региона выхода…")
 			if err = s.stopEnvironment(); err != nil {
 				return err
 			}
@@ -461,19 +461,19 @@ func (s *Server) startEnvironment(syncTimezone bool) error {
 			}
 		}
 	} else if probeErr != nil {
-		s.setMessage("代理出口无法通过检查，正在启动离线环境…")
+		s.setMessage("Выход через прокси не прошёл проверку, запускается офлайн-среда…")
 	}
 	if _, err = os.Stat(filepath.Join(s.profile, "state", ".agent-vm-base-version")); !containerenv.Configured(s.profile) && os.IsNotExist(err) {
-		s.setMessage("首次准备 Linux 环境与开发工具，可能需要数分钟…")
+		s.setMessage("Первая подготовка среды Linux и инструментов разработки может занять несколько минут…")
 		job := s.jobs.execution()
-		job.setSetupProgress(&SetupProgress{Phase: "image", System: linuxSystem, Label: "正在准备 " + guestProgressName(linuxSystem) + " 镜像"})
+		job.setSetupProgress(&SetupProgress{Phase: "image", System: linuxSystem, Label: "Идёт подготовка образа " + guestProgressName(linuxSystem)})
 		if err = s.runCage("setup"); err != nil {
 			return err
 		}
-		job.setSetupProgress(&SetupProgress{Phase: "services", Label: "正在启动浏览器和编辑器"})
+		job.setSetupProgress(&SetupProgress{Phase: "services", Label: "Идёт запуск браузера и редактора"})
 		defer job.setSetupProgress(nil)
 	}
-	s.setMessage("正在启动浏览器、编辑器与共享文件…")
+	s.setMessage("Запуск браузера, редактора и общих файлов…")
 	if err = s.runCage("up"); err != nil {
 		return err
 	}
@@ -486,7 +486,7 @@ func (s *Server) startEnvironment(syncTimezone bool) error {
 		}
 		time.Sleep(time.Second)
 	}
-	return errors.New("环境已启动，但浏览器连接尚未就绪。请重试连接或查看操作详情。")
+	return errors.New("Среда запущена, но подключение браузера ещё не готово. Повторите подключение или посмотрите подробности операции.")
 }
 func (s *Server) stopEnvironment() (returned error) {
 	s.desktopStatus.invalidate()
@@ -503,14 +503,14 @@ func (s *Server) stopEnvironment() (returned error) {
 	if s.macosGuest != nil {
 		return s.stopMacOSGuest()
 	}
-	s.setMessage("正在停止 Cage 环境…")
+	s.setMessage("Остановка среды Cage…")
 	if (explicitStop || s.jobs.snapshot().Kind == "storage") && cage.InstanceJobID(filepath.Join(s.profile, "state"), "base-building") != "" {
 		if err := s.runCage("stop", "base-building"); err != nil {
 			return err
 		}
 	}
 	if client, err := s.gateClient(); err == nil {
-		if state, e := client.Close(context.Background(), "环境正在停止"); e == nil {
+		if state, e := client.Close(context.Background(), "Среда останавливается"); e == nil {
 			s.publishGate(state)
 		}
 	}
@@ -558,7 +558,7 @@ func (s *Server) apply(v savedProfile, validate bool) error {
 	s.mu.Unlock()
 	changed := old != v.Config || oldPrefs.AutoTimezone != v.Preferences.AutoTimezone || oldPrefs.AutoLanguage != v.Preferences.AutoLanguage
 	if changed && validate && old.RequireManagedProxy(s.profile) == nil {
-		s.setMessage("正在验证新出口，现有环境保持运行…")
+		s.setMessage("Проверка нового выхода, текущая среда продолжает работать…")
 		loc, e := probeEnvironmentLocation(s.operationContext(), v.Config, v.Preferences)
 		if err := s.finishLocationProbe(v.Config, loc, e); err != nil {
 			return err
@@ -574,14 +574,14 @@ func (s *Server) apply(v savedProfile, validate bool) error {
 		observed := loc.exitLocation()
 		if result, message := v.Config.ExitPolicy.Evaluate(loc.IP, &observed); result != cage.CheckPassed {
 			if result == cage.CheckUnknown && e != nil && !v.Preferences.AutoTimezone && !v.Preferences.AutoLanguage {
-				return errors.New("时区和语言已选择手动设置，但所有出口仍须确认国家或地区。请重试位置检测或切换节点；静态 IP 和不限地区不能跳过大陆出口检查，原配置保持不变")
+				return errors.New("Для часового пояса и языка выбрана ручная настройка, но страну или регион всех выходов всё равно нужно подтвердить. Повторите проверку местоположения или переключите узел; статический IP и неограниченные регионы не позволяют пропустить проверку выхода из материкового Китая, исходная конфигурация не меняется")
 			}
 			return errors.New(message)
 		}
 	}
 	if changed {
 		if s.windowsGuest != nil && wasReady && (old.Timezone != v.Config.Timezone || old.Locale != v.Config.Locale) {
-			if err := s.closeProxyGate("正在应用 Windows 系统设置，外网等待重新检查"); err != nil {
+			if err := s.closeProxyGate("Применение системных настроек Windows, внешняя сеть ожидает повторной проверки"); err != nil {
 				return err
 			}
 			if err := s.applyWindowsGuestSettings(s.operationContext(), v.Config); err != nil {
@@ -603,7 +603,7 @@ func (s *Server) apply(v savedProfile, validate bool) error {
 	}
 	// A project is a live directory grant in the same VM, never a lifecycle change.
 	if v.Preferences.Workspace != "" && s.vmRunning() {
-		s.setMessage("正在连接项目文件夹…")
+		s.setMessage("Подключение папки проекта…")
 		if _, err = s.connectProject(v.Preferences.Workspace, true); err != nil {
 			return err
 		}
@@ -629,17 +629,17 @@ func (s *Server) apply(v savedProfile, validate bool) error {
 		ctx, cancel := s.controlContext()
 		defer cancel()
 		if err = s.setBrowserHome(ctx, token, browserHomeURL(v.Preferences)); err != nil {
-			return fmt.Errorf("设置已保存，但浏览器暂时未能应用默认网站，请恢复连接后重试：%w", err)
+			return fmt.Errorf("Настройки сохранены, но браузер пока не смог применить сайт по умолчанию; восстановите подключение и повторите: %w", err)
 		}
 	}
 	if changed && wasReady {
-		s.setMessage("正在重新连接客机…")
+		s.setMessage("Переподключение гостевой системы…")
 		if err = s.startEnvironment(false); err != nil {
 			var network networkCheckError
 			if errors.As(err, &network) {
-				return fmt.Errorf("设置已保存，环境已启动。外网仍关闭，修复以下问题后可重新检测：%w", err)
+				return fmt.Errorf("Настройки сохранены, среда запущена. Внешняя сеть по-прежнему закрыта; после устранения указанных проблем повторите проверку: %w", err)
 			}
-			return fmt.Errorf("设置已保存，环境尚未恢复就绪。请核对客机状态后重试启动：%w", err)
+			return fmt.Errorf("Настройки сохранены, среда ещё не вернулась в рабочее состояние. Проверьте состояние гостевой системы и повторите запуск: %w", err)
 		}
 	}
 	return nil

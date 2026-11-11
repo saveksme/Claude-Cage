@@ -52,7 +52,7 @@ func TestLogoutJoinsRunningStopAndLocksOnlyAfterSuccess(t *testing.T) {
 			state := awaitJobIdle(t, &s.jobs)
 			view := s.account.view()
 			if fail {
-				if !view.Unlocked || view.RequireAuthentication || !strings.Contains(state.Error, "停止环境失败") {
+				if !view.Unlocked || view.RequireAuthentication || !strings.Contains(state.Error, "действие «остановка среды» не выполнено") {
 					t.Fatalf("failed stop changed account access: %+v, job %+v", view, state)
 				}
 				return
@@ -134,7 +134,7 @@ func TestAcceptedJobOutlivesSubmittingHTTPRequest(t *testing.T) {
 	}
 	finish()
 	state := awaitJobIdle(t, &s.jobs)
-	if state.Error != "" || state.Message != "已完成" {
+	if state.Error != "" || state.Message != "Завершено" {
 		t.Fatalf("independent job failed: %+v", state)
 	}
 }

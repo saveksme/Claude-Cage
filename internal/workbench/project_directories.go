@@ -20,12 +20,12 @@ func (s *Server) projectDirectories(w http.ResponseWriter, r *http.Request) {
 		path, _ = os.UserHomeDir()
 	}
 	if !filepath.IsAbs(path) {
-		http.Error(w, "请选择服务器上的绝对路径", 400)
+		http.Error(w, "Выберите абсолютный путь на сервере", 400)
 		return
 	}
 	real, err := paths.Resolve(path)
 	if err != nil {
-		http.Error(w, "服务器目录不存在或无法访问", 400)
+		http.Error(w, "Каталог на сервере не существует или недоступен", 400)
 		return
 	}
 	reserved, err := privateProjectDirectories(s.profile)
@@ -39,7 +39,7 @@ func (s *Server) projectDirectories(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if err != nil {
-		http.Error(w, "无法验证环境存储目录", 500)
+		http.Error(w, "Не удалось проверить каталог хранилища среды", 500)
 		return
 	}
 	private := func(path string) bool {
@@ -51,22 +51,22 @@ func (s *Server) projectDirectories(w http.ResponseWriter, r *http.Request) {
 		return false
 	}
 	if private(real) {
-		http.Error(w, "Cage 配置目录不能作为项目浏览", 403)
+		http.Error(w, "Каталог конфигурации Cage нельзя просматривать как проект", 403)
 		return
 	}
 	directory, err := os.Open(real)
 	if err != nil {
-		http.Error(w, "无法读取服务器目录", 403)
+		http.Error(w, "Не удалось прочитать каталог на сервере", 403)
 		return
 	}
 	defer directory.Close()
 	entries, err := directory.ReadDir(2001)
 	if err != nil && err != io.EOF {
-		http.Error(w, "无法读取服务器目录", 403)
+		http.Error(w, "Не удалось прочитать каталог на сервере", 403)
 		return
 	}
 	if len(entries) > 2000 {
-		http.Error(w, "此目录项目过多，请直接输入更具体的路径", 413)
+		http.Error(w, "В этом каталоге слишком много проектов; введите более конкретный путь", 413)
 		return
 	}
 	type child struct {

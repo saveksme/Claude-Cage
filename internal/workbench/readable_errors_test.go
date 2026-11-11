@@ -12,19 +12,19 @@ import (
 
 func TestWindowsMaintenanceFailureRetainsStageForBothJobs(t *testing.T) {
 	cause := errors.New("synthetic maintenance process failed")
-	for _, action := range []string{"修复 Windows 系统助手", "更新原生客机组件"} {
+	for _, action := range []string{"восстановление системного помощника Windows", "обновление нативных компонентов гостевой системы"} {
 		for _, test := range []struct {
 			phase, reason, next string
 		}{
-			{"AUTHORIZATION_CANCELED", "已取消 Windows 管理员授权", "系统授权窗口"},
-			{"AUTHORIZATION", "授权窗口未能打开", "本机 Cage"},
-			{"VALIDATION", "绑定或组件清单", "重新安装完整 Cage"},
-			{"HOST_MANAGER", "系统管理助手安装", "修复系统助手"},
-			{"GUEST_CONNECTION", "客机连接未完成", "管理员账户"},
-			{"GUEST_COMPONENTS", "客机组件安装", "同步环境组件"},
-			{"HOST_RELAY", "主机连接组件更新", "占用连接组件"},
-			{"PACKAGE_PREPARATION", "组件包准备", "系统盘空间"},
-			{"FAILED", "Windows 维护未完成", "导出诊断包"},
+			{"AUTHORIZATION_CANCELED", "авторизация администратора Windows отменена", "окне авторизации Windows"},
+			{"AUTHORIZATION", "окно авторизации администратора Windows не открылось", "учётную запись Windows"},
+			{"VALIDATION", "привязка среды Windows или список компонентов", "переустановите приложение Cage"},
+			{"HOST_MANAGER", "установка системного помощника Windows", "восстановление системного помощника"},
+			{"GUEST_CONNECTION", "подключение к гостевой системе Windows", "учётной записью администратора"},
+			{"GUEST_COMPONENTS", "установка компонентов гостевой системы Windows", "синхронизацию компонентов"},
+			{"HOST_RELAY", "обновление компонента подключения хост-системы Windows", "компонент подключения"},
+			{"PACKAGE_PREPARATION", "подготовка пакета компонентов Windows", "системном диске"},
+			{"FAILED", "обслуживание Windows не завершено", "диагностический пакет"},
 		} {
 			t.Run(action+"/"+test.phase, func(t *testing.T) {
 				output := "CAGE_WINDOWS_MAINTENANCE_" + test.phase + " synthetic stage\naccess is denied token=private-stage-secret"
@@ -47,9 +47,9 @@ func TestBrowserFailureExplainsOperationAndKnownCause(t *testing.T) {
 		status     int
 		body, want string
 	}{
-		{400, `{"error":"Tab no longer exists"}`, "标签页已关闭"},
-		{401, `{"error":"private token=do-not-display"}`, "授权"},
-		{503, `{"error":"private token=do-not-display"}`, "尚未就绪"},
+		{400, `{"error":"Tab no longer exists"}`, "Вкладка закрыта"},
+		{401, `{"error":"private token=do-not-display"}`, "авторизацию"},
+		{503, `{"error":"private token=do-not-display"}`, "не готова"},
 		{500, `{"error":"private token=do-not-display"}`, "HTTP 500"},
 	} {
 		t.Run(fmt.Sprint(tc.status), func(t *testing.T) {
@@ -69,8 +69,8 @@ func TestBrowserFailureExplainsOperationAndKnownCause(t *testing.T) {
 }
 
 func TestFileServiceRetainsKnownRejectionAndHidesUnknownBody(t *testing.T) {
-	known := fileServiceFailure(400, []byte("上传窗口已关闭，请重新选择文件"))
-	if !strings.Contains(known.Error(), "上传窗口已关闭") || !strings.Contains(known.Error(), "重新点击") {
+	known := fileServiceFailure(400, []byte("Окно загрузки закрыто. Выберите файл заново"))
+	if !strings.Contains(known.Error(), "Окно загрузки закрыто") || !strings.Contains(known.Error(), "нажмите кнопку загрузки") {
 		t.Fatalf("file window reason lost: %v", known)
 	}
 	unknown := fileServiceFailure(500, []byte("unknown response token=private-file-secret"))

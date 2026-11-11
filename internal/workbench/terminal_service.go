@@ -14,11 +14,11 @@ import (
 )
 
 var (
-	errTerminalsClosed  = errors.New("后台正在退出，请重新打开 Cage。")
-	errTerminalBusy     = errors.New("环境正在执行其他操作")
-	errTerminalNotReady = errors.New("环境尚未就绪或正在重启")
-	errTerminalLimit    = errors.New("最多保留 12 个终端，请先关闭不用的会话")
-	errTerminalStart    = errors.New("无法创建终端连接")
+	errTerminalsClosed  = errors.New("Фоновая служба завершает работу; снова откройте Cage.")
+	errTerminalBusy     = errors.New("В среде выполняется другое действие")
+	errTerminalNotReady = errors.New("Среда ещё не готова или перезапускается")
+	errTerminalLimit    = errors.New("Можно держать не более 12 терминалов; сначала закройте ненужные сеансы")
+	errTerminalStart    = errors.New("Не удалось создать подключение терминала")
 )
 
 type terminalRequest struct {
@@ -55,11 +55,11 @@ func (m *terminalManager) startSessionWithPTY(cmd *exec.Cmd, workspace, kind str
 		return nil, errTerminalStart
 	}
 	m.sequence++
-	title := fmt.Sprintf("终端 %d", m.sequence)
+	title := fmt.Sprintf("Терминал %d", m.sequence)
 	if kind == "claude" {
 		title = fmt.Sprintf("Claude %d", m.sequence)
 	} else if kind == "claude-login" {
-		title = "Claude 账号登录"
+		title = "вход в аккаунт Claude"
 	}
 	session := newTerminalSession(file)
 	session.id, session.title, session.workspace, session.cmd = randomToken()[:16], title, workspace, cmd
@@ -172,7 +172,7 @@ func (m *terminalManager) existingClaudeLogin(id string, login bool) (*terminalS
 			return session, nil
 		}
 		if login || session.kind == "claude-login" {
-			return nil, errors.New("请先结束此账号的登录或运行中的终端，再更改登录身份")
+			return nil, errors.New("Сначала завершите вход в этот аккаунт или работающие терминалы, затем меняйте учётную запись")
 		}
 	}
 	return nil, nil
@@ -238,10 +238,10 @@ func (s *Server) createTerminalLocked(input terminalRequest) (*terminalSession, 
 		}
 		sharedRecord = record
 		if record.Switch != nil && record.Switch.Phase == "preparing" {
-			return nil, errors.New("账号交接尚未完成，请先重试或取消交接")
+			return nil, errors.New("Передача аккаунта ещё не завершена; повторите или отмените передачу")
 		}
 		if record.Archived || record.Deleted {
-			return nil, errors.New("此会话已归档或删除，请先从已归档会话恢复")
+			return nil, errors.New("Этот сеанс архивирован или удалён; сначала восстановите его из архива")
 		}
 		// The guest can be unreadable or not yet started while its host PTY
 		// already owns this conversation. A stale snapshot cannot start a copy.
@@ -261,11 +261,11 @@ func (s *Server) createTerminalLocked(input terminalRequest) (*terminalSession, 
 		return nil, errTerminalsClosed
 	}
 	if sharedRecord != nil && (!sharedCLILauncher(command) || sharedRecord.Launcher != "" && sharedRecord.Launcher != command) {
-		return nil, errors.New("主机启动命令与原会话不一致，请恢复原配置后重试")
+		return nil, errors.New("Команда запуска хоста не совпадает с исходным сеансом; восстановите исходную конфигурацию и повторите")
 	}
 	if s.macosGuest != nil {
 		if input.Kind == "claude" && !sharedCLILauncher(command) {
-			return nil, errors.New("macOS 客机支持 claude 或 ccs 配置名启动命令")
+			return nil, errors.New("Гостевая система macOS поддерживает команды запуска claude или ccs с именем конфигурации")
 		}
 		s.mu.Lock()
 		ready := s.ready
@@ -285,11 +285,11 @@ func (s *Server) createTerminalLocked(input terminalRequest) (*terminalSession, 
 		}
 	}
 	if input.Kind != "" && input.Kind != "shell" && input.Kind != "claude" && input.Kind != "claude-login" {
-		return nil, errors.New("终端类型无效")
+		return nil, errors.New("Неверный тип терминала")
 	}
 	managed := input.Kind == "claude" || input.Kind == "claude-login"
 	if !managed && input.ClaudeAccountID != "" {
-		return nil, errors.New("普通终端不能指定 Claude 账号")
+		return nil, errors.New("Для обычного терминала нельзя указать аккаунт Claude")
 	}
 	// Login works even when the last project is disconnected or has moved.
 	// It always runs from the guest home, without loading project settings.
@@ -329,16 +329,16 @@ func (s *Server) createTerminalLocked(input terminalRequest) (*terminalSession, 
 				return nil, errGuestUpdateRequired
 			}
 			if !validClaudeID(selection.ID) || !validClaudeGuestID(selection.GuestID) || (login && selection.GuestID == "default") {
-				return nil, errors.New("Claude 账号 ID 无效")
+				return nil, errors.New("Неверный ID аккаунта Claude")
 			}
 			if login && s.mobileCLI.activeAccounts()[selection.ID] > 0 {
-				return nil, errors.New("请先结束该账号正在执行的移动 CLI 轮次，再重新登录")
+				return nil, errors.New("Сначала завершите текущий раунд мобильного CLI этого аккаунта, затем войдите снова")
 			}
 			if existing, conflict := s.terminals.existingClaudeLogin(selection.ID, login); existing != nil || conflict != nil {
 				return existing, conflict
 			}
 			if !login && selection.Subject == "" {
-				return nil, errors.New("Claude 账号状态已变化，请重试")
+				return nil, errors.New("Состояние аккаунта Claude изменилось; повторите попытку")
 			}
 			script = managedClaudeTerminalScript(s.cliWorkspace(workspace), command, selection.GuestID, selection.Subject, login)
 			if login {
@@ -347,7 +347,7 @@ func (s *Server) createTerminalLocked(input terminalRequest) (*terminalSession, 
 					_, browserErr := s.guestAPI(ctx, "", "GET", "/health", nil)
 					cancel()
 					if browserErr != nil {
-						return nil, errors.New("客机登录浏览器尚未就绪，请恢复浏览器连接后重试")
+						return nil, errors.New("Браузер входа в гостевой системе ещё не готов; восстановите подключение браузера и повторите")
 					}
 				}
 				finished = func() {
@@ -407,7 +407,7 @@ func (s *Server) selectTerminalClaudeAccount(command, requested string, login bo
 	parts, valid := mobileLaunchArgs(command, claudeSelection{})
 	if !login && valid == nil && len(parts) == 2 && parts[0] == "ccs" {
 		if requested != "" && requested != "auto" {
-			return claudeSelection{}, errors.New("CCS 使用自己的配置，不能指定 Cage 账号")
+			return claudeSelection{}, errors.New("CCS использует собственную конфигурацию и не может указывать аккаунт Cage")
 		}
 		return claudeSelection{}, nil
 	}
@@ -423,7 +423,7 @@ func (s *Server) readClaudeGuestSnapshot(ctx context.Context, id string) (claude
 
 func (s *Server) readClaudeGuestUsage(ctx context.Context, id, subject string) (claudeGuestSnapshot, error) {
 	if _, err := hex.DecodeString(subject); err != nil || len(subject) != 64 {
-		return claudeGuestSnapshot{}, errors.New("Claude 账号身份无效")
+		return claudeGuestSnapshot{}, errors.New("Неверная учётная запись Claude")
 	}
 	if s.windowsGuest != nil {
 		return s.readWindowsClaudeAccount(ctx, "usage", id, subject)
@@ -434,11 +434,11 @@ func (s *Server) readClaudeGuestUsage(ctx context.Context, id, subject string) (
 func (s *Server) readClaudeGuestReport(ctx context.Context, id, command string) (claudeGuestSnapshot, error) {
 	var snapshot claudeGuestSnapshot
 	if !validClaudeGuestID(id) {
-		return snapshot, errors.New("Claude 账号 ID 无效")
+		return snapshot, errors.New("Неверный ID аккаунта Claude")
 	}
 	data, err := s.guest(ctx, command)
 	if err != nil || json.Unmarshal(data, &snapshot) != nil {
-		return snapshot, errors.New("无法读取账号状态，请确认环境已启动并同步环境组件")
+		return snapshot, errors.New("Не удалось прочитать состояние аккаунта; убедитесь, что среда запущена, и синхронизируйте компоненты среды")
 	}
 	return snapshot, nil
 }

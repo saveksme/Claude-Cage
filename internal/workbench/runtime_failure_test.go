@@ -38,14 +38,14 @@ func TestRunCageExplainsCommonFailure(t *testing.T) {
 		os.Exit(7)
 	}
 	for _, tc := range []struct{ output, want string }{
-		{"curl: (28) Operation timed out", "超时"},
-		{"E: No space left on device", "空间不足"},
-		{"curl: (60) certificate verify failed", "证书验证"},
-		{"Error: Base VM not found. Run 'agent-vm setup' first.", "基础模板缺失"},
-		{"Error: Base VM setup did not complete. Run 'agent-vm setup' again.", "基础模板尚未安装完成"},
-		{"CAGE_WINDOWS_MAINTENANCE_HOST_MANAGER synthetic stage token=private-error-secret", "系统管理助手安装未完成"},
-		{"CAGE_WINDOWS_MAINTENANCE_GUEST_CONNECTION synthetic stage token=private-error-secret", "客机连接未完成"},
-		{"unrecognized failure token=private-error-secret", "退出码 7"},
+		{"curl: (28) Operation timed out", "истекло время ожидания"},
+		{"E: No space left on device", "недостаточно места"},
+		{"curl: (60) certificate verify failed", "сертификат"},
+		{"Error: Base VM not found. Run 'agent-vm setup' first.", "отсутствует базовый шаблон"},
+		{"Error: Base VM setup did not complete. Run 'agent-vm setup' again.", "установка базового шаблона ещё не завершена"},
+		{"CAGE_WINDOWS_MAINTENANCE_HOST_MANAGER synthetic stage token=private-error-secret", "установка системного помощника Windows"},
+		{"CAGE_WINDOWS_MAINTENANCE_GUEST_CONNECTION synthetic stage token=private-error-secret", "подключение к гостевой системе Windows"},
+		{"unrecognized failure token=private-error-secret", "код 7"},
 	} {
 		t.Run(tc.want, func(t *testing.T) {
 			t.Setenv("CAGE_TEST_READABLE_FAILURE", tc.output)
@@ -62,7 +62,7 @@ func TestRunCageExplainsCommonFailure(t *testing.T) {
 				t.Fatal(err)
 			}
 			job := awaitJobIdle(t, &s.jobs)
-			if !strings.Contains(job.Error, tc.want) || strings.Contains(job.Error, "private-error-secret") || !strings.Contains(job.Message, "准备环境") {
+			if !strings.Contains(job.Error, tc.want) || strings.Contains(job.Error, "private-error-secret") || !strings.Contains(job.Message, "подготовка среды") {
 				t.Fatalf("missing readable operation failure: %+v", job)
 			}
 		})

@@ -58,7 +58,7 @@ func (s *Server) inspectClaudeDefault(parent context.Context, force bool) (claud
 	var empty claudeGuestSnapshot
 	epoch, unlocked := s.account.access()
 	if !unlocked {
-		return empty, time.Time{}, errors.New("Cage 已锁定，请先解锁")
+		return empty, time.Time{}, errors.New("Cage заблокирован; сначала разблокируйте")
 	}
 	ctx, cancel := context.WithTimeout(parent, 8*time.Second)
 	stop := context.AfterFunc(epoch, cancel)
@@ -74,7 +74,7 @@ func (s *Server) inspectClaudeDefault(parent context.Context, force bool) (claud
 	case gate <- struct{}{}:
 		defer func() { <-gate }()
 	case <-ctx.Done():
-		return empty, time.Time{}, errors.New("默认登录检查未完成，请重试")
+		return empty, time.Time{}, errors.New("Проверка входа по умолчанию не завершена; повторите попытку")
 	}
 	m.mu.Lock()
 	if !force && time.Since(m.defaultChecked) < 20*time.Second {
@@ -89,7 +89,7 @@ func (s *Server) inspectClaudeDefault(parent context.Context, force bool) (claud
 	defer m.mu.Unlock()
 	if ctx.Err() != nil || epoch.Err() != nil || err != nil {
 		reading = empty
-		err = errors.New("暂时无法读取环境的默认登录，请确认 Claude Code 和环境组件可用后重试")
+		err = errors.New("Пока не удалось прочитать вход по умолчанию для среды; убедитесь, что Claude Code и компоненты среды доступны, и повторите")
 	} else {
 		list, loadErr := s.loadClaudeAccounts()
 		if loadErr != nil {
@@ -152,14 +152,14 @@ func (s *Server) joinClaudeDefault(ctx context.Context, expected string) error {
 		return err
 	}
 	if expected == "" || expected != reading.subject() {
-		return errors.New("环境中的登录身份已经变化，请刷新后确认要加入的账号")
+		return errors.New("Учётная запись входа в среде изменилась; обновите и подтвердите аккаунт для добавления")
 	}
 	m := &s.claudeAccounts
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	// Another completed discovery may have already observed a new identity.
 	if m.defaultReading.subject() != expected || m.defaultError != nil || ctx.Err() != nil {
-		return errors.New("默认登录状态已变化，请刷新后重试")
+		return errors.New("Состояние входа по умолчанию изменилось; обновите и повторите")
 	}
 	list, err := s.loadClaudeAccounts()
 	if err != nil {
@@ -193,7 +193,7 @@ func (s *Server) claudePanelView(ctx context.Context) (claudePanel, claudeAccoun
 	var checked time.Time
 	if update {
 		view.DetectionStatus = "update_required"
-		view.DetectionError = "请同步环境组件后再检测普通终端的登录"
+		view.DetectionError = "Синхронизируйте компоненты среды, затем проверяйте вход в обычном терминале"
 	} else if ready {
 		var err error
 		reading, checked, err = s.inspectClaudeDefault(ctx, false)

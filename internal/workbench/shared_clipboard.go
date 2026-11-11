@@ -73,7 +73,7 @@ func (s *Server) clipboardCommand(ctx context.Context, operation string, selecti
 	}
 	if win != nil {
 		if s.macosGuest != nil {
-			return nil, "", errors.New("客机绑定冲突")
+			return nil, "", errors.New("Конфликт привязки гостевой системы")
 		}
 		args := []string{}
 		if operation == "export" {
@@ -88,10 +88,10 @@ func (s *Server) clipboardCommand(ctx context.Context, operation string, selecti
 	}
 	if s.macosGuest != nil {
 		if operation != "stream" && operation != "import" && operation != "export" && operation != "upload" && operation != "request" {
-			return nil, "", errors.New("剪贴板操作无效")
+			return nil, "", errors.New("Неверная операция с буфером обмена")
 		}
 		if operation == "export" && selection.User != "guest" {
-			return nil, "", errors.New("剪贴板文件来源无效")
+			return nil, "", errors.New("Неверный источник файла буфера обмена")
 		}
 		command := "exec '/Applications/Cage Guest Clipboard.app/Contents/MacOS/CageGuestClipboard' --client " + operation
 		cmd := s.sshCommand(ctx, "-T", s.sshTarget(), "--", command)
@@ -114,11 +114,11 @@ func (s *Server) clipboardCommand(ctx context.Context, operation string, selecti
 		command += " --import --session " + shellescape.Quote(session)
 	case "export":
 		if selection.User != "cage" && selection.User != "cage-browser" {
-			return nil, "", errors.New("剪贴板文件来源无效")
+			return nil, "", errors.New("Неверный источник файла буфера обмена")
 		}
 		command += " --export-user " + selection.User + " --paths-stdin"
 	default:
-		return nil, "", errors.New("剪贴板操作无效")
+		return nil, "", errors.New("Неверная операция с буфером обмена")
 	}
 	cmd := s.sshCommand(ctx, "-T", s.sshTarget(), "--", command)
 	if operation == "export" {
@@ -251,31 +251,31 @@ func (s *Server) sharedClipboard(w http.ResponseWriter, r *http.Request) {
 	s.mu.Unlock()
 	if !available {
 		cancel()
-		http.Error(w, "剪贴板连接暂不可用", http.StatusConflict)
+		http.Error(w, "Подключение к буферу обмена временно недоступно", http.StatusConflict)
 		return
 	}
 	defer func() { cancel(); s.mu.Lock(); s.clipboardCancel = nil; s.clipboardRelease = nil; s.mu.Unlock() }()
 	// 以当前后端配套的辅助脚本启动连接，保留 stdin/stdout 传输剪贴板数据。
 	cmd, source, err := s.clipboardCommand(ctx, "stream", clipboardFileSelection{})
 	if err != nil {
-		http.Error(w, "剪贴板客机配置无效", 502)
+		http.Error(w, "Неверная конфигурация буфера обмена гостевой системы", 502)
 		return
 	}
 	in, err := cmd.StdinPipe()
 	if err != nil {
-		http.Error(w, "剪贴板连接失败", 502)
+		http.Error(w, "Не удалось подключиться к буферу обмена", 502)
 		return
 	}
 	out, err := cmd.StdoutPipe()
 	if err != nil {
 		in.Close()
-		http.Error(w, "剪贴板连接失败", 502)
+		http.Error(w, "Не удалось подключиться к буферу обмена", 502)
 		return
 	}
 	if err = cmd.Start(); err != nil {
 		in.Close()
 		out.Close()
-		http.Error(w, "剪贴板连接失败", 502)
+		http.Error(w, "Не удалось подключиться к буферу обмена", 502)
 		return
 	}
 	defer func() { cancel(); in.Close(); out.Close(); _ = cmd.Wait() }()
@@ -390,7 +390,7 @@ func (s *Server) clipboardArchive(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Minute)
 	defer cancel()
 	if !s.vmRunning() {
-		http.Error(w, "请先启动环境", 409)
+		http.Error(w, "Сначала запустите среду", 409)
 		return
 	}
 	if r.Method == "GET" {
@@ -398,19 +398,19 @@ func (s *Server) clipboardArchive(w http.ResponseWriter, r *http.Request) {
 		defer release()
 		paths := selection.Paths
 		if len(paths) == 0 {
-			http.Error(w, "剪贴板文件已过期，请重新复制", 404)
+			http.Error(w, "Файл буфера обмена устарел; скопируйте заново", 404)
 			return
 		}
 		// Export with the copying application's permissions. A URI written by
 		// a guest application cannot grant access to root-only files.
 		cmd, _, err := s.clipboardCommand(ctx, "export", selection)
 		if err != nil {
-			http.Error(w, "读取剪贴板文件失败", 502)
+			http.Error(w, "Не удалось прочитать файл буфера обмена", 502)
 			return
 		}
 		out, err := cmd.StdoutPipe()
 		if err != nil || cmd.Start() != nil {
-			http.Error(w, "读取剪贴板文件失败", 502)
+			http.Error(w, "Не удалось прочитать файл буфера обмена", 502)
 			return
 		}
 		defer out.Close()
@@ -430,13 +430,13 @@ func (s *Server) clipboardArchive(w http.ResponseWriter, r *http.Request) {
 	}
 	cmd, source, err := s.clipboardCommand(ctx, "import", clipboardFileSelection{})
 	if err != nil {
-		http.Error(w, "传递剪贴板文件失败", 502)
+		http.Error(w, "Не удалось передать файл буфера обмена", 502)
 		return
 	}
 	cmd.Stdin = http.MaxBytesReader(w, r.Body, 201<<30)
 	out, err := cmd.StdoutPipe()
 	if err != nil || cmd.Start() != nil {
-		http.Error(w, "传递剪贴板文件失败", 502)
+		http.Error(w, "Не удалось передать файл буфера обмена", 502)
 		return
 	}
 	data, err := io.ReadAll(io.LimitReader(out, 65537))
@@ -446,7 +446,7 @@ func (s *Server) clipboardArchive(w http.ResponseWriter, r *http.Request) {
 		Paths []string `json:"paths"`
 	}
 	if err != nil || finished != nil || len(data) > 65536 || json.Unmarshal(data, &result) != nil || len(result.Paths) == 0 {
-		http.Error(w, "传递剪贴板文件失败，请核对文件大小和名称", 502)
+		http.Error(w, "Не удалось передать файл буфера обмена; проверьте размер и имя файла", 502)
 		return
 	}
 	jsonReply(w, map[string]string{"files": s.registerClipboardFiles(result.Paths, source)})
@@ -469,21 +469,21 @@ func (s *Server) clipboardCopy(w http.ResponseWriter, r *http.Request) {
 	}
 	if request.Phase != "prepare" && request.Phase != "read" ||
 		request.Phase == "read" && (request.Revision == nil || *request.Revision < 0 || len(request.Session) == 0 || len(request.Session) > 256) {
-		http.Error(w, "剪贴板复制请求无效", http.StatusBadRequest)
+		http.Error(w, "Неверный запрос копирования в буфер обмена", http.StatusBadRequest)
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 8*time.Second)
 	defer cancel()
 	cmd, _, err := s.clipboardCommand(ctx, "request", clipboardFileSelection{})
 	if err != nil {
-		http.Error(w, "无法连接客机剪贴板", http.StatusBadGateway)
+		http.Error(w, "Не удалось подключиться к буферу обмена гостевой системы", http.StatusBadGateway)
 		return
 	}
 	body, _ := json.Marshal(map[string]any{"operation": "copy-" + request.Phase, "revision": request.Revision, "session": request.Session})
 	cmd.Stdin = bytes.NewReader(append(body, '\n'))
 	out, err := cmd.StdoutPipe()
 	if err != nil || cmd.Start() != nil {
-		http.Error(w, "无法连接客机剪贴板", http.StatusBadGateway)
+		http.Error(w, "Не удалось подключиться к буферу обмена гостевой системы", http.StatusBadGateway)
 		return
 	}
 	data, readErr := io.ReadAll(io.LimitReader(out, clipboardWireLimit+1))
@@ -497,7 +497,7 @@ func (s *Server) clipboardCopy(w http.ResponseWriter, r *http.Request) {
 	}
 	if readErr != nil || finished != nil || len(data) > clipboardWireLimit || json.Unmarshal(data, &result) != nil || result.Error != "" ||
 		len(result.Session) == 0 || request.Phase == "read" && (result.Text == nil || len(*result.Text) > 2<<20 || result.Session != request.Session || result.Revision == *request.Revision) {
-		http.Error(w, "未收到新的选中文本，请确认客机已解锁并重新复制", http.StatusConflict)
+		http.Error(w, "Новый выделенный текст не получен; убедитесь, что гостевая система разблокирована, и скопируйте заново", http.StatusConflict)
 		return
 	}
 	w.Header().Set("Cache-Control", "no-store")
@@ -520,7 +520,7 @@ func receiveClipboardArchive(response *http.Response, cache clipboardfiles.Cache
 		_, err = io.Copy(io.Discard, response.Body)
 	}
 	if err == nil && response.Trailer.Get("X-Cage-Clipboard-Status") != "ok" {
-		err = errors.New("剪贴板文件传递中断，请重新复制")
+		err = errors.New("Передача файла буфера обмена прервалась; скопируйте заново")
 	}
 	if err != nil {
 		if selection.ID != "" {
@@ -540,7 +540,7 @@ func ClipboardFilesForConnection(configPath, connectionID, operation string, arg
 	if operation == "cache" && len(args) == 1 {
 		var request clipboardfiles.CacheRequest
 		if json.Unmarshal([]byte(args[0]), &request) != nil {
-			return nil, errors.New("剪贴板缓存请求无效")
+			return nil, errors.New("Неверный запрос кэша буфера обмена")
 		}
 		return cache.Control(request)
 	}
@@ -552,7 +552,7 @@ func ClipboardFilesForConnection(configPath, connectionID, operation string, arg
 	entry, _ := url.Parse(client.launch.URL)
 	status, err := client.call("POST", "/api/session", map[string]string{"token": entry.Fragment}, nil)
 	if err != nil || status != http.StatusOK {
-		return nil, errors.New("无法连接剪贴板会话")
+		return nil, errors.New("Не удалось подключиться к сеансу буфера обмена")
 	}
 	if _, err = client.bindConnection(connectionID); err != nil {
 		return nil, err
@@ -574,7 +574,7 @@ func ClipboardFilesForConnection(configPath, connectionID, operation string, arg
 		body = reader
 		go func() { writer.CloseWithError(writeClipboardArchive(writer, args)) }()
 	} else {
-		return nil, errors.New("剪贴板文件操作无效")
+		return nil, errors.New("Неверная файловая операция с буфером обмена")
 	}
 	request, err := http.NewRequest(method, path, body)
 	if err != nil {
@@ -584,11 +584,11 @@ func ClipboardFilesForConnection(configPath, connectionID, operation string, arg
 	request.Header.Set("Content-Type", "application/x-tar")
 	response, err := client.client.Do(request)
 	if err != nil {
-		return nil, errors.New("剪贴板文件传递中断，请重新复制")
+		return nil, errors.New("Передача файла буфера обмена прервалась; скопируйте заново")
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
-		return nil, errors.New("剪贴板文件传递失败，请重新复制")
+		return nil, errors.New("Не удалось передать файл буфера обмена; скопируйте заново")
 	}
 	if method == "GET" {
 		selection, err := receiveClipboardArchive(response, cache)

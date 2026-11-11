@@ -136,7 +136,7 @@ func (s *Server) closeService() error {
 		s.closeProjectShares()
 		s.closeWindowsBrowser()
 		if s.windowsGuest != nil {
-			s.closeErr = s.closeProxyGate("控制服务正在退出，外网保持关闭")
+			s.closeErr = s.closeProxyGate("Служба управления завершает работу, внешняя сеть остаётся закрытой")
 		}
 		s.closeWindowsNetwork()
 		s.mu.Lock()
@@ -149,7 +149,7 @@ func (s *Server) closeService() error {
 		}
 		s.controlSession.close()
 		if s.windowsGuest == nil {
-			s.closeErr = s.closeProxyGate("控制服务正在退出，外网保持关闭")
+			s.closeErr = s.closeProxyGate("Служба управления завершает работу, внешняя сеть остаётся закрытой")
 		}
 		s.closeErr = errors.Join(s.closeErr, managedproxy.Stop(s.profile))
 		if s.controlPublished {

@@ -26,7 +26,7 @@ func (s *Server) validateStoragePlacement(directory string) error {
 			return err
 		}
 		if cage.StoragePathsOverlap(physical, target) {
-			return errors.New("环境存储目录与已共享的项目重叠，请选择项目以外的专用文件夹")
+			return errors.New("Каталог хранилища среды пересекается с общим проектом; выберите отдельную папку вне проекта")
 		}
 	}
 	return nil
@@ -72,13 +72,13 @@ func validateHostProjectData(root, profile string) error {
 		}
 		for _, dir := range private {
 			if cage.StoragePathsOverlap(root, dir) {
-				return errors.New("Cage 配置、环境存储及备份不能共享")
+				return errors.New("Конфигурацию Cage, хранилище среды и резервные копии нельзя открывать в общий доступ")
 			}
 		}
 	}
 	refs := mounts.Refs(paths.Host(home), "", paths.Host(defaultProfile))
 	if _, unsafe := mounts.UnsafeProject(paths.Host(root), refs); unsafe {
-		return errors.New("此目录包含或属于凭据、用户资料或版本控制数据，无法共享")
+		return errors.New("Этот каталог содержит учётные данные, данные пользователя или данные контроля версий либо относится к ним и не может быть открыт в общий доступ")
 	}
 	return nil
 }

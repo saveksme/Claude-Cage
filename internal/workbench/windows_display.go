@@ -49,7 +49,7 @@ type windowsWindowPane struct {
 type windowsWindowFailure struct{ code string }
 
 func (e windowsWindowFailure) Error() string {
-	return "Windows 应用操作未完成，请确认客机已解锁且 Claude 窗口仍在运行"
+	return "Действие приложения Windows не завершено; убедитесь, что гостевая система разблокирована и окно Claude всё ещё работает"
 }
 
 // Retry only validated frame reads during short window/popup transitions.
@@ -206,13 +206,13 @@ func (c *nativeWindowConnection) request(input any, output any) error {
 		return err
 	}
 	if !c.scanner.Scan() {
-		return errors.New("客机应用连接中断")
+		return errors.New("Подключение к приложению гостевой системы прервалось")
 	}
 	var status struct {
 		Error string `json:"error"`
 	}
 	if json.Unmarshal(c.scanner.Bytes(), &status) != nil {
-		return errors.New("客机应用返回了无效响应")
+		return errors.New("Приложение гостевой системы вернуло неверный ответ")
 	}
 	if status.Error != "" {
 		return windowsWindowFailure{code: status.Error}
@@ -243,7 +243,7 @@ func (s *Server) windowsDesktopVNC(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	first, err := s.windowsWindowConnection(ctx)
 	if err != nil {
-		http.Error(w, "Windows 应用画面尚未连接", 502)
+		http.Error(w, "Изображение приложения Windows ещё не подключено", 502)
 		return
 	}
 	connection := &desktopViewerConnection{current: first}
@@ -287,11 +287,11 @@ func windowsGuestKeysym(key uint32, keyboard string) uint32 {
 
 func nativeFrameImage(frame windowsWindowFrame) (image.Image, error) {
 	if frame.Width < 1 || frame.Height < 1 || frame.Width > 8192 || frame.Height > 8192 || int64(frame.Width)*int64(frame.Height) > 40_000_000 || len(frame.Target) == 0 || len(frame.Target) > 256 {
-		return nil, errors.New("应用画面无效")
+		return nil, errors.New("Неверное изображение приложения")
 	}
 	if len(frame.Overlays) > 0 {
 		if len(frame.Overlays) > 16 {
-			return nil, errors.New("应用覆盖画面无效")
+			return nil, errors.New("Неверное изображение наложения приложения")
 		}
 		overlays := frame.Overlays
 		frame.Overlays = nil
@@ -303,7 +303,7 @@ func nativeFrameImage(frame windowsWindowFrame) (image.Image, error) {
 		draw.Draw(canvas, canvas.Bounds(), base, base.Bounds().Min, draw.Src)
 		for _, overlay := range overlays {
 			if len(overlay.Panes) != 0 || len(overlay.Overlays) != 0 || overlay.Width > frame.Width || overlay.Height > frame.Height || overlay.X < -frame.Width || overlay.Y < -frame.Height || overlay.X > frame.Width || overlay.Y > frame.Height {
-				return nil, errors.New("应用覆盖位置无效")
+				return nil, errors.New("Неверное расположение наложения приложения")
 			}
 			overlay.Target = frame.Target
 			img, err := nativeFrameImage(overlay.windowsWindowFrame)
@@ -317,7 +317,7 @@ func nativeFrameImage(frame windowsWindowFrame) (image.Image, error) {
 	}
 	if len(frame.Panes) > 0 {
 		if len(frame.Panes) != 2 || frame.PNG != "" || frame.JPEG != "" {
-			return nil, errors.New("分屏画面无效")
+			return nil, errors.New("Неверное изображение разделённого экрана")
 		}
 		img := image.NewRGBA(image.Rect(0, 0, frame.Width, frame.Height))
 		draw.Draw(img, img.Bounds(), image.NewUniform(color.White), image.Point{}, draw.Src)
@@ -325,7 +325,7 @@ func nativeFrameImage(frame windowsWindowFrame) (image.Image, error) {
 		for index, pane := range frame.Panes {
 			bounds := image.Rect(pane.X, pane.Y, pane.X+pane.Width, pane.Y+pane.Height)
 			if pane.X < 0 || pane.Y < 0 || len(pane.Panes) != 0 || !bounds.In(img.Bounds()) || index > 0 && !previous.Intersect(bounds).Empty() {
-				return nil, errors.New("分屏画面位置无效")
+				return nil, errors.New("Неверное расположение изображения разделённого экрана")
 			}
 			pane.Target = frame.Target
 			part, err := nativeFrameImage(pane.windowsWindowFrame)
@@ -342,7 +342,7 @@ func nativeFrameImage(frame windowsWindowFrame) (image.Image, error) {
 		encoded = frame.JPEG
 	}
 	if len(encoded) > (20<<20)*4/3+4 {
-		return nil, errors.New("应用画面无效")
+		return nil, errors.New("Неверное изображение приложения")
 	}
 	data, err := base64.StdEncoding.DecodeString(encoded)
 	if err != nil {
@@ -350,7 +350,7 @@ func nativeFrameImage(frame windowsWindowFrame) (image.Image, error) {
 	}
 	config, _, err := image.DecodeConfig(bytes.NewReader(data))
 	if err != nil || config.Width != frame.Width || config.Height != frame.Height {
-		return nil, errors.New("应用画面尺寸无效")
+		return nil, errors.New("Неверный размер изображения приложения")
 	}
 	decoded, _, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
@@ -397,7 +397,7 @@ func serveWindowsWindowRFB(stream io.ReadWriter, initial windowsWindowFrame, req
 	}
 	version, err := read(12)
 	if err != nil || string(version) != "RFB 003.008\n" {
-		return errors.New("画面协议版本无效")
+		return errors.New("Неверная версия протокола изображения")
 	}
 	// HTTP/WS origin, account and controller authentication precede this stream.
 	if err = write([]byte{1, 1}); err != nil {
@@ -405,7 +405,7 @@ func serveWindowsWindowRFB(stream io.ReadWriter, initial windowsWindowFrame, req
 	}
 	security, err := read(1)
 	if err != nil || security[0] != 1 {
-		return errors.New("画面认证协议无效")
+		return errors.New("Неверный протокол проверки подлинности изображения")
 	}
 	if err = write([]byte{0, 0, 0, 0}); err != nil {
 		return err
@@ -489,7 +489,7 @@ func serveWindowsWindowRFB(stream io.ReadWriter, initial windowsWindowFrame, req
 		pace.answered(!next.Unchanged)
 		if next.Unchanged {
 			if !wasIncremental || frame.Sequence == "" || next.Sequence != frame.Sequence {
-				return errors.New("应用画面更新标识无效")
+				return errors.New("Неверный идентификатор обновления изображения приложения")
 			}
 			return write([]byte{0, 0, 0, 0})
 		}
@@ -505,7 +505,7 @@ func serveWindowsWindowRFB(stream io.ReadWriter, initial windowsWindowFrame, req
 			if supported {
 				changed := next.Width != frame.Width || next.Height != frame.Height
 				if changed && !supportsResize {
-					return errors.New("画面尺寸已变化，请重新连接")
+					return errors.New("Размер изображения изменился; переподключитесь")
 				}
 				if changed {
 					count++
@@ -554,7 +554,7 @@ func serveWindowsWindowRFB(stream io.ReadWriter, initial windowsWindowFrame, req
 		}
 		changed := next.Width != frame.Width || next.Height != frame.Height
 		if changed && !supportsResize {
-			return errors.New("画面尺寸已变化，请重新连接")
+			return errors.New("Размер изображения изменился; переподключитесь")
 		}
 		count := uint16(1)
 		if changed {
@@ -599,7 +599,7 @@ func serveWindowsWindowRFB(stream io.ReadWriter, initial windowsWindowFrame, req
 		case 0:
 			base := []byte{32, 24, 0, 1, 0, 255, 0, 255, 0, 255}
 			if !bytes.Equal(body[3:13], base) || (!bytes.Equal(body[13:16], []byte{16, 8, 0}) && !bytes.Equal(body[13:16], []byte{0, 8, 16})) {
-				return errors.New("画面像素格式无效")
+				return errors.New("Неверный формат пикселей изображения")
 			}
 			rgbOrder = body[13] == 0
 		case 2:
@@ -669,7 +669,7 @@ func serveWindowsWindowRFB(stream io.ReadWriter, initial windowsWindowFrame, req
 		case cageWheelMessage:
 			dx, dy := int32(binary.BigEndian.Uint32(body[5:])), int32(binary.BigEndian.Uint32(body[9:]))
 			if !pixelWheel || body[0] != 0 || dx < -cageWheelLimit || dx > cageWheelLimit || dy < -cageWheelLimit || dy > cageWheelLimit {
-				return errors.New("画面滚动消息无效")
+				return errors.New("Неверное сообщение прокрутки изображения")
 			}
 			if !sized || dx == 0 && dy == 0 {
 				continue
@@ -698,7 +698,7 @@ func serveWindowsWindowRFB(stream io.ReadWriter, initial windowsWindowFrame, req
 			}
 		case 248:
 			if !supportsFence {
-				return errors.New("画面输入同步消息无效")
+				return errors.New("Неверное сообщение синхронизации ввода изображения")
 			}
 			flags := binary.BigEndian.Uint32(body[3:7])
 			if flags&(1<<31) != 0 {
@@ -791,7 +791,7 @@ func readRFBClientMessage(stream io.Reader) ([]byte, error) {
 		if err = extend(3); err == nil {
 			count := int(binary.BigEndian.Uint16(message[2:]))
 			if count > 256 {
-				return nil, errors.New("画面编码列表无效")
+				return nil, errors.New("Неверный список кодеков изображения")
 			}
 			err = extend(count * 4)
 		}
@@ -805,7 +805,7 @@ func readRFBClientMessage(stream io.Reader) ([]byte, error) {
 		if err = extend(7); err == nil {
 			size := binary.BigEndian.Uint32(message[4:])
 			if size > 2<<20 {
-				return nil, errors.New("粘贴文字超过限制")
+				return nil, errors.New("Вставляемый текст превышает ограничение")
 			}
 			err = extend(int(size))
 		}
@@ -814,12 +814,12 @@ func readRFBClientMessage(stream io.Reader) ([]byte, error) {
 	case 248:
 		if err = extend(8); err == nil {
 			if message[8] > 64 {
-				return nil, errors.New("画面输入同步消息无效")
+				return nil, errors.New("Неверное сообщение синхронизации ввода изображения")
 			}
 			err = extend(int(message[8]))
 		}
 	default:
-		return nil, errors.New("画面输入协议无效")
+		return nil, errors.New("Неверный протокол ввода изображения")
 	}
 	return message, err
 }
@@ -837,12 +837,12 @@ func (s *Server) windowsDesktopCredentials(w http.ResponseWriter, r *http.Reques
 	defer cancel()
 	var state claudeDesktopState
 	if err := s.windowsDesktopRequest(ctx, "status", nil, &state); err != nil || !state.Running {
-		http.Error(w, "Claude Desktop 尚未启动", 409)
+		http.Error(w, "Claude Desktop ещё не запущен", 409)
 		return
 	}
 	density := state.DisplayScale
 	if density < 1 || density > 8 {
-		http.Error(w, "Claude Desktop 返回了无效的显示比例", 502)
+		http.Error(w, "Claude Desktop вернул неверный масштаб отображения", 502)
 		return
 	}
 	jsonReply(w, map[string]any{"password": "", "display_scale": density})

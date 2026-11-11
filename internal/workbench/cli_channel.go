@@ -134,13 +134,13 @@ func (s *Server) runCLIChannel(ctx context.Context, mode string, input any, outp
 	result, err := cmd.Output()
 	if err != nil || len(result) > 4<<20 || json.Unmarshal(result, output) != nil {
 		failure := "guest_response"
-		message := "电脑未能读取会话状态，聊天记录已保留。"
+		message := "Компьютер не смог прочитать состояние сеанса, история чата сохранена."
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			failure, message = "timeout", "电脑读取运行环境超时，暂时无法获取会话状态。"
+			failure, message = "timeout", "Истекло время чтения среды выполнения на компьютере, состояние сеанса временно недоступно."
 		} else if err != nil {
 			failure = "guest_command"
 			if cmd.ProcessState != nil && cmd.ProcessState.ExitCode() == 255 {
-				failure, message = "ssh_connection", "电脑暂时无法连接运行环境，聊天记录已保留。"
+				failure, message = "ssh_connection", "Компьютер временно не может подключиться к среде выполнения, история чата сохранена."
 			}
 		}
 		exit := -1
@@ -290,7 +290,7 @@ func (s *Server) terminalConversationView(ctx context.Context, id string) (mobil
 		if record.Switch != nil && record.Switch.Phase == "starting" && !current.Running {
 			if owner := s.terminals.get(record.TerminalID); owner == nil || !owner.ownsConversation() {
 				m.mu.Lock()
-				record.Switch.Phase, record.Switch.Error = "prepared", "目标账号未建立会话，请重试交接"
+				record.Switch.Phase, record.Switch.Error = "prepared", "Целевой аккаунт не создал сеанс; повторите передачу"
 				record.changed()
 				err = writePrivate(mobileRecordPath(s.profile, id), record)
 				m.mu.Unlock()
@@ -302,7 +302,7 @@ func (s *Server) terminalConversationView(ctx context.Context, id string) (mobil
 		return record.snapshot(), nil
 	}
 	if !cliWorkspaceWithin(current.Workspace, root, s.windowsGuest != nil) {
-		return mobileSession{}, errors.New("终端的项目已变化，请重新读取会话列表")
+		return mobileSession{}, errors.New("Проект терминала изменился; перечитайте список сеансов")
 	}
 	if terminal := s.terminals.get(record.TerminalID); terminal != nil && current.Connection != "" && current.Workspace != "" {
 		terminal.mu.Lock()
@@ -349,7 +349,7 @@ func (s *Server) terminalConversationView(ctx context.Context, id string) (mobil
 			}
 		} else if !current.Running {
 			if owner := s.terminals.get(record.TerminalID); owner == nil || !owner.ownsConversation() {
-				record.Switch.Phase, record.Switch.Error = "prepared", "目标账号未建立会话，请重试交接"
+				record.Switch.Phase, record.Switch.Error = "prepared", "Целевой аккаунт не создал сеанс; повторите передачу"
 			}
 		}
 	}
@@ -392,7 +392,7 @@ func (s *Server) terminalConversationAction(ctx context.Context, id string, inpu
 		for _, previous := range record.LegacyTurns {
 			if previous.ID == input["request_id"] {
 				if previous.Prompt != input["text"] {
-					return mobileSession{}, errors.New("同一发送编号已用于另一条消息")
+					return mobileSession{}, errors.New("Этот номер отправки уже использован для другого сообщения")
 				}
 				view := record.snapshot()
 				view.AcknowledgedRequestID = previous.ID
@@ -401,10 +401,10 @@ func (s *Server) terminalConversationAction(ctx context.Context, id string, inpu
 		}
 	}
 	if record.Connection == "" {
-		return mobileSession{}, errors.New("会话连接尚未就绪，请稍后重试")
+		return mobileSession{}, errors.New("Подключение сеанса ещё не готово; повторите позже")
 	}
 	if record.Archived {
-		return mobileSession{}, errors.New("此会话已归档，请先撤销归档")
+		return mobileSession{}, errors.New("Этот сеанс архивирован; сначала отмените архивирование")
 	}
 	input["cli_id"], input["connection"] = record.CLIID, record.Connection
 	if err := s.windowsConversationInput(record, input); err != nil {
@@ -509,7 +509,7 @@ func (s *Server) prepareTerminalConversation(workspace string, selection claudeS
 			root = legacyWorkspace
 		}
 		if !cliWorkspaceWithin(record.GuestWorkspace, root, false) {
-			return "", nil, errors.New("会话目录不在已授权的 macOS 项目内")
+			return "", nil, errors.New("Каталог сеанса не входит в авторизованные проекты macOS")
 		}
 		payload["project_subdir"] = strings.TrimPrefix(strings.TrimPrefix(record.GuestWorkspace, root), "/")
 	}
@@ -558,7 +558,7 @@ func (s *Server) isTerminalConversation(id string) bool {
 
 func (s *Server) stopTerminalConversation(ctx context.Context, view mobileSession, turnID string) (mobileSession, error) {
 	if len(view.Turns) == 0 || view.Turns[len(view.Turns)-1].ID != turnID || view.Turns[len(view.Turns)-1].Status != "running" {
-		return view, errors.New("本轮运行状态已变化，请重新读取")
+		return view, errors.New("Состояние текущего раунда изменилось; перечитайте")
 	}
 	s.mobileCLI.mu.Lock()
 	record, err := s.mobileCLI.record(s.profile, view.ID)
@@ -568,7 +568,7 @@ func (s *Server) stopTerminalConversation(ctx context.Context, view mobileSessio
 	}
 	terminal := s.terminals.get(record.TerminalID)
 	if terminal == nil {
-		return view, errors.New("请在电脑终端停止这次运行")
+		return view, errors.New("Остановите этот запуск в терминале компьютера")
 	}
 	s.account.mu.Lock()
 	if !s.mobileAuthorized(ctx) {

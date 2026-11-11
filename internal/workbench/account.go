@@ -35,7 +35,7 @@ func (s *Server) accountStatus(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) accountAction(w http.ResponseWriter, r *http.Request) {
 	if s.account == nil {
-		http.Error(w, "本地账户尚未初始化", 503)
+		http.Error(w, "Локальный аккаунт ещё не инициализирован", 503)
 		return
 	}
 	action := r.PathValue("action")
@@ -45,12 +45,12 @@ func (s *Server) accountAction(w http.ResponseWriter, r *http.Request) {
 	}
 	if action != "create" && action != "unlock" && action != "device-unlock" {
 		if _, ok := s.account.accessFor(s.hasTrustedView(r)); !ok {
-			http.Error(w, "请先解锁 Cage", http.StatusLocked)
+			http.Error(w, "Сначала разблокируйте Cage", http.StatusLocked)
 			return
 		}
 	}
 	if (action == "lock" || action == "logout" || action == "device-enroll") && s.account.view().TrustedLocal {
-		http.Error(w, "请先在本机的「设置 → 账户」设置密码", http.StatusConflict)
+		http.Error(w, "Сначала задайте пароль на этом компьютере в разделе «Настройки → Аккаунт»", http.StatusConflict)
 		return
 	}
 	var input struct {
@@ -71,29 +71,29 @@ func (s *Server) accountAction(w http.ResponseWriter, r *http.Request) {
 	var err error
 	if action == "password" || action == "prepare-macos" {
 		if !s.op.TryLock() {
-			http.Error(w, "环境操作仍在进行，请等待完成后设置密码", http.StatusConflict)
+			http.Error(w, "В среде ещё выполняется действие; дождитесь его завершения и задайте пароль", http.StatusConflict)
 			return
 		}
 		defer s.op.Unlock()
 		if s.busy() {
-			http.Error(w, "环境操作仍在进行，请等待完成后设置密码", http.StatusConflict)
+			http.Error(w, "В среде ещё выполняется действие; дождитесь его завершения и задайте пароль", http.StatusConflict)
 			return
 		}
 	}
 	switch action {
 	case "create":
 		if input.Password != input.ConfirmPassword {
-			http.Error(w, "两次密码不一致", 400)
+			http.Error(w, "Пароли не совпадают", 400)
 			return
 		}
 		err = s.account.createAccount(input.Username, input.Password, input.Avatar, s.macAccountHost())
 	case "prepare-macos":
 		if !s.macAccountHost() || !s.hasTrustedView(r) {
-			http.Error(w, "请在本机 Cage 窗口设置共用账密", http.StatusForbidden)
+			http.Error(w, "Задайте общие учётные данные в окне Cage на этом компьютере", http.StatusForbidden)
 			return
 		}
 		if input.Password != input.ConfirmPassword {
-			http.Error(w, "两次密码不一致", http.StatusBadRequest)
+			http.Error(w, "Пароли не совпадают", http.StatusBadRequest)
 			return
 		}
 		guests := map[string]macGuestCredential{}
@@ -103,7 +103,7 @@ func (s *Server) accountAction(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if s.macosGuest != nil && install == nil {
-			http.Error(w, "原客机安装记录缺失，请恢复备份后继续", http.StatusConflict)
+			http.Error(w, "Запись установки исходной гостевой системы отсутствует; восстановите резервную копию и продолжите", http.StatusConflict)
 			return
 		}
 		if install != nil {
@@ -113,7 +113,7 @@ func (s *Server) accountAction(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			if s.macosGuest != nil && previous == "" {
-				http.Error(w, "原客机凭据缺失，请恢复加密保险箱后继续", http.StatusConflict)
+				http.Error(w, "Учётные данные исходной гостевой системы отсутствуют; восстановите зашифрованное хранилище и продолжите", http.StatusConflict)
 				return
 			}
 			if previous != "" {
@@ -122,7 +122,7 @@ func (s *Server) accountAction(w http.ResponseWriter, r *http.Request) {
 					user = s.macosGuest.User
 				}
 				if input.Username != user {
-					http.Error(w, "请使用现有客机用户名；安装记录和原文件已保留", http.StatusConflict)
+					http.Error(w, "Используйте существующее имя пользователя гостевой системы; запись установки и исходные файлы сохранены", http.StatusConflict)
 					return
 				}
 				guests[install.ID.String()] = macGuestCredential{Username: user, Password: previous}
@@ -135,7 +135,7 @@ func (s *Server) accountAction(w http.ResponseWriter, r *http.Request) {
 		err = s.account.updateProfile(input.Username, input.Avatar)
 	case "password":
 		if input.Password != input.ConfirmPassword {
-			http.Error(w, "两次密码不一致", 400)
+			http.Error(w, "Пароли не совпадают", 400)
 			return
 		}
 		err = s.account.changePassword(input.OldPassword, input.Password)

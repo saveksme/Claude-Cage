@@ -32,7 +32,7 @@ func diagnosticBundleWithDesktop(workload []byte, desktopProfile string) ([]byte
 	}{{"", workload}, {"desktop/", desktop.Bytes()}} {
 		reader, err := zip.NewReader(bytes.NewReader(source.data), int64(len(source.data)))
 		if err != nil {
-			return nil, errors.New("诊断包未完整生成，请重新导出")
+			return nil, errors.New("Диагностический пакет создан не полностью; экспортируйте заново")
 		}
 		seen := make(map[string]bool)
 		for _, file := range reader.File {
@@ -40,7 +40,7 @@ func diagnosticBundleWithDesktop(workload []byte, desktopProfile string) ([]byte
 			allowed := name == "manifest.json" || name == "README.txt" || name == "guest/services.log" || name == "safety/latest-report.json" ||
 				strings.HasPrefix(name, "logs/") && path.Dir(name) == "logs" && strings.HasSuffix(name, ".jsonl")
 			if !allowed || strings.ContainsAny(name, "\\\x00") || seen[name] || file.FileInfo().IsDir() || file.UncompressedSize64 > uint64(remaining) {
-				return nil, errors.New("诊断包内容或大小不符合导出范围")
+				return nil, errors.New("Содержимое или размер диагностического пакета не соответствуют диапазону экспорта")
 			}
 			seen[name] = true
 			input, err := file.Open()
@@ -59,7 +59,7 @@ func diagnosticBundleWithDesktop(workload []byte, desktopProfile string) ([]byte
 			}
 			remaining -= written
 			if remaining < 0 || output.Len() > int(MaxDiagnosticBundle) {
-				return nil, errors.New("诊断包超过允许大小")
+				return nil, errors.New("Диагностический пакет превышает допустимый размер")
 			}
 		}
 	}
@@ -67,7 +67,7 @@ func diagnosticBundleWithDesktop(workload []byte, desktopProfile string) ([]byte
 		return nil, err
 	}
 	if output.Len() > int(MaxDiagnosticBundle) {
-		return nil, errors.New("诊断包超过允许大小")
+		return nil, errors.New("Диагностический пакет превышает допустимый размер")
 	}
 	return output.Bytes(), nil
 }
@@ -79,7 +79,7 @@ func (s *Server) addDesktopDiagnosticResponse(response *http.Response) error {
 		return err
 	}
 	if int64(len(data)) > MaxDiagnosticBundle {
-		return errors.New("诊断包超过允许大小")
+		return errors.New("Диагностический пакет превышает допустимый размер")
 	}
 	data, err = diagnosticBundleWithDesktop(data, s.profile)
 	if err != nil {
@@ -105,7 +105,7 @@ func addDesktopDiagnosticFile(file *os.File, workloadProfile string) error {
 	}
 	data, err := io.ReadAll(io.LimitReader(file, MaxDiagnosticBundle+1))
 	if err != nil || int64(len(data)) > MaxDiagnosticBundle {
-		return errors.New("无法读取完整诊断包")
+		return errors.New("Не удалось прочитать диагностический пакет полностью")
 	}
 	data, err = diagnosticBundleWithDesktop(data, desktopProfile)
 	if err != nil {

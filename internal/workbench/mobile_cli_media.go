@@ -76,11 +76,11 @@ func (s *Server) mobileSessionMedia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if view.Archived || isClientMountPath(view.Workspace) {
-		http.Error(w, "此项目当前无法预览文件。", 409)
+		http.Error(w, "В этом проекте сейчас нельзя просмотреть файлы.", 409)
 		return
 	}
 	if in.Reference == "" || len(in.Reference) > 8192 || in.Offset < 0 || in.Offset >= mobileMediaLimit || (in.Offset != 0 && in.Version == "") {
-		http.Error(w, "预览请求无效。", 400)
+		http.Error(w, "Неверный запрос предпросмотра.", 400)
 		return
 	}
 	// Use the transcript snapshot already sent to this device. Asset chunks
@@ -93,7 +93,7 @@ func (s *Server) mobileSessionMedia(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if !found {
-		http.Error(w, "此文件没有出现在会话中。", 403)
+		http.Error(w, "Этот файл не появлялся в сеансе.", 403)
 		return
 	}
 	var name string
@@ -101,7 +101,7 @@ func (s *Server) mobileSessionMedia(w http.ResponseWriter, r *http.Request) {
 	if s.windowsGuest != nil {
 		project, lookup := s.windowsProjectForHost(view.Workspace)
 		if lookup != nil {
-			http.Error(w, "Windows 项目连接已撤销，请重新连接项目。", http.StatusConflict)
+			http.Error(w, "Подключение проекта Windows отозвано; переподключите проект.", http.StatusConflict)
 			return
 		}
 		name, err = windowsMediaFileName(project.Path, view.mediaWorkingDir, in.Reference)
@@ -109,60 +109,60 @@ func (s *Server) mobileSessionMedia(w http.ResponseWriter, r *http.Request) {
 		name, err = mediaFileName(s.cliWorkspace(view.Workspace), view.mediaWorkingDir, in.Reference)
 	}
 	if err != nil {
-		http.Error(w, "只能预览当前项目中的媒体文件。", 403)
+		http.Error(w, "Можно просматривать только медиафайлы текущего проекта.", 403)
 		return
 	}
 	canonical, err := paths.Real(view.Workspace)
 	if err != nil || !paths.Equal(canonical, paths.Host(view.Workspace)) {
-		http.Error(w, "项目目录已变化，请重新打开项目。", 409)
+		http.Error(w, "Каталог проекта изменился; снова откройте проект.", 409)
 		return
 	}
 	root, err := os.OpenRoot(canonical)
 	if err != nil {
-		http.Error(w, "项目目录暂时不可用。", 404)
+		http.Error(w, "Каталог проекта временно недоступен.", 404)
 		return
 	}
 	defer root.Close()
 	info, err := root.Stat(name)
 	if err != nil || !info.Mode().IsRegular() {
-		http.Error(w, "文件已移动或不可读取。", 404)
+		http.Error(w, "Файл перемещён или недоступен для чтения.", 404)
 		return
 	}
 	file, err := root.Open(name)
 	if err != nil {
-		http.Error(w, "文件已移动或不可读取。", 404)
+		http.Error(w, "Файл перемещён или недоступен для чтения.", 404)
 		return
 	}
 	defer file.Close()
 	info, err = file.Stat()
 	if err != nil || !info.Mode().IsRegular() || info.Size() <= 0 || info.Size() > mobileMediaLimit {
-		http.Error(w, "手机支持预览 48 MiB 以内的非空媒体文件。", 413)
+		http.Error(w, "Телефон поддерживает предпросмотр непустых медиафайлов размером до 48 MiB.", 413)
 		return
 	}
 	version := fmt.Sprintf("%x-%x", info.Size(), info.ModTime().UnixNano())
 	if in.Offset >= info.Size() || (in.Version != "" && in.Version != version) {
-		http.Error(w, "文件已变化，请重新加载预览。", 409)
+		http.Error(w, "Файл изменился; загрузите предпросмотр заново.", 409)
 		return
 	}
 	var head [512]byte
 	n, err := file.ReadAt(head[:], 0)
 	if err != nil && !errors.Is(err, io.EOF) {
-		http.Error(w, "读取文件失败。", 409)
+		http.Error(w, "Не удалось прочитать файл.", 409)
 		return
 	}
 	kind := mediaFormat(name, head[:n])
 	if kind == "" {
-		http.Error(w, "此文件的格式无法在手机预览。", 415)
+		http.Error(w, "Этот формат файла нельзя просмотреть на телефоне.", 415)
 		return
 	}
 	chunk := make([]byte, min(int64(mobileMediaChunk), info.Size()-in.Offset))
 	if _, err := file.ReadAt(chunk, in.Offset); err != nil {
-		http.Error(w, "文件已变化，请重新加载预览。", 409)
+		http.Error(w, "Файл изменился; загрузите предпросмотр заново.", 409)
 		return
 	}
 	end, err := file.Stat()
 	if err != nil || end.Size() != info.Size() || !end.ModTime().Equal(info.ModTime()) {
-		http.Error(w, "文件已变化，请重新加载预览。", 409)
+		http.Error(w, "Файл изменился; загрузите предпросмотр заново.", 409)
 		return
 	}
 	jsonReply(w, map[string]any{"mime": kind, "size": info.Size(), "version": version, "data": chunk})

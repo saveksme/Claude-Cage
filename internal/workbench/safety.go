@@ -136,7 +136,7 @@ func (s *Server) currentNetworkErrorLocked() string {
 		if reason == "" {
 			return recovery
 		}
-		return reason + "；" + recovery
+		return reason + "; " + recovery
 	}
 	return reason
 }
@@ -242,7 +242,7 @@ func (s *Server) safetyCheck(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) pauseNetwork(w http.ResponseWriter, r *http.Request) {
-	if err := s.pauseNetworkNow("已手动暂停外网；离线终端和文件仍可使用"); err != nil {
+	if err := s.pauseNetworkNow("Внешняя сеть приостановлена вручную; офлайн-терминал и файлы по-прежнему доступны"); err != nil {
 		requestError(w, err)
 		return
 	}
@@ -287,12 +287,12 @@ func (s *Server) safetyExport(w http.ResponseWriter, r *http.Request) {
 	report := s.safety.Report
 	s.mu.Unlock()
 	if report == nil {
-		http.Error(w, "尚无检测报告", 404)
+		http.Error(w, "Отчёта о проверке пока нет", 404)
 		return
 	}
 	// Exports cannot authorize networking and contain no proxy hash, address,
 	// credentials, launch ticket or host filesystem paths.
-	jsonReply(w, map[string]any{"policy": report.Policy, "created_at": report.CreatedAt, "checks": report.Checks, "scope": "采样与运行时策略检查；不代表平台账号资格或完整隔离审计"})
+	jsonReply(w, map[string]any{"policy": report.Policy, "created_at": report.CreatedAt, "checks": report.Checks, "scope": "Выборочная проверка и проверка политики во время работы; не подтверждает право на аккаунт платформы и не заменяет полный аудит изоляции"})
 }
 
 // The probe runs in Linux, while its files are created on the host. Use the
@@ -318,10 +318,10 @@ func (s *Server) guestObservation(ctx context.Context, input map[string]any) (gu
 	command := "python3 -c " + shellescape.Quote(guestSafetyProbe) + " " + shellescape.Quote(base64.StdEncoding.EncodeToString(data))
 	output, err := s.guestControl(ctx, "exec bash -lc "+shellescape.Quote(command), "safety-probe")
 	if err != nil {
-		return observation, fmt.Errorf("客机检测未返回完整结果: %w", err)
+		return observation, fmt.Errorf("Проверка гостевой системы не вернула полный результат: %w", err)
 	}
 	if err = json.Unmarshal(output, &observation); err != nil {
-		return observation, errors.New("客机检测返回格式无效")
+		return observation, errors.New("Проверка гостевой системы вернула неверный формат")
 	}
 	return observation, nil
 }
@@ -337,7 +337,7 @@ func (s *Server) browserObservation(ctx context.Context, cfg cage.Config, networ
 	body, _ := json.Marshal(map[string]any{"network": network, "timezone": cfg.Timezone})
 	data, err := s.guestAPI(ctx, token, "POST", "/audit", body)
 	if err != nil || json.Unmarshal(data, &observation) != nil {
-		return observation, errors.New("浏览器检测未返回完整结果，请更新或重启环境")
+		return observation, errors.New("Проверка браузера не вернула полный результат; обновите или перезапустите среду")
 	}
 	return observation, nil
 }
@@ -351,7 +351,7 @@ func (s *Server) browserExitObservation(ctx context.Context, cfg cage.Config) (b
 		return observation, err
 	}
 	_ = diagnostics.New(s.profile).Record("warn", "safety-probe", fmt.Sprintf("stage=browser retry=1 status=%d", observation.Network.Status))
-	s.setMessage("浏览器出口检测暂时未成功，正在重试一次；外网保持关闭…")
+	s.setMessage("Проверка выхода браузера пока не удалась, выполняется одна повторная попытка; внешняя сеть остаётся закрытой…")
 	timer := time.NewTimer(time.Second)
 	defer timer.Stop()
 	select {
@@ -373,43 +373,43 @@ func guestSettingsMatch(v guestObservation, cfg cage.Config) bool {
 func linuxGuestSettingsMismatch(v guestObservation, cfg cage.Config) string {
 	var mismatches []string
 	if !v.LocaleValid {
-		mismatches = append(mismatches, "系统语言环境无法加载")
+		mismatches = append(mismatches, "Не удалось загрузить языковую среду системы")
 	}
 	if v.TZ != cfg.Timezone {
-		mismatches = append(mismatches, fmt.Sprintf("TZ 变量不一致（期望 %q，实际 %q）", cfg.Timezone, v.TZ))
+		mismatches = append(mismatches, fmt.Sprintf("Переменная TZ не совпадает (ожидалось %q, получено %q)", cfg.Timezone, v.TZ))
 	}
 	if v.SystemTimezone != cfg.Timezone {
-		mismatches = append(mismatches, fmt.Sprintf("系统时区文件不一致（期望 %q，实际 %q）", cfg.Timezone, v.SystemTimezone))
+		mismatches = append(mismatches, fmt.Sprintf("Файл часового пояса системы не совпадает (ожидалось %q, получено %q)", cfg.Timezone, v.SystemTimezone))
 	}
 	if v.Lang != cfg.Locale {
-		mismatches = append(mismatches, fmt.Sprintf("LANG 不一致（期望 %q，实际 %q）", cfg.Locale, v.Lang))
+		mismatches = append(mismatches, fmt.Sprintf("LANG не совпадает (ожидалось %q, получено %q)", cfg.Locale, v.Lang))
 	}
 	if v.LCAll != cfg.Locale {
-		mismatches = append(mismatches, fmt.Sprintf("LC_ALL 不一致（期望 %q，实际 %q）", cfg.Locale, v.LCAll))
+		mismatches = append(mismatches, fmt.Sprintf("LC_ALL не совпадает (ожидалось %q, получено %q)", cfg.Locale, v.LCAll))
 	}
 	if issue := effectiveTimezoneIssue(v, cfg); issue != "" {
 		mismatches = append(mismatches, issue)
 	}
-	return strings.Join(mismatches, "；")
+	return strings.Join(mismatches, "; ")
 }
 
 func effectiveTimezoneIssue(v guestObservation, cfg cage.Config) string {
 	if v.UTCOffsetExpected == nil || v.UTCOffsetActual == nil {
-		return "未读到客机的实际 UTC 偏移"
+		return "Не удалось прочитать фактическое смещение UTC гостевой системы"
 	}
 	if *v.UTCOffsetExpected != *v.UTCOffsetActual {
-		return fmt.Sprintf("实际 UTC 偏移与时区不一致（期望 %+d 秒，实际 %+d 秒）", *v.UTCOffsetExpected, *v.UTCOffsetActual)
+		return fmt.Sprintf("Фактическое смещение UTC не совпадает с часовым поясом (ожидалось %+d с, получено %+d с)", *v.UTCOffsetExpected, *v.UTCOffsetActual)
 	}
 	// Read the system file separately: time.localtime observes TZ, which can
 	// mask a stale or missing /etc/localtime even when it is a regular file.
 	if v.UTCOffsetSystem == nil {
-		return "未读到系统时区文件的实际 UTC 偏移"
+		return "Не удалось прочитать фактическое смещение UTC из файла часового пояса системы"
 	}
 	if *v.UTCOffsetSystem != *v.UTCOffsetExpected {
-		return fmt.Sprintf("系统时区文件的 UTC 偏移不一致（期望 %+d 秒，实际 %+d 秒）", *v.UTCOffsetExpected, *v.UTCOffsetSystem)
+		return fmt.Sprintf("Смещение UTC в файле часового пояса системы не совпадает (ожидалось %+d с, получено %+d с)", *v.UTCOffsetExpected, *v.UTCOffsetSystem)
 	}
 	if v.LocaltimeTarget != "" && v.LocaltimeTarget != "/usr/share/zoneinfo/"+cfg.Timezone {
-		return fmt.Sprintf("系统本地时间链接不一致（期望 %q，实际 %q）", "/usr/share/zoneinfo/"+cfg.Timezone, v.LocaltimeTarget)
+		return fmt.Sprintf("Ссылка локального времени системы не совпадает (ожидалось %q, получено %q)", "/usr/share/zoneinfo/"+cfg.Timezone, v.LocaltimeTarget)
 	}
 	return ""
 }
@@ -440,13 +440,13 @@ func guestProxyEndpoint(cfg cage.Config, managementHost string) (string, int) {
 func hostReachIssue(v guestObservation, linux, proxyExpected bool) (issue string, confirmed bool) {
 	switch {
 	case v.LinkLocalConnected != nil && *v.LinkLocalConnected:
-		return "客机直接连通了链路本地元数据地址（169.254.169.254）", true
+		return "Гостевая система напрямую подключилась к link-local адресу метаданных (169.254.169.254)", true
 	case v.ProxyEndpointConnected != nil && *v.ProxyEndpointConnected:
-		return "客机绕过环境外网络层直接连通了用户代理端口", true
+		return "Гостевая система в обход сетевого уровня вне среды напрямую подключилась к порту пользовательского прокси", true
 	case linux && v.LinkLocalConnected == nil:
-		return "未读到链路本地元数据地址的直连结果", false
+		return "Не удалось прочитать результат прямого подключения к link-local адресу метаданных", false
 	case linux && proxyExpected && v.ProxyEndpointConnected == nil:
-		return "未读到用户代理端口的直连结果", false
+		return "Не удалось прочитать результат прямого подключения к порту пользовательского прокси", false
 	}
 	return "", false
 }
@@ -456,21 +456,21 @@ func hostReachIssue(v guestObservation, linux, proxyExpected bool) (issue string
 func dnsBypassIssue(v guestObservation, linux bool) (issue string, confirmed bool) {
 	switch {
 	case v.DNSTCPConnected != nil && *v.DNSTCPConnected:
-		return "客机直接连通了公共 DNS 的 TCP/53", true
+		return "Гостевая система напрямую подключилась к публичному DNS по TCP/53", true
 	case v.DoTConnected != nil && *v.DoTConnected:
-		return "客机直接连通了公共 DNS 的 DoT/853", true
+		return "Гостевая система напрямую подключилась к публичному DNS по DoT/853", true
 	case !linux:
 		return "", false
 	case !v.DNSUDPAttempted:
-		return "客机的 UDP/53 直连探针没有发出", false
+		return "UDP/53-проба прямого подключения из гостевой системы не отправилась", false
 	case v.DNSTCPConnected == nil || v.DoTConnected == nil:
-		return "未读到公共 DNS 的 TCP/53 或 DoT/853 直连结果", false
+		return "Не удалось прочитать результат прямого подключения к публичному DNS по TCP/53 или DoT/853", false
 	case v.Resolvers.Count == nil || *v.Resolvers.Count < 0 || v.Resolvers.Confined == nil:
-		return "未能读取客机的解析器配置", false
+		return "Не удалось прочитать конфигурацию резолвера гостевой системы", false
 	case *v.Resolvers.Count == 0:
-		return "客机没有配置任何解析器", false
+		return "В гостевой системе не настроен ни один резолвер", false
 	case !*v.Resolvers.Confined:
-		return "客机解析器指向环境外的地址，查询可能绕过加密 DNS", true
+		return "Резолвер гостевой системы указывает на адрес вне среды; запросы могут обходить шифрованный DNS", true
 	}
 	return "", false
 }
@@ -492,18 +492,18 @@ func (s *Server) ipv6PolicyVerified(v guestObservation, before, after cage.GateS
 func browserSettingsMismatch(v browserObservation, cfg cage.Config) string {
 	var mismatches []string
 	if v.Timezone == "" || v.Timezone != v.ExpectedTimezone {
-		mismatches = append(mismatches, fmt.Sprintf("时区不一致（期望 %q，实际 %q）", cfg.Timezone, v.Timezone))
+		mismatches = append(mismatches, fmt.Sprintf("Часовой пояс не совпадает (ожидалось %q, получено %q)", cfg.Timezone, v.Timezone))
 	}
 	// Chromium's Japanese UI locale may report the language-only tag even
 	// with ja-JP preferences. Keep other regional language distinctions.
 	japanese := strings.EqualFold(cfg.BrowserLanguage, "ja-JP") && strings.EqualFold(v.Language, "ja")
 	if !strings.EqualFold(v.Language, cfg.BrowserLanguage) && !japanese {
-		mismatches = append(mismatches, fmt.Sprintf("语言不一致（期望 %q，实际 %q）", cfg.BrowserLanguage, v.Language))
+		mismatches = append(mismatches, fmt.Sprintf("Язык не совпадает (ожидалось %q, получено %q)", cfg.BrowserLanguage, v.Language))
 	}
 	if !strings.HasPrefix(v.Platform, "Linux") {
-		mismatches = append(mismatches, fmt.Sprintf("系统标识不一致（期望 Linux，实际 %q）", v.Platform))
+		mismatches = append(mismatches, fmt.Sprintf("Идентификатор системы не совпадает (ожидалось Linux, получено %q)", v.Platform))
 	}
-	return strings.Join(mismatches, "；")
+	return strings.Join(mismatches, "; ")
 }
 
 func (s *Server) inspectVMLayout() (bool, bool) {
@@ -614,7 +614,7 @@ func (s *Server) checkExitPolicy(ctx context.Context, cfg cage.Config, ip string
 	}
 	loc, err := s.locationForIP(ctx, cfg, ip)
 	if err != nil {
-		return cage.CheckUnknown, "出口定位暂时不可用，无法确认非中国大陆出口，外网保持关闭"
+		return cage.CheckUnknown, "Геолокация выхода временно недоступна; подтвердить выход за пределами материкового Китая нельзя, внешняя сеть остаётся закрытой"
 	}
 	observed := loc.exitLocation()
 	state, message := policy.Evaluate(ip, &observed)
@@ -663,7 +663,7 @@ func (s *Server) runSafetyCheck() (returned error) {
 	s.mu.Unlock()
 	if paused {
 		s.safetyOp.Unlock()
-		return errors.New("外网已手动暂停；可重新检测以恢复联网")
+		return errors.New("Внешняя сеть приостановлена вручную; повторная проверка может восстановить доступ")
 	}
 	defer func() { s.mu.Lock(); s.checkCancel = nil; s.mu.Unlock() }()
 	state, err := client.BeginCheck(ctx)
@@ -672,7 +672,7 @@ func (s *Server) runSafetyCheck() (returned error) {
 	}
 	s.safetyOp.Unlock()
 	if err != nil {
-		_, _ = client.Close(context.Background(), "检测未启动，外网保持关闭")
+		_, _ = client.Close(context.Background(), "Проверка не запущена, внешняя сеть остаётся закрытой")
 		return err
 	}
 	granted := false
@@ -683,7 +683,7 @@ func (s *Server) runSafetyCheck() (returned error) {
 		paused := s.networkPaused
 		s.mu.Unlock()
 		if !granted && !paused {
-			reason := "联网检查尚未完成，还没有取得全部检测结果。外网保持关闭。"
+			reason := "Проверка доступа к сети ещё не завершена, полных результатов пока нет. Внешняя сеть остаётся закрытой."
 			if returned != nil {
 				reason = returned.Error()
 			}
@@ -701,7 +701,7 @@ func (s *Server) runSafetyCheck() (returned error) {
 		s.mu.Unlock()
 	}()
 	if cfg.ExitPolicy.NeedsBinding() {
-		s.setMessage("正在首次绑定此出口节点的 IP 或地区…")
+		s.setMessage("Первая привязка IP или региона этого узла выхода…")
 		loc, err := probeLocation(ctx, cfg)
 		if err != nil {
 			return err
@@ -733,7 +733,7 @@ func (s *Server) runSafetyCheck() (returned error) {
 		// not leave the last successful report as the only diagnostic evidence.
 		s.publishReport(report)
 		if err := writePrivate(filepath.Join(s.profile, "last-safety-report.json"), report); err != nil {
-			_ = diagnostics.New(s.profile).Record("error", "safety", "保存检测报告失败: "+err.Error())
+			_ = diagnostics.New(s.profile).Record("error", "safety", "Не удалось сохранить отчёт о проверке: "+err.Error())
 		}
 		for _, check := range report.Checks {
 			level := "info"
@@ -743,8 +743,8 @@ func (s *Server) runSafetyCheck() (returned error) {
 			_ = diagnostics.New(s.profile).Record(level, "safety", fmt.Sprintf("check_started=%s check=%s state=%s critical=%t evidence=%s remedy=%s operation_error=%v", report.CreatedAt.UTC().Format(time.RFC3339Nano), check.ID, check.State, check.Critical, check.Evidence, check.Remedy, returned))
 		}
 	}()
-	for _, item := range [][2]string{{"egress_policy", "环境外出站约束"}, {"proxy_transport", "终端检测通道"}, {"dns_transport", "DNS 与解析约束"}, {"guest_settings", "系统时区与语言"}, {"browser_settings", "浏览器时区与语言"}, {"filesystem_boundary", "共享文件与宿主私有目录"}, {"management_boundary", "宿主管理接口"}, {"fail_closed", "代理故障关闭"}, {"udp_policy", "UDP 出站约束"}, {"ipv6_policy", "IPv6 出站约束"}, {"exit_consistency", "出口符合已保存规则"}} {
-		report.Checks = append(report.Checks, cage.SafetyCheck{ID: item[0], Title: item[1], Critical: true, State: cage.CheckUnknown, Evidence: "尚未取得证据", Remedy: "完成检测后查看结果；未知项目不会自动通过", CheckedAt: report.CreatedAt})
+	for _, item := range [][2]string{{"egress_policy", "Ограничения исходящих соединений вне среды"}, {"proxy_transport", "Канал проверки терминала"}, {"dns_transport", "DNS и ограничения резолвинга"}, {"guest_settings", "Часовой пояс и язык системы"}, {"browser_settings", "Часовой пояс и язык браузера"}, {"filesystem_boundary", "Общие файлы и приватный каталог хоста"}, {"management_boundary", "Интерфейс управления хостом"}, {"fail_closed", "Отказ прокси с закрытием"}, {"udp_policy", "Ограничения исходящего UDP"}, {"ipv6_policy", "Ограничения исходящего IPv6"}, {"exit_consistency", "Выход соответствует сохранённым правилам"}} {
+		report.Checks = append(report.Checks, cage.SafetyCheck{ID: item[0], Title: item[1], Critical: true, State: cage.CheckUnknown, Evidence: "Доказательств пока нет", Remedy: "Посмотрите результат после завершения проверки; неизвестные пункты не считаются пройденными автоматически", CheckedAt: report.CreatedAt})
 	}
 	set := func(id string, result cage.CheckState, evidence, remedy string) {
 		for i := range report.Checks {
@@ -762,14 +762,14 @@ func (s *Server) runSafetyCheck() (returned error) {
 		// BeginCheck has already revoked external access. This path is shared
 		// by initial setup, startup, controller reconnects and later rechecks.
 		if err := s.syncMacOSRegion(ctx, cfg); err != nil {
-			set("guest_settings", cage.CheckUnknown, err.Error(), "核对已保存的时区和语言后重新检测")
+			set("guest_settings", cage.CheckUnknown, err.Error(), "Сверьте сохранённые часовой пояс и язык и повторите проверку")
 			return err
 		}
 	}
 	shares, networkLayout := s.inspectVMLayout()
 	private, err := os.CreateTemp(s.profile, ".cage-private-probe-*")
 	if err != nil {
-		return usererror.Wrap("创建私有目录检查文件", err, "请检查 Cage 配置目录的写入权限和磁盘剩余空间，然后重新检测。外网保持关闭。")
+		return usererror.Wrap("Создание проверочного файла в приватном каталоге", err, "Проверьте права на запись в каталог конфигурации Cage и свободное место на диске, затем повторите проверку. Внешняя сеть остаётся закрытой.")
 	}
 	defer os.Remove(private.Name())
 	defer private.Close()
@@ -778,10 +778,10 @@ func (s *Server) runSafetyCheck() (returned error) {
 		shareRoot = s.workspace()
 		approved, e := s.projectWorkspace(shareRoot)
 		if e != nil || isClientMountPath(approved) {
-			return errors.New("请先在 macOS 工作台连接默认工作区或已授权的主机项目，再验证文件边界")
+			return errors.New("Сначала подключите в рабочей среде macOS рабочее пространство по умолчанию или авторизованный проект хоста, затем проверьте файловые границы")
 		}
 		if e = s.ensureProjectShare(approved); e != nil {
-			set("filesystem_boundary", cage.CheckUnknown, e.Error(), "先完成客机登录、文件系统扩展或工作区访问授权，再重新运行检查")
+			set("filesystem_boundary", cage.CheckUnknown, e.Error(), "Сначала завершите вход в гостевую систему, включите расширение файловой системы или авторизуйте доступ к рабочему пространству, затем повторите проверку")
 			var failure *projectShareError
 			if errors.As(e, &failure) {
 				return &projectShareError{Path: approved, Recovery: failure.Recovery, Message: failure.Message}
@@ -792,7 +792,7 @@ func (s *Server) runSafetyCheck() (returned error) {
 	}
 	shared, err := os.CreateTemp(shareRoot, ".cage-share-probe-*")
 	if err != nil {
-		return usererror.Wrap("创建项目共享检查文件", err, "请确认环境目录仍存在且可写，再重新检测；不要删除个人配置目录。外网保持关闭。")
+		return usererror.Wrap("Создание проверочного файла в общем каталоге проекта", err, "Убедитесь, что каталог среды существует и доступен для записи, и повторите проверку; не удаляйте каталог личной конфигурации. Внешняя сеть остаётся закрытой.")
 	}
 	defer os.Remove(shared.Name())
 	defer shared.Close()
@@ -805,7 +805,7 @@ func (s *Server) runSafetyCheck() (returned error) {
 	}
 	control, _ := url.Parse(s.origin)
 	port, _ := strconv.Atoi(control.Port())
-	s.setMessage("正在验证离线约束、共享文件与系统配置…")
+	s.setMessage("Проверка офлайн-ограничений, общих файлов и конфигурации системы…")
 	boundaryInput := boundaryProbeInput(port, report.ID, private.Name(), shared.Name(), challenge)
 	boundaryInput["timezone"] = cfg.Timezone
 	if s.windowsGuest != nil {
@@ -834,42 +834,42 @@ func (s *Server) runSafetyCheck() (returned error) {
 	}
 	if boundaryErr == nil {
 		if s.guestSettingsOK(boundary, cfg) {
-			evidence := "客机进程与系统的时区和语言读回结果符合已应用配置"
+			evidence := "Прочитанные в процессах и системе гостевой системы часовой пояс и язык соответствуют применённой конфигурации"
 			if linuxProbe {
-				evidence += "；进程与系统时区文件的实际 UTC 偏移均符合已应用时区"
+				evidence += "; фактическое смещение UTC в процессах и файле часового пояса системы соответствует применённому часовому поясу"
 			}
 			set("guest_settings", cage.CheckPassed, evidence, "")
 		} else {
-			evidence := "系统读回结果与已应用配置不一致"
+			evidence := "Прочитанные системные значения не совпадают с применённой конфигурацией"
 			if linuxProbe {
 				if detail := linuxGuestSettingsMismatch(boundary, cfg); detail != "" {
-					evidence += "：" + detail
+					evidence += ": " + detail
 				}
 			}
-			set("guest_settings", cage.CheckFailed, evidence, "重新应用时区与语言后重启环境")
+			set("guest_settings", cage.CheckFailed, evidence, "Повторно примените часовой пояс и язык и перезапустите среду")
 		}
 		_, _ = shared.Seek(0, io.SeekStart)
 		sharedData, _ := io.ReadAll(io.LimitReader(shared, 256))
 		if shares && boundary.PrivateFile == "unreachable" && boundary.SharedFile && string(sharedData) == challenge+":guest" {
-			set("filesystem_boundary", cage.CheckPassed, "共享读写探针往返成功；宿主私有目录探针不可读；环境基础共享目录与明确打开的项目使用受目录约束的传输，项目内允许 Git 读写", "")
+			set("filesystem_boundary", cage.CheckPassed, "Проверочный обмен с общим каталогом прошёл успешно; приватный каталог хоста недоступен для чтения; базовые общие каталоги среды и явно открытые проекты используют передачу с ограничением по каталогу, внутри проекта Git может читать и писать", "")
 		} else {
-			set("filesystem_boundary", cage.CheckFailed, "共享读写、私有目录探针或挂载范围未符合预期", "检查共享目录；不要共享主目录或 Cage 配置目录")
+			set("filesystem_boundary", cage.CheckFailed, "Общий обмен, проба приватного каталога или область монтирования не соответствуют ожиданиям", "Проверьте общие каталоги; не открывайте общий доступ к домашнему каталогу или каталогу конфигурации Cage")
 		}
 		if after.PolicyVerified && networkLayout && after.Configuration == cfg.Fingerprint() && !boundary.PublicConnected && after.Counters.TCPDenied > state.Counters.TCPDenied {
-			set("egress_policy", cage.CheckPassed, "运行中策略检查符合预期；未配置额外网卡；检查期间的公网 TCP 请求被 环境外网络层拒绝", "")
+			set("egress_policy", cage.CheckPassed, "Проверка политики во время работы соответствует ожиданиям; дополнительные сетевые адаптеры не настроены; публичные TCP-запросы во время проверки отклонены сетевым уровнем вне среды", "")
 		}
 		hostReach, hostReachConfirmed := hostReachIssue(boundary, linuxProbe, boundaryInput["proxy_port"] != nil)
 		if hostReach == "" && !boundary.ManagementConnected && after.Counters.PrivateDenied > state.Counters.PrivateDenied && s.managementRequiresSession(ctx) {
-			evidence := "guest 到宿主管理端口的连接被拒绝；本机接口无会话访问被拒绝"
+			evidence := "Подключение из гостевой системы к порту управления хоста отклонено; доступ к локальным интерфейсам без сеанса отклонён"
 			if linuxProbe {
-				evidence += "；链路本地元数据地址的直连探针未连通"
+				evidence += "; проба прямого подключения к link-local адресу метаданных не установила соединение"
 				if boundaryInput["proxy_port"] != nil {
-					evidence += "；用户代理端口的直连探针未连通"
+					evidence += "; проба прямого подключения к порту пользовательского прокси не установила соединение"
 				}
 			}
 			set("management_boundary", cage.CheckPassed, evidence, "")
 		} else {
-			result, evidence := cage.CheckUnknown, "管理接口拒绝访问的证据不完整"
+			result, evidence := cage.CheckUnknown, "Доказательства отказа в доступе к интерфейсу управления неполны"
 			if boundary.ManagementConnected {
 				result = cage.CheckFailed
 			}
@@ -879,32 +879,32 @@ func (s *Server) runSafetyCheck() (returned error) {
 					result = cage.CheckFailed
 				}
 			}
-			set("management_boundary", result, evidence, "停止环境并重新启动；不要开放宿主控制端口")
+			set("management_boundary", result, evidence, "Остановите среду и запустите её снова; не открывайте порт управления хоста")
 		}
 		if boundary.UDPAttempted && after.Counters.UDPDenied > state.Counters.UDPDenied && after.PolicyVerified {
-			set("udp_policy", cage.CheckPassed, "客机 UDP 探针已发起，环境外网络层记录了拒绝；无响应本身不作为通过依据", "")
+			set("udp_policy", cage.CheckPassed, "UDP-проба из гостевой системы отправлена, сетевой уровень вне среды зафиксировал отказ; отсутствие ответа само по себе не считается доказательством", "")
 		}
 		ipv6Verified := s.ipv6PolicyVerified(boundary, state, after, networkLayout)
 		if ipv6Verified && s.macosGuest != nil && macOSIPv6LinkVerified(boundary, state, after) {
-			set("ipv6_policy", cage.CheckPassed, fmt.Sprintf("常规 IPv6 查路由明确不可达；%d 条接口限定的默认路由逐个绑定检查，均未连通或发现外部源地址。唯一客机网卡 %s 对本轮随机 IPv6 UDP 探针在以太帧入口实施丢弃。", boundary.IPv6DefaultRoutes, boundary.IPv6LinkInterface), "")
+			set("ipv6_policy", cage.CheckPassed, fmt.Sprintf("Обычная проверка маршрута IPv6 явно недоступна; %d маршрутов по умолчанию, привязанных к интерфейсам, проверены по одному — соединение не установлено или обнаружен внешний адрес источника. Единственный сетевой адаптер гостевой системы %s отбрасывает случайные UDP-пробы IPv6 этого раунда на входе Ethernet-кадров.", boundary.IPv6DefaultRoutes, boundary.IPv6LinkInterface), "")
 		} else if ipv6Verified {
-			evidence := "客机公网 IPv6 策略为拒绝；连接采样未建立，路由或拒绝记录与策略一致。当前版本验证 IPv4 出口"
+			evidence := "Политика публичного IPv6 в гостевой системе — запрет; выборка соединений не установлена, записи маршрутов или отказов соответствуют политике. Текущая версия проверяет выход IPv4"
 			if linuxProbe {
-				evidence += fmt.Sprintf("；客机全局 IPv6 地址 %d 个、默认路由 %d 条", *boundary.IPv6GlobalAddresses, boundary.IPv6DefaultRoutes)
+				evidence += fmt.Sprintf("; глобальных адресов IPv6 в гостевой системе: %d, маршрутов по умолчанию: %d", *boundary.IPv6GlobalAddresses, boundary.IPv6DefaultRoutes)
 			}
 			set("ipv6_policy", cage.CheckPassed, evidence, "")
 		} else if s.macosGuest != nil {
-			set("ipv6_policy", cage.CheckUnknown, fmt.Sprintf("IPv6 默认路由记录为 %d。普通连接、逐接口观测与当前 VZ 网卡丢弃证据尚未全部匹配。", boundary.IPv6DefaultRoutes), "保持外网关闭。确认使用配套的客机诊断工具和虚拟机运行器，重启后重新检测")
+			set("ipv6_policy", cage.CheckUnknown, fmt.Sprintf("Записей маршрута IPv6 по умолчанию: %d. Обычные подключения, поинтерфейсное наблюдение и свидетельства отбрасывания текущим адаптером VZ пока совпадают не полностью.", boundary.IPv6DefaultRoutes), "Оставьте внешнюю сеть закрытой. Убедитесь, что используются совместимые средства диагностики гостевой системы и среда выполнения виртуальной машины, перезапустите и повторите проверку")
 		} else if linuxProbe {
-			set("ipv6_policy", cage.CheckUnknown, "未能确认客机全局 IPv6 地址为零，或 IPv6 路由与拒绝证据不完整", "保持外网关闭。确认客机 IPv6 配置后重新检测")
+			set("ipv6_policy", cage.CheckUnknown, "Не удалось подтвердить отсутствие глобальных адресов IPv6 в гостевой системе или доказательства маршрутов и отказов IPv6 неполны", "Оставьте внешнюю сеть закрытой. Проверьте конфигурацию IPv6 гостевой системы и повторите проверку")
 		}
 	} else {
-		message := usererror.Display("读取环境内的隔离检查结果", boundaryErr, "请确认环境仍在运行，再重新检测；持续失败时导出诊断包。").Error()
+		message := usererror.Display("чтение результата проверки изоляции в среде", boundaryErr, "Убедитесь, что среда всё ещё работает, и повторите проверку; если ошибка повторяется, экспортируйте диагностический пакет.").Error()
 		for _, id := range []string{"guest_settings", "filesystem_boundary", "egress_policy", "management_boundary", "udp_policy", "ipv6_policy"} {
-			set(id, cage.CheckUnknown, message, "重新检测；若同一检查持续无结果，请在设置中导出诊断包")
+			set(id, cage.CheckUnknown, message, "Повторите проверку; если она снова не даёт результата, экспортируйте диагностический пакет в настройках")
 		}
 	}
-	s.setMessage("正在通过固定检测通道检查代理与 DNS…")
+	s.setMessage("Проверка прокси и DNS через фиксированный канал проверки…")
 	network, networkErr := s.guestObservation(ctx, map[string]any{"stage": "network"})
 	normalState, err := client.Status(ctx)
 	_ = diagnostics.New(s.profile).Record("info", "safety-probe", fmt.Sprintf("stage=network error=%v status_error=%v observation=%+v counters=%+v", networkErr, err, network, normalState.Counters))
@@ -912,47 +912,47 @@ func (s *Server) runSafetyCheck() (returned error) {
 		return err
 	}
 	if networkErr == nil && network.Egress.Status == 200 && network.Egress.IP != "" && normalState.Counters.ProbeTCP > after.Counters.ProbeTCP {
-		set("proxy_transport", cage.CheckPassed, "终端请求经过 环境网络层的固定检测通道，并由指定代理完成 HTTPS 出口查询；未放开任意网站", "")
+		set("proxy_transport", cage.CheckPassed, "Запросы терминала проходят через фиксированный канал проверки сетевого уровня среды, а запрос выхода HTTPS выполняет указанный прокси; произвольные сайты не открываются", "")
 	} else {
-		evidence := fmt.Sprintf("环境未能完成代理出口查询（检测通道 HTTP %d），尚不能确认代理连接可用", network.Egress.Status)
+		evidence := fmt.Sprintf("Среда не смогла выполнить запрос выхода через прокси (канал проверки HTTP %d); доступность прокси пока не подтверждена", network.Egress.Status)
 		if network.Egress.Status == 0 {
-			evidence = "环境没有收到代理出口查询的结果，尚不能确认代理连接可用"
+			evidence = "Среда не получила результат запроса выхода через прокси; доступность прокси пока не подтверждена"
 		}
 		if networkErr != nil {
-			evidence = usererror.Display("读取代理检测结果", networkErr, "请确认环境仍在运行。").Error()
+			evidence = usererror.Display("чтение результата проверки прокси", networkErr, "Убедитесь, что среда всё ещё работает.").Error()
 		}
-		set("proxy_transport", cage.CheckUnknown, evidence, "在网络与代理设置中确认节点已应用并能连接；再重新检测")
+		set("proxy_transport", cage.CheckUnknown, evidence, "В настройках сети и прокси убедитесь, что узел применён и доступен для подключения, и повторите проверку")
 	}
 	dnsBypass, dnsBypassConfirmed := dnsBypassIssue(boundary, linuxProbe)
 	if networkErr == nil && boundaryErr == nil && !boundary.PublicDNSAnswered && after.Counters.DNSDenied > state.Counters.DNSDenied && network.DNS.Status == 200 && normalState.Counters.ProbeDNS > after.Counters.ProbeDNS && dnsBypass == "" {
-		evidence := "检查期间公共解析被拒绝；固定 DNS 查询经指定 DoH 与代理完成"
+		evidence := "Во время проверки публичный резолвинг был отклонён; фиксированные DNS-запросы выполнены через указанный DoH и прокси"
 		if linuxProbe {
-			evidence += "；客机解析器仅指向环境内地址，到公共 DNS 的 UDP/53、TCP/53 与 DoT/853 直连均未绕过网关"
+			evidence += "; резолвер гостевой системы указывает только на адреса внутри среды, прямые подключения к публичному DNS по UDP/53, TCP/53 и DoT/853 не обошли шлюз"
 		}
 		set("dns_transport", cage.CheckPassed, evidence, "")
 	} else {
-		result, evidence := cage.CheckUnknown, "公共解析拒绝记录或加密 DNS 查询证据不完整"
+		result, evidence := cage.CheckUnknown, "Записи отказа публичного резолвинга или доказательства шифрованных DNS-запросов неполны"
 		if boundaryErr == nil && dnsBypass != "" {
 			evidence = dnsBypass
 			if dnsBypassConfirmed {
 				result = cage.CheckFailed
 			}
 		}
-		set("dns_transport", result, evidence, "检查 DNS 配置、代理连通性与环境组件")
+		set("dns_transport", result, evidence, "Проверьте конфигурацию DNS, доступность прокси и компоненты среды")
 	}
-	s.setMessage("正在读取隔离浏览器的实际配置…")
+	s.setMessage("Чтение фактической конфигурации изолированного браузера…")
 	browser, browserErr := s.browserExitObservation(ctx, cfg)
 	_ = diagnostics.New(s.profile).Record("info", "safety-probe", fmt.Sprintf("stage=browser error=%v observation=%+v", browserErr, browser))
 	if browserErr == nil {
 		if s.browserSettingsIssue(browser, cfg) == "" {
-			set("browser_settings", cage.CheckPassed, "浏览器诊断页面读到客机平台；实际时区与首选语言符合已应用配置", "")
+			set("browser_settings", cage.CheckPassed, "Диагностическая страница браузера определила платформу гостевой системы; фактический часовой пояс и предпочитаемый язык соответствуют применённой конфигурации", "")
 		} else {
-			set("browser_settings", cage.CheckFailed, s.browserSettingsIssue(browser, cfg), "更新环境组件以补齐浏览器语言包并应用已保存设置；仍失败时查看各字段的期望值与实际值")
+			set("browser_settings", cage.CheckFailed, s.browserSettingsIssue(browser, cfg), "Обновите компоненты среды, чтобы дополнить языковой пакет браузера и применить сохранённые настройки; если ошибка остаётся, сравните ожидаемые и фактические значения полей")
 		}
 	} else {
-		set("browser_settings", cage.CheckUnknown, browserErr.Error(), "停止并重启环境以加载最新浏览器组件，再重新检测")
+		set("browser_settings", cage.CheckUnknown, browserErr.Error(), "Остановите и перезапустите среду, чтобы загрузить последние компоненты браузера, и повторите проверку")
 	}
-	s.setMessage("正在演练代理失败；现有代理进程保持运行…")
+	s.setMessage("Имитация отказа прокси; текущий процесс прокси продолжает работать…")
 	faultStart, err := client.SetFault(ctx, true)
 	if err != nil {
 		return err
@@ -965,17 +965,17 @@ func (s *Server) runSafetyCheck() (returned error) {
 		return err
 	}
 	if faultErr == nil && faultBrowserErr == nil && fault.Egress.Status == 503 && fault.DNS.Status == 503 && faultBrowser.Network.Status == 503 && faultEnd.Counters.FaultTCP >= faultStart.Counters.FaultTCP+2 && faultEnd.Counters.FaultDNS > faultStart.Counters.FaultDNS {
-		set("fail_closed", cage.CheckPassed, "在检测专用连接中注入代理不可用：终端、浏览器和 DNS 均失败，未改为直连；未停止用户的代理进程", "")
+		set("fail_closed", cage.CheckPassed, "В соединение, выделенное для проверки, внедрена недоступность прокси: терминал, браузер и DNS завершились ошибкой, прямого подключения не произошло; процесс прокси пользователя не остановлен", "")
 	} else {
-		set("fail_closed", cage.CheckUnknown, "故障演练缺少终端、浏览器或 DNS 的失败记录", "修复检测通道或浏览器组件后重试；未知不等于已验证安全")
+		set("fail_closed", cage.CheckUnknown, "В имитации отказа отсутствуют записи ошибок терминала, браузера или DNS", "Исправьте канал проверки или компоненты браузера и повторите; неизвестность не означает подтверждённую безопасность")
 	}
 	if _, err = client.SetFault(ctx, false); err != nil {
 		return err
 	}
-	s.setMessage("正在核对静态 IP 或动态地区范围…")
+	s.setMessage("Проверка статического IP или динамического диапазона регионов…")
 	hostIP, hostErr := cage.ProbeExitIP(ctx, cfg)
 	_ = diagnostics.New(s.profile).Record("info", "safety-probe", fmt.Sprintf("stage=host-exit error=%v ip=%s", hostErr, hostIP))
-	result, message := cage.CheckPassed, "终端、浏览器与宿主检测出口均未命中大陆网段，定位为非中国大陆且符合已保存的 IP 变化规则；此结论限于检测采样"
+	result, message := cage.CheckPassed, "Выходы терминала, браузера и проверки хоста не попали в диапазоны материкового Китая; выход определён как находящийся за пределами материкового Китая и соответствует сохранённым правилам изменения IP; вывод ограничен выборкой проверки"
 	if missing := incompleteExitSamples(hostIP, hostErr, network.Egress, networkErr, browser.Network, browserErr); missing != "" {
 		result, message = cage.CheckUnknown, missing
 	} else {
@@ -990,13 +990,13 @@ func (s *Server) runSafetyCheck() (returned error) {
 			}
 		}
 	}
-	set("exit_consistency", result, message, "选择非中国大陆出口，并核对静态 IP 或允许地区；静态 IP 和不限地区均须确认出口国家，已有基准不会随重检改变")
-	report.Checks = append(report.Checks, cage.SafetyCheck{ID: "third_party_reputation", Title: "第三方 IP 信誉", State: cage.CheckUnknown, CheckedAt: time.Now(), Evidence: "未自动获取社区评分。可在 Cage 浏览器中打开补充检查；结果不替代底层隔离证据。"})
+	set("exit_consistency", result, message, "Выберите выход за пределами материкового Китая и сверьте статический IP или разрешённые регионы; для статического IP и неограниченных регионов нужно подтвердить страну выхода, существующая база не меняется при повторной проверке")
+	report.Checks = append(report.Checks, cage.SafetyCheck{ID: "third_party_reputation", Title: "Репутация IP у третьих сторон", State: cage.CheckUnknown, CheckedAt: time.Now(), Evidence: "Оценка сообщества не запрашивается автоматически. Дополнительную проверку можно открыть в браузере Cage; её результат не заменяет доказательства базовой изоляции."})
 	s.mu.Lock()
 	autoLanguage, location := s.preferences.AutoLanguage, s.location
 	s.mu.Unlock()
 	if autoLanguage && (location == nil || location.SuggestedLocale == "") {
-		report.Checks = append(report.Checks, cage.SafetyCheck{ID: "language_suggestion", Title: "地区语言建议", State: cage.CheckUnknown, CheckedAt: time.Now(), Evidence: "当前地区没有可用的自动语言建议，已保留配置中的语言。", Remedy: "可在时区与语言设置中关闭自动，并手动选择"})
+		report.Checks = append(report.Checks, cage.SafetyCheck{ID: "language_suggestion", Title: "Рекомендация языка по региону", State: cage.CheckUnknown, CheckedAt: time.Now(), Evidence: "Для текущего региона нет автоматической рекомендации языка, сохранён язык из конфигурации.", Remedy: "Автоматический выбор можно отключить в настройках часового пояса и языка и выбрать язык вручную"})
 	}
 	s.publishReport(report)
 	s.mu.Lock()
@@ -1017,7 +1017,7 @@ func (s *Server) runSafetyCheck() (returned error) {
 	paused = s.networkPaused
 	s.mu.Unlock()
 	if paused || ctx.Err() != nil {
-		return errors.New("检测已取消，外网保持关闭")
+		return errors.New("Проверка отменена, внешняя сеть остаётся закрытой")
 	}
 	state, err = client.Grant(ctx, report)
 	if err != nil {
@@ -1102,7 +1102,7 @@ func (s *Server) monitorSafetyWithProbe(probe func(context.Context, cage.Config)
 		// A packet helper can reconnect before the next GUI status tick. Its
 		// gate stays closed until a fresh check, even though the helper never
 		// exited and the new receipt is already available.
-		recheckClosed := state.Reason == "检查或监测授权已到期" || s.windowsGuest != nil && state.Reason == windowsPacketDisconnectedReason
+		recheckClosed := state.Reason == "Срок авторизации проверки или мониторинга истёк" || s.windowsGuest != nil && state.Reason == windowsPacketDisconnectedReason
 		if state.Mode == cage.GateClosed && recheckClosed && state.Report != nil {
 			s.mu.Lock()
 			pending := s.recovery.RunID != ""
@@ -1117,7 +1117,7 @@ func (s *Server) monitorSafetyWithProbe(probe func(context.Context, cage.Config)
 	var recoverable bool
 	cfg, err := loadConfig(s.configPath)
 	if err != nil || cfg.Fingerprint() != state.Configuration {
-		issue = "配置与运行环境不一致，请应用设置并重新检测"
+		issue = "Конфигурация не совпадает с работающей средой; примените настройки и повторите проверку"
 	}
 	if issue == "" {
 		if err = state.Report.Authorizes(state.RunID, state.Configuration, time.Now()); err != nil {
@@ -1134,7 +1134,7 @@ func (s *Server) monitorSafetyWithProbe(probe func(context.Context, cage.Config)
 				timing.result = "exit_timeout_retry"
 				return
 			}
-			issue = "宿主出口采样失败，外网已暂停：" + diagnostics.Redact(usererror.Display("读取宿主出口", err, "请重新检测。").Error())
+			issue = "Не удалось получить выборку выхода хоста, внешняя сеть приостановлена: " + diagnostics.Redact(usererror.Display("чтение выхода хоста", err, "Повторите проверку.").Error())
 			recoverable = true
 		} else {
 			result, message := s.checkExitPolicy(ctx, cfg, ip)
@@ -1149,7 +1149,7 @@ func (s *Server) monitorSafetyWithProbe(probe func(context.Context, cage.Config)
 		guest, e := s.guestObservation(ctx, map[string]any{"stage": "environment", "timezone": cfg.Timezone})
 		timing.stage("guest_settings")
 		if e != nil || !s.guestSettingsOK(guest, cfg) {
-			issue = "系统时区或语言的运行状态无法确认，请重新检测"
+			issue = "Не удалось подтвердить рабочее состояние часового пояса или языка системы; повторите проверку"
 			recoverable = e != nil
 		}
 	}
@@ -1157,10 +1157,10 @@ func (s *Server) monitorSafetyWithProbe(probe func(context.Context, cage.Config)
 		browser, e := s.browserObservation(ctx, cfg, false)
 		timing.stage("browser_settings")
 		if e != nil {
-			issue = "浏览器时区或语言的运行状态无法确认，请重新检测"
+			issue = "Не удалось подтвердить рабочее состояние часового пояса или языка браузера; повторите проверку"
 			recoverable = true
 		} else if mismatch := s.browserSettingsIssue(browser, cfg); mismatch != "" {
-			issue = "浏览器配置检查未通过：" + mismatch
+			issue = "Проверка конфигурации браузера не пройдена: " + mismatch
 		}
 	}
 	if issue != "" {
@@ -1193,7 +1193,7 @@ func (s *Server) deferTimedOutExitProbe(ctx context.Context, client *cage.GateCl
 		return true // A newer transition owns this gate.
 	}
 	s.mu.Lock()
-	s.safety.monitorError = "出口检测暂时超时，正在重试；现有联网许可未延长"
+	s.safety.monitorError = "Проверка выхода временно истекла по времени, выполняется повторная попытка; текущее разрешение на доступ к сети не продлено"
 	s.mu.Unlock()
 	return true
 }
@@ -1219,7 +1219,7 @@ func (s *Server) finishSafetyObservation(ctx context.Context, client *cage.GateC
 	} // A user operation cancelled this monitor; it owns the next transition.
 	current, e := loadConfig(s.configPath)
 	if e != nil || current.Fingerprint() != state.Configuration {
-		issue = "运行配置已变化，请重新应用设置"
+		issue = "Рабочая конфигурация изменилась; примените настройки заново"
 		recoverable = false
 	}
 	timing.stage("configuration")
@@ -1244,14 +1244,14 @@ func (s *Server) finishSafetyObservation(ctx context.Context, client *cage.GateC
 	timing.stage("gate_renew")
 	if err != nil {
 		timing.result = "renew_failed"
-		closed, e := client.Close(context.Background(), "运行监测未能续期，请重新检测")
+		closed, e := client.Close(context.Background(), "Не удалось продлить рабочий мониторинг; повторите проверку")
 		timing.stage("gate_close")
 		if e == nil {
 			s.publishGate(closed)
 			s.scheduleNetworkRecovery(closed)
 		}
 		s.mu.Lock()
-		s.safety.Error = "运行监测未能续期，请重新检测"
+		s.safety.Error = "Не удалось продлить рабочий мониторинг; повторите проверку"
 		s.mu.Unlock()
 		return
 	}

@@ -55,14 +55,14 @@ func ShareNativeCloudProject(configPath, connection, path string, readonly bool)
 	entry, _ := url.Parse(client.launch.URL)
 	code, err := client.call("POST", "/api/session", map[string]string{"token": entry.Fragment}, nil)
 	if err != nil || code != http.StatusOK {
-		return result, errors.New("无法连接本机 Cage")
+		return result, errors.New("Не удалось подключиться к локальному Cage")
 	}
 	current, err := client.bindConnection(connection)
 	if err != nil {
 		return result, err
 	}
 	if current.Mode != "remote" {
-		return result, errors.New("请先选择远程 Cage")
+		return result, errors.New("Сначала выберите удалённый Cage")
 	}
 	client.client.Timeout = 35 * time.Second
 	body, err := json.Marshal(clientShareRequest{Token: client.record.Token, Path: path, Readonly: &readonly})
@@ -77,15 +77,15 @@ func ShareNativeCloudProject(configPath, connection, path string, readonly bool)
 	req.Header.Set("Content-Type", "application/json")
 	response, err := client.client.Do(req)
 	if err != nil {
-		return result, errors.New("共享本机项目失败，请核对连接")
+		return result, errors.New("Не удалось открыть общий доступ к локальному проекту; проверьте подключение")
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
 		data, _ := io.ReadAll(io.LimitReader(response.Body, 1024))
-		return result, errors.New("无法共享本机项目：" + strings.TrimSpace(string(data)))
+		return result, errors.New("Не удалось открыть общий доступ к локальному проекту: " + strings.TrimSpace(string(data)))
 	}
 	if err := json.NewDecoder(io.LimitReader(response.Body, 32<<10)).Decode(&result); err != nil {
-		return result, errors.New("本机 Cage 返回了无效的共享结果，请重新查看共享列表")
+		return result, errors.New("Локальный Cage вернул недействительный результат общего доступа; снова откройте список общих ресурсов")
 	}
 	return result, nil
 }
@@ -125,11 +125,11 @@ func (s *Server) clientProjectShareRequest(w http.ResponseWriter, r *http.Reques
 	g := s.remote
 	session, err := g.clientShareSession(r.Header.Get(connectionHeader))
 	if err != nil {
-		http.Error(w, "工作环境已切换，请重新选择项目", http.StatusConflict)
+		http.Error(w, "Рабочая среда переключена; выберите проект заново", http.StatusConflict)
 		return
 	}
 	if !session.Manifest.Capabilities["client_project_share"] {
-		http.Error(w, "此云端 Cage 尚不支持共享本机项目", http.StatusConflict)
+		http.Error(w, "Этот облачный Cage пока не поддерживает общий доступ к локальным проектам", http.StatusConflict)
 		return
 	}
 	switch {
@@ -150,11 +150,11 @@ func (s *Server) clientProjectShareRequest(w http.ResponseWriter, r *http.Reques
 			return
 		}
 		if !equalSecret(in.Token, s.token) {
-			http.Error(w, "请使用本机 Cage 的文件夹选择器授权", http.StatusForbidden)
+			http.Error(w, "Используйте выбор папки в локальном Cage для авторизации", http.StatusForbidden)
 			return
 		}
 		if in.Readonly == nil {
-			http.Error(w, "请选择共享权限", http.StatusBadRequest)
+			http.Error(w, "Выберите права общего доступа", http.StatusBadRequest)
 			return
 		}
 		item, err := s.createClientProjectShare(r.Context(), session, in.Path, *in.Readonly)
@@ -182,7 +182,7 @@ func (s *Server) clientProjectShareRequest(w http.ResponseWriter, r *http.Reques
 
 func (s *Server) clientProjectRoot(path string) (string, error) {
 	if !filepath.IsAbs(path) {
-		return "", errors.New("请选择本机项目的绝对路径")
+		return "", errors.New("Выберите абсолютный путь локального проекта")
 	}
 	profile := s.profile
 	if s.desktopEntry {
@@ -198,7 +198,7 @@ func (s *Server) clientProjectRoot(path string) (string, error) {
 	var private []string
 	if runtime.GOOS == "windows" {
 		if strings.HasPrefix(root, `\\`) {
-			return "", errors.New("请选择本机磁盘上的项目目录")
+			return "", errors.New("Выберите каталог проекта на локальном диске")
 		}
 		for _, key := range []string{"SystemRoot", "ProgramData", "ProgramFiles", "ProgramFiles(x86)"} {
 			if p := os.Getenv(key); p != "" {
@@ -210,7 +210,7 @@ func (s *Server) clientProjectRoot(path string) (string, error) {
 	}
 	hosts, err := s.remote.store.List()
 	if err != nil {
-		return "", errors.New("无法核对本机 SSH 凭据位置")
+		return "", errors.New("Не удалось проверить расположение локальных учётных данных SSH")
 	}
 	for _, host := range hosts {
 		if host.Auth.IdentityFile != "" {
@@ -219,11 +219,11 @@ func (s *Server) clientProjectRoot(path string) (string, error) {
 	}
 	for _, p := range private {
 		if cage.StoragePathsOverlap(root, p) {
-			return "", errors.New("系统目录和包含 SSH 密钥的目录不能共享")
+			return "", errors.New("Системные каталоги и каталоги с ключами SSH нельзя открывать в общий доступ")
 		}
 		real, err := paths.Resolve(p)
 		if err == nil && cage.StoragePathsOverlap(root, real) {
-			return "", errors.New("系统目录和包含 SSH 密钥的目录不能共享")
+			return "", errors.New("Системные каталоги и каталоги с ключами SSH нельзя открывать в общий доступ")
 		}
 	}
 	return root, nil
@@ -235,17 +235,17 @@ func (s *Server) createClientProjectShare(request context.Context, session *remo
 	// Keep a directory handle until the restricted service has pinned it too.
 	picked, err := os.OpenRoot(path)
 	if err != nil {
-		return empty, errors.New("本机项目目录无法访问")
+		return empty, errors.New("Локальный каталог проекта недоступен")
 	}
 	defer picked.Close()
 	dir, err := picked.Open(".")
 	if err != nil {
-		return empty, errors.New("无法核对本机目录身份")
+		return empty, errors.New("Не удалось проверить локальный каталог")
 	}
 	defer dir.Close()
 	identity, err := dir.Stat()
 	if err != nil || !identity.IsDir() {
-		return empty, errors.New("本机项目目录无法访问")
+		return empty, errors.New("Локальный каталог проекта недоступен")
 	}
 	root, err := s.clientProjectRoot(path)
 	if err != nil {
@@ -257,7 +257,7 @@ func (s *Server) createClientProjectShare(request context.Context, session *remo
 	}
 	if !files.MatchesRoot(identity) {
 		files.Close()
-		return empty, errors.New("所选目录已变化，请重新选择")
+		return empty, errors.New("Выбранный каталог изменился; выберите заново")
 	}
 	ctx, cancel := context.WithCancel(session.Context)
 	id := randomToken()[:32]
@@ -276,20 +276,20 @@ func (s *Server) createClientProjectShare(request context.Context, session *remo
 			g.mu.Unlock()
 			cancel()
 			files.Close()
-			return empty, errors.New("此目录与已有共享重叠，请先停止原共享再授予读写权限")
+			return empty, errors.New("Этот каталог пересекается с существующим общим ресурсом; сначала остановите исходный общий доступ, затем дайте права чтения и записи")
 		}
 		if active.session == session && paths.Equal(active.Path, root) {
 			g.mu.Unlock()
 			cancel()
 			files.Close()
-			return empty, errors.New("此目录正在共享，请先停止原共享再调整权限")
+			return empty, errors.New("Этот каталог уже используется в общем доступе; сначала остановите исходный общий доступ, затем меняйте права")
 		}
 	}
 	if len(g.clientShares) >= 16 {
 		g.mu.Unlock()
 		cancel()
 		files.Close()
-		return empty, errors.New("同时共享的项目已达上限")
+		return empty, errors.New("Достигнут предел одновременно открытых общих проектов")
 	}
 	if g.clientShares == nil {
 		g.clientShares = make(map[string]*clientProjectGrant)
@@ -345,7 +345,7 @@ func (s *Server) createClientProjectShare(request context.Context, session *remo
 		if checkErr != nil {
 			return empty, checkErr
 		}
-		return empty, errors.New("云端未确认项目挂载，请检查 Cage 是否已解锁、环境是否已启动")
+		return empty, errors.New("Облако не подтвердило монтирование проекта; проверьте, разблокирован ли Cage и запущена ли среда")
 	}
 	select {
 	case <-upgraded:

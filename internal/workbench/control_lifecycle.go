@@ -62,7 +62,7 @@ func (s *Server) handoff(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !s.op.TryLock() {
-		http.Error(w, "请先保存工作并停止环境，再完成更新。", http.StatusConflict)
+		http.Error(w, "Сначала сохраните работу и остановите среду, затем завершите обновление.", http.StatusConflict)
 		return
 	}
 	s.handoffLocked(w)
@@ -82,7 +82,7 @@ func (s *Server) handoffWithVMOwnerLocked(w http.ResponseWriter, permittedOwner 
 	if s.closing {
 		s.mu.Unlock()
 		s.op.Unlock()
-		http.Error(w, "后台正在更新，请重新打开 Cage。", http.StatusServiceUnavailable)
+		http.Error(w, "Фоновая служба обновляется; снова откройте Cage.", http.StatusServiceUnavailable)
 		return
 	}
 	busy := s.jobs.snapshot().Running || vmBusy
@@ -91,7 +91,7 @@ func (s *Server) handoffWithVMOwnerLocked(w http.ResponseWriter, permittedOwner 
 	if busy || s.shutdown == nil {
 		s.mu.Unlock()
 		s.op.Unlock()
-		http.Error(w, "请先保存工作并停止环境，再完成更新。", http.StatusConflict)
+		http.Error(w, "Сначала сохраните работу и остановите среду, затем завершите обновление.", http.StatusConflict)
 		return
 	}
 	s.closing = true
@@ -101,7 +101,7 @@ func (s *Server) handoffWithVMOwnerLocked(w http.ResponseWriter, permittedOwner 
 		s.closing = false
 		s.mu.Unlock()
 		s.op.Unlock()
-		http.Error(w, "代理尚未停止，未继续后台更新。", http.StatusConflict)
+		http.Error(w, "Прокси ещё не остановлен; обновление фоновой службы не продолжено.", http.StatusConflict)
 		return
 	}
 	// A fixed length keeps the complete acknowledgement readable even if
@@ -140,7 +140,7 @@ func controllerVMOwners(profile string) ([]string, error) {
 			return nil, err
 		}
 		if state.State == "" {
-			return nil, errors.New("无法确认已绑定 Windows 客机的运行状态，现有环境保持不变")
+			return nil, errors.New("Не удалось определить состояние привязанной гостевой системы Windows; текущая среда не изменена")
 		}
 		if state.State == "Off" || state.State == "Saved" {
 			return nil, nil
@@ -175,7 +175,7 @@ func controllerVMOwners(profile string) ([]string, error) {
 			Started string `json:"started"`
 		}
 		if json.Unmarshal(b, &record) != nil || record.PID <= 0 {
-			return nil, errors.New("环境进程记录无效")
+			return nil, errors.New("Неверная запись процесса среды")
 		}
 		if processExists(record.PID) && cage.ProcessStartMatches(record.PID, record.Started) {
 			owners = append(owners, fmt.Sprintf("%s/%d", filepath.Base(filepath.Dir(path)), record.PID))

@@ -45,7 +45,7 @@ func (s *Server) macBrowserExchange(ctx context.Context, request macBrowserReque
 			Width, Height int
 		}
 		if err = json.Unmarshal(data, &frame); err != nil || frame.JPEG == "" {
-			return nil, errors.New("请在单个客机浏览器标签中查看画面")
+			return nil, errors.New("Смотрите изображение в одной вкладке браузера гостевой системы")
 		}
 		return json.Marshal(map[string]any{"image": frame.JPEG, "url": frame.URL, "title": frame.Title, "width": frame.Width, "height": frame.Height})
 	}
@@ -73,7 +73,7 @@ func (s *Server) registerMacOSBrowserRoutes(mux routeRegistrar) {
 		ready := s.ready && !s.closing
 		s.mu.Unlock()
 		if !ready {
-			http.Error(w, "请先启动 macOS 客机", http.StatusConflict)
+			http.Error(w, "Сначала запустите гостевую систему macOS", http.StatusConflict)
 			return
 		}
 		var request macBrowserRequest
@@ -85,41 +85,41 @@ func (s *Server) registerMacOSBrowserRoutes(mux routeRegistrar) {
 		switch request.Action {
 		case "editor":
 			if request.Workspace == "" {
-				http.Error(w, "请先打开项目", 400)
+				http.Error(w, "Сначала откройте проект", 400)
 				return
 			}
 			if !s.op.TryLock() {
-				http.Error(w, "正在处理其他项目操作", 409)
+				http.Error(w, "Выполняется другая операция с проектом", 409)
 				return
 			}
 			project, err := s.connectProject(request.Workspace, false)
 			s.op.Unlock()
 			if err != nil || isClientMountPath(project) {
-				http.Error(w, "请先打开并授权本机项目", 409)
+				http.Error(w, "Сначала откройте и авторизуйте локальный проект", 409)
 				return
 			}
 			request.Folder = macOSProjectPath(s.macosGuest.User, project)
 		case "navigate":
 			u, err := url.Parse(request.URL)
 			if err != nil || u == nil || u.Hostname() == "" || u.User != nil || (u.Scheme != "http" && u.Scheme != "https") || len(request.URL) > 4096 {
-				http.Error(w, "请输入 HTTP 或 HTTPS 地址", 400)
+				http.Error(w, "Введите адрес HTTP или HTTPS", 400)
 				return
 			}
 		case "text", "key", "click", "wheel", "back", "forward", "frame", "reload":
 		default:
-			http.Error(w, "未知的客机浏览器操作", 400)
+			http.Error(w, "Неизвестная операция браузера гостевой системы", 400)
 			return
 		}
 		request.Workspace = "" // never expose a host pathname to the guest browser
 		if len(request.Text) > 8192 || len(request.Key) > 32 || request.X < 0 || request.Y < 0 || request.X > 1140 || request.Y > 700 || request.DX > 2000 || request.DX < -2000 || request.DY > 2000 || request.DY < -2000 {
-			http.Error(w, "输入超出范围", 400)
+			http.Error(w, "Ввод выходит за допустимый диапазон", 400)
 			return
 		}
 		ctx, cancel := context.WithTimeout(r.Context(), 28*time.Second)
 		defer cancel()
 		data, err := s.macBrowserExchange(ctx, request)
 		if err != nil {
-			http.Error(w, "无法连接客机里的浏览器，请检查客机运行状态", 503)
+			http.Error(w, "Не удалось подключиться к браузеру в гостевой системе; проверьте состояние гостевой системы", 503)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")

@@ -44,7 +44,7 @@ func (s *Server) desktopLocalSnapshot() desktopLocalReply {
 	owners, err := controllerVMOwners(s.profile)
 	reply.Running = len(owners) != 0
 	if err != nil {
-		reply.Message = "本机环境状态待确认"
+		reply.Message = "Состояние локальной среды требует подтверждения"
 		return reply
 	}
 	reply.Known = true
@@ -63,7 +63,7 @@ func (s *Server) desktopLocalSnapshot() desktopLocalReply {
 		reply.Busy = true
 	}
 	if reply.Busy {
-		reply.Message = "本机控制服务正在执行操作或被其他入口使用"
+		reply.Message = "Локальная служба управления выполняет действие или используется другой точкой входа"
 	}
 	// The same owner can acquire new work while the confirmation dialog is
 	// open. Bind its public stop confirmation to the observed workload too.
@@ -86,13 +86,13 @@ func (s *Server) desktopLocalControl(w http.ResponseWriter, r *http.Request) {
 		jsonReply(w, s.desktopLocalSnapshot())
 	case "release":
 		if !s.op.TryLock() {
-			http.Error(w, "本机正在执行操作，请稍后重试", http.StatusConflict)
+			http.Error(w, "На этом компьютере выполняется действие; повторите позже", http.StatusConflict)
 			return
 		}
 		view := s.desktopLocalSnapshot()
 		if !view.Known || view.Busy || request.ControllerID != view.ControllerID || request.Running != view.Running || request.Terminals != view.LiveTerminals || (request.JobID != "" && request.JobID != view.JobID) {
 			s.op.Unlock()
-			http.Error(w, "本机任务或控制服务已变化，请重新确认", http.StatusConflict)
+			http.Error(w, "Задача или локальная служба управления изменились; подтвердите заново", http.StatusConflict)
 			return
 		}
 		if !view.Running && view.LiveTerminals == 0 {
@@ -101,11 +101,11 @@ func (s *Server) desktopLocalControl(w http.ResponseWriter, r *http.Request) {
 		}
 		defer s.op.Unlock()
 		if !request.Stop {
-			http.Error(w, "本机环境仍在运行", http.StatusConflict)
+			http.Error(w, "Локальная среда всё ещё работает", http.StatusConflict)
 			return
 		}
 		if _, unlocked := s.account.access(); !unlocked {
-			http.Error(w, "请先返回本机解锁，再停止本机环境", http.StatusLocked)
+			http.Error(w, "Сначала вернитесь на этот компьютер и разблокируйте его, затем останавливайте локальную среду", http.StatusLocked)
 			return
 		}
 		// This stop may not cancel another admitted operation. Check and submit
@@ -114,11 +114,11 @@ func (s *Server) desktopLocalControl(w http.ResponseWriter, r *http.Request) {
 		s.mu.Lock()
 		if s.closing || s.jobs.snapshot().Running {
 			s.mu.Unlock()
-			http.Error(w, "本机正在执行操作，请稍后重试", http.StatusConflict)
+			http.Error(w, "На этом компьютере выполняется действие; повторите позже", http.StatusConflict)
 			return
 		}
 		job, err := s.jobs.submit(&s.op, "stop", s.safety.pauseVersion, nil, nil, func() error {
-			_ = s.pauseNetworkNow("正在停止本机环境")
+			_ = s.pauseNetworkNow("Остановка локальной среды")
 			return s.stopEnvironment()
 		})
 		s.mu.Unlock()

@@ -21,7 +21,7 @@ func TestClaudeAutomaticSwitchRequiresQuotaAndConsent(t *testing.T) {
 	record.Account = claudeSelection{a, a, claudeIdentityHash("a@example.test", "")}
 	epoch, _ := s.account.access()
 	ctx := context.WithValue(context.Background(), mobileEpochKey{}, epoch)
-	for _, scenario := range []struct{ policy, failure, reason string }{{"ask", "rate_limit", "手动确认"}, {"allow", "overloaded", "手动确认"}, {"allow", "rate_limit", "尚未确认"}} {
+	for _, scenario := range []struct{ policy, failure, reason string }{{"ask", "rate_limit", "ручного подтверждения"}, {"allow", "overloaded", "ручного подтверждения"}, {"allow", "rate_limit", "не подтверждено"}} {
 		record.SwitchPolicy, record.AccountFailure = scenario.policy, scenario.failure
 		if err := writePrivate(mobileRecordPath(s.profile, id), record); err != nil {
 			t.Fatal(err)

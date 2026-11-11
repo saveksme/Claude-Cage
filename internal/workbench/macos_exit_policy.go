@@ -39,7 +39,7 @@ func (s *Server) bindMacOSExit(w http.ResponseWriter, r *http.Request) {
 	sample := s.safety.MacOSExitCandidate
 	s.mu.Unlock()
 	if sample == nil || input.IP != sample.IP {
-		http.Error(w, "请先运行联网检查，取得终端、浏览器与当前代理一致的出口", http.StatusConflict)
+		http.Error(w, "Сначала запустите проверку доступа к сети, чтобы выход терминала, браузера и текущего прокси совпадал", http.StatusConflict)
 		return
 	}
 	s.launch(w, "settings", func() error {
@@ -53,7 +53,7 @@ func (s *Server) saveMacOSStaticExit(ctx context.Context, sample macOSExitCandid
 		return err
 	}
 	if s.macosGuest == nil || sample.IP == "" || cfg.Fingerprint() != sample.Fingerprint || time.Since(sample.Observed) > 10*time.Minute || sample.Observed.After(time.Now()) {
-		return errors.New("出口采样已过期或节点已变更，请重新运行联网检查")
+		return errors.New("Выборка выхода устарела или узел изменился; повторите проверку доступа к сети")
 	}
 	if err := cfg.RequireManagedProxy(s.profile); err != nil {
 		return err
@@ -67,7 +67,7 @@ func (s *Server) saveMacOSStaticExit(ctx context.Context, sample macOSExitCandid
 		return err
 	}
 	if state.RunID != sample.Run || state.Configuration != sample.Fingerprint {
-		return errors.New("客机或网络配置已变化，请重新运行联网检查")
+		return errors.New("Гостевая система или сетевая конфигурация изменились; повторите проверку доступа к сети")
 	}
 	loc, err := probeLocation(ctx, cfg)
 	if err != nil {
@@ -75,7 +75,7 @@ func (s *Server) saveMacOSStaticExit(ctx context.Context, sample macOSExitCandid
 	}
 	observed := loc.exitLocation()
 	if observed.IP != sample.IP {
-		return errors.New("当前出口与三处采样不一致，请重新确认节点")
+		return errors.New("Текущий выход не совпадает с тремя выборками; подтвердите узел заново")
 	}
 	next := (cage.ExitPolicy{Mode: "static"}).BindMissing(observed)
 	if verdict, message := next.Evaluate(sample.IP, &observed); verdict != cage.CheckPassed {
@@ -85,20 +85,20 @@ func (s *Server) saveMacOSStaticExit(ctx context.Context, sample macOSExitCandid
 	if err := cfg.Validate(); err != nil {
 		return err
 	}
-	closed, err := client.Close(ctx, "固定出口已确认，重启客机后重新检测")
+	closed, err := client.Close(ctx, "Фиксированный выход подтверждён; перезапустите гостевую систему и повторите проверку")
 	if err != nil {
 		return err
 	}
 	s.publishGate(closed)
 	if closed.Mode != cage.GateClosed || closed.RunID != sample.Run || closed.Configuration != sample.Fingerprint {
-		return errors.New("无法确认当前客机已关闭外网")
+		return errors.New("Не удалось подтвердить, что внешняя сеть гостевой системы закрыта")
 	}
 	if err := s.saveExitPolicyConfig(cfg); err != nil {
 		return err
 	}
 	s.mu.Lock()
 	s.safety.MacOSExitCandidate = nil
-	s.safety.Error = "已保存固定出口。请重启 macOS 客机，登录后重新检测。"
+	s.safety.Error = "Фиксированный выход сохранён. Перезапустите гостевую систему macOS, войдите и повторите проверку."
 	s.mu.Unlock()
 	return nil
 }

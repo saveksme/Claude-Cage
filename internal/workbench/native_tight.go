@@ -16,11 +16,11 @@ func nativeTightRectangles(frame windowsWindowFrame, encoding int32) ([]byte, ui
 	}
 	if frame.Width < 1 || frame.Height < 1 || frame.Width > 8192 || frame.Height > 8192 ||
 		int64(frame.Width)*int64(frame.Height) > 40_000_000 || len(frame.Target) == 0 || len(frame.Target) > 256 {
-		return nil, 0, false, errors.New("应用画面尺寸无效")
+		return nil, 0, false, errors.New("Неверный размер изображения приложения")
 	}
 	panes := frame.Panes
 	if len(panes) != 0 && (len(panes) != 2 || frame.JPEG != "" || frame.PNG != "") {
-		return nil, 0, false, errors.New("应用画面分屏无效")
+		return nil, 0, false, errors.New("Неверное разделение изображения приложения")
 	}
 	if len(panes) == 2 && (panes[0].X != 0 || panes[1].X != panes[0].Width ||
 		panes[0].Width+panes[1].Width != frame.Width || panes[0].Y != 0 || panes[1].Y != 0 ||
@@ -31,7 +31,7 @@ func nativeTightRectangles(frame windowsWindowFrame, encoding int32) ([]byte, ui
 		panes = []windowsWindowPane{{windowsWindowFrame: frame}}
 	}
 	if len(panes) > 2 {
-		return nil, 0, false, errors.New("应用画面分屏无效")
+		return nil, 0, false, errors.New("Неверное разделение изображения приложения")
 	}
 	var output []byte
 	var previous image.Rectangle
@@ -47,7 +47,7 @@ func nativeTightRectangles(frame windowsWindowFrame, encoding int32) ([]byte, ui
 			return nil, 0, false, nil
 		}
 		if len(encoded) > (8<<20)*4/3+4 {
-			return nil, 0, false, errors.New("应用画面过大")
+			return nil, 0, false, errors.New("Изображение приложения слишком большое")
 		}
 		data, err := base64.StdEncoding.DecodeString(encoded)
 		if err != nil {
@@ -60,7 +60,7 @@ func nativeTightRectangles(frame windowsWindowFrame, encoding int32) ([]byte, ui
 		bounds := image.Rect(pane.X, pane.Y, pane.X+pane.Width, pane.Y+pane.Height)
 		if err != nil || format != expected || config.Width != pane.Width || config.Height != pane.Height ||
 			!bounds.In(image.Rect(0, 0, frame.Width, frame.Height)) || index > 0 && !previous.Intersect(bounds).Empty() {
-			return nil, 0, false, errors.New("应用画面位置或编码无效")
+			return nil, 0, false, errors.New("Неверное расположение или кодирование изображения приложения")
 		}
 		previous = bounds
 		header := windowRFBRect(pane.Width, pane.Height, encoding)
@@ -83,7 +83,7 @@ func nativeTightRectangles(frame windowsWindowFrame, encoding int32) ([]byte, ui
 // order without decoding and recompressing the entire desktop on the host.
 func nativeTightOverlayRectangles(frame windowsWindowFrame, encoding int32) ([]byte, uint16, bool, error) {
 	if len(frame.Overlays) > 16 {
-		return nil, 0, false, errors.New("应用覆盖画面无效")
+		return nil, 0, false, errors.New("Неверное изображение наложения приложения")
 	}
 	overlays := frame.Overlays
 	frame.Overlays = nil
@@ -93,7 +93,7 @@ func nativeTightOverlayRectangles(frame windowsWindowFrame, encoding int32) ([]b
 	}
 	for _, overlay := range overlays {
 		if len(overlay.Panes) != 0 || len(overlay.Overlays) != 0 || overlay.Width > frame.Width || overlay.Height > frame.Height || overlay.X < -frame.Width || overlay.Y < -frame.Height || overlay.X > frame.Width || overlay.Y > frame.Height {
-			return nil, 0, false, errors.New("应用覆盖位置无效")
+			return nil, 0, false, errors.New("Неверное расположение наложения приложения")
 		}
 		overlay.Target = frame.Target
 		part, n, ok, err := nativeTightRectangles(overlay.windowsWindowFrame, encoding)

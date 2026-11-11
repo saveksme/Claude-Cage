@@ -255,7 +255,7 @@ func importedExtensionState(state *int, reasons json.RawMessage) (bool, bool) {
 
 func packageLocalExtension(extension localBrowserExtension) ([]byte, error) {
 	if !extension.Compatible || !browserDirectory(extension.directory) {
-		return nil, errors.New("此扩展不支持导入")
+		return nil, errors.New("Это расширение не поддерживает импорт")
 	}
 	var output bytes.Buffer
 	archive := zip.NewWriter(&output)
@@ -283,12 +283,12 @@ func packageLocalExtension(extension localBrowserExtension) ([]byte, error) {
 			return e
 		}
 		if !info.Mode().IsRegular() || entry.Type()&os.ModeSymlink != 0 {
-			return errors.New("扩展包含无法导入的特殊文件")
+			return errors.New("Расширение содержит особые файлы, которые нельзя импортировать")
 		}
 		count++
 		total += info.Size()
 		if count > 3000 || total > 128<<20 || info.Size() > 32<<20 {
-			return errors.New("扩展文件超出导入限制")
+			return errors.New("Файл расширения превышает ограничение импорта")
 		}
 		target, e := archive.Create(filepath.ToSlash(relative))
 		if e != nil {
@@ -302,14 +302,14 @@ func packageLocalExtension(extension localBrowserExtension) ([]byte, error) {
 		if relative == "manifest.json" && extension.key != "" {
 			var manifest map[string]any
 			if json.NewDecoder(io.LimitReader(source, 1<<20)).Decode(&manifest) != nil {
-				return errors.New("扩展配置已变化，请刷新清单")
+				return errors.New("Конфигурация расширений изменилась; обновите список")
 			}
 			manifest["key"] = extension.key
 			return json.NewEncoder(target).Encode(manifest)
 		}
 		_, e = io.CopyN(target, source, info.Size())
 		if output.Len() > 32<<20 {
-			return errors.New("扩展压缩包不能超过 32 MB")
+			return errors.New("Архив расширения не должен превышать 32 МБ")
 		}
 		return e
 	})
@@ -321,7 +321,7 @@ func packageLocalExtension(extension localBrowserExtension) ([]byte, error) {
 		return nil, closeErr
 	}
 	if output.Len() > 32<<20 {
-		return nil, errors.New("扩展压缩包不能超过 32 MB")
+		return nil, errors.New("Архив расширения не должен превышать 32 МБ")
 	}
 	return output.Bytes(), nil
 }
@@ -349,7 +349,7 @@ func (s *Server) localBrowserExtensions(w http.ResponseWriter, r *http.Request) 
 				continue
 			}
 			if extension.Version != input.Version {
-				requestError(w, errors.New("本机扩展已更新，请刷新清单"))
+				requestError(w, errors.New("Локальные расширения обновлены; обновите список"))
 				return
 			}
 			data, err := packageLocalExtension(extension)
@@ -363,5 +363,5 @@ func (s *Server) localBrowserExtensions(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 	}
-	http.Error(w, "所选本机扩展已不可用，请刷新清单", http.StatusNotFound)
+	http.Error(w, "Выбранное локальное расширение больше недоступно; обновите список", http.StatusNotFound)
 }

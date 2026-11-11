@@ -19,7 +19,7 @@ func (s *Server) vnc(w http.ResponseWriter, r *http.Request) {
 	ready := s.ready
 	s.mu.Unlock()
 	if !ready {
-		http.Error(w, "环境尚未就绪", 409)
+		http.Error(w, "Среда ещё не готова", 409)
 		return
 	}
 	if s.macosGuest != nil || s.windowsGuest != nil {
@@ -41,14 +41,14 @@ func (s *Server) vnc(w http.ResponseWriter, r *http.Request) {
 		}
 		state, err := environment.State(r.Context())
 		if err != nil || !state.Ready {
-			http.Error(w, "容器画面连接尚未就绪", 409)
+			http.Error(w, "Подключение изображения контейнера ещё не готово", 409)
 			return
 		}
 		address = state.VNCAddress
 	}
 	remote, e := (&net.Dialer{Timeout: 3 * time.Second}).DialContext(r.Context(), "tcp", address)
 	if e != nil {
-		http.Error(w, "画面连接暂时不可用", 502)
+		http.Error(w, "Подключение изображения временно недоступно", 502)
 		return
 	}
 	defer remote.Close()

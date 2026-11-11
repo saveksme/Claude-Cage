@@ -29,7 +29,7 @@ func TestProxyChangeClosesBoundWindowsGate(t *testing.T) {
 	if err := closeManagedGates(profile); err != nil {
 		t.Fatal(err)
 	}
-	if gate.Status().Mode != cage.GateClosed || gate.Status().Reason != "代理核心停止或重启，等待重新检测" {
+	if gate.Status().Mode != cage.GateClosed || gate.Status().Reason != "Ядро прокси остановлено или перезапущено, ожидается повторная проверка" {
 		t.Fatal("CLI proxy lifecycle missed the bound Windows gate")
 	}
 }

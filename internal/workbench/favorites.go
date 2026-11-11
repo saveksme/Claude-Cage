@@ -33,10 +33,10 @@ func (s *Server) readFavorites() (Favorites, error) {
 		return f, nil
 	}
 	if err != nil {
-		return f, errors.New("无法读取收藏，请检查配置目录权限")
+		return f, errors.New("Не удалось прочитать закладки; проверьте права на каталог конфигурации")
 	}
 	if json.Unmarshal(b, &f) != nil {
-		return f, errors.New("收藏文件无法读取，请保留文件并修复后重试")
+		return f, errors.New("Не удалось прочитать файл закладок; сохраните файл, исправьте его и повторите")
 	}
 	if f.Items == nil {
 		f.Items = []Favorite{}
@@ -71,7 +71,7 @@ func (s *Server) serveFavorites(w http.ResponseWriter, r *http.Request) {
 		if !s.mobileAuthorized(r.Context()) || !s.phones.pairedRequestLocked(r) {
 			s.phones.mu.Unlock()
 			s.account.mu.Unlock()
-			http.Error(w, "请用电脑的配对码或二维码连接后打开收藏夹。", http.StatusForbidden)
+			http.Error(w, "Подключитесь по коду сопряжения или QR-коду компьютера и откройте закладки.", http.StatusForbidden)
 			return
 		}
 		f, err = s.changeFavorites(change)
@@ -102,7 +102,7 @@ func (s *Server) changeFavorites(input *favoriteChange) (Favorites, error) {
 	switch input.Action {
 	case "save", "save_folder":
 		if input.Title == "" || len(input.Title) > 1000 {
-			return f, errors.New("请输入名称；名称过长时请缩短后重试")
+			return f, errors.New("Введите название; если оно слишком длинное, сократите его и повторите")
 		}
 		if input.Action == "save_folder" {
 			if input.ID == "" {
@@ -110,16 +110,16 @@ func (s *Server) changeFavorites(input *favoriteChange) (Favorites, error) {
 			} else if folderIndex >= 0 {
 				f.Folders[folderIndex].Title = input.Title
 			} else {
-				return f, errors.New("收藏夹已不存在，请重新打开收藏夹")
+				return f, errors.New("Папка закладок больше не существует; откройте закладки заново")
 			}
 			break
 		}
 		u, parseErr := url.Parse(input.URL)
 		if parseErr != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" || u.User != nil || len(input.URL) > 16384 {
-			return f, errors.New("收藏地址须为不含用户名和密码的 HTTP(S) 网址")
+			return f, errors.New("Адрес закладки должен быть адресом HTTP(S) без имени пользователя и пароля")
 		}
 		if input.FolderID != "" && !slices.ContainsFunc(f.Folders, func(folder FavoriteFolder) bool { return folder.ID == input.FolderID }) {
-			return f, errors.New("所选收藏夹已不存在，请重新选择")
+			return f, errors.New("Выбранная папка закладок больше не существует; выберите заново")
 		}
 		if input.ID == "" {
 			// Repeated clicks on a page's star update its existing favorite.
@@ -130,7 +130,7 @@ func (s *Server) changeFavorites(input *favoriteChange) (Favorites, error) {
 				input.ID = randomToken()[:24]
 			}
 		} else if itemIndex < 0 {
-			return f, errors.New("收藏已不存在，请重新打开收藏夹")
+			return f, errors.New("Закладка больше не существует; откройте закладки заново")
 		}
 		item := Favorite{ID: input.ID, Title: input.Title, URL: input.URL, FolderID: input.FolderID}
 		if itemIndex < 0 {
@@ -152,10 +152,10 @@ func (s *Server) changeFavorites(input *favoriteChange) (Favorites, error) {
 			}
 		}
 	default:
-		return f, errors.New("未知收藏操作")
+		return f, errors.New("Неизвестная операция с закладками")
 	}
 	if err := writePrivate(filepath.Join(s.profile, "favorites.json"), f); err != nil {
-		return f, errors.New("收藏未能保存，请检查磁盘空间和权限后重试")
+		return f, errors.New("Не удалось сохранить закладку; проверьте место на диске и права и повторите")
 	}
 	return f, nil
 }
