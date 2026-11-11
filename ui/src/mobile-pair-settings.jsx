@@ -26,7 +26,7 @@ export function MobilePairSettings({ relay, savedRelay, onChange, onConfirm }) {
         else if (code && Date.now() >= Date.parse(code.expires)) {
           setCode(null);
           setNotice("Срок действия QR-кода истёк. Создайте новый.");
-        } else if (code && state.status.includes("未完成")) {
+        } else if (code && state.status.includes("не завершено")) {
           setCode(null);
           setNotice(state.status);
         }

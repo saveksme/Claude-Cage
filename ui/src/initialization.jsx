@@ -78,7 +78,7 @@ function Initialization({ initial, onComplete }) {
   const busy = submitting || Boolean(job.running);
   const network = networkState(status);
   const exitCandidate = status?.guest_system === "macos" && status.safety?.macos_exit_candidate?.ip;
-  const needsExitRestart = status?.guest_system === "macos" && status.safety?.error === "已保存固定出口。请重启 macOS 客机，登录后重新检测。";
+  const needsExitRestart = status?.guest_system === "macos" && status.safety?.error === "Фиксированный выход сохранён. Перезапустите гостевую систему macOS, войдите и повторите проверку.";
   const ready = Boolean(status?.ready && status.vm_running && !busy && !job.error && !needsExitRestart && network.mode === "open");
   const confirm = options => new Promise(resolve => setDialog({ ...options, resolve }));
   const settleDialog = value => { dialog?.resolve(value); setDialog(null); };
