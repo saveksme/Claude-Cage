@@ -670,7 +670,7 @@ test("native copied PNG uses the host revision captured by its user gesture", as
     const context = f.armCopy();
     await f.controller.receiveCopy({ id: "tab-1", context, document: "page-a", clipboard: { id: "opaque-id", mime: "image/png", size: 5 } });
     assert.deepEqual(calls, [["/browser/clipboard", "opaque-id"], ["clipboardSyncWrite", 7]]);
-    assert.ok(f.statuses.at(-1).includes("剪贴板已更新"));
+    assert.ok(f.statuses.at(-1).includes("обмена обновлён"));
   } finally { f.controller.dispose(); }
 });
 

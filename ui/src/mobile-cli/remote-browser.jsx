@@ -28,7 +28,7 @@ function AddressBar({frame, goToAddress, onNotice}) {
       url = new URL(raw.includes("://") ? raw : "https://" + raw);
       if (!["https:", "http:"].includes(url.protocol) || url.username || url.password || url.href.length > 16384) throw new Error();
     } catch {
-      setInvalid(true); onNotice("请输入有效的 HTTP 或 HTTPS 网址。");
+      setInvalid(true); onNotice("Введите корректный адрес HTTP или HTTPS.");
       return;
     }
     submission.current = true; setSubmitting(true); onNotice("");
@@ -45,12 +45,12 @@ function AddressBar({frame, goToAddress, onNotice}) {
   };
   return <form className="remote-address" onSubmit={navigate}>
         <Globe2 size={16} aria-hidden="true" />
-        <input aria-label="远程网页地址" aria-invalid={invalid} inputMode="url" enterKeyHint="go" autoCapitalize="none"
-          autoCorrect="off" autoComplete="off" spellCheck={false} placeholder="输入网址" disabled={!frame}
+        <input aria-label="Адрес удалённой страницы" aria-invalid={invalid} inputMode="url" enterKeyHint="go" autoCapitalize="none"
+          autoCorrect="off" autoComplete="off" spellCheck={false} placeholder="Введите адрес" disabled={!frame}
           value={address ?? current} onFocus={event => event.target.select()}
           onChange={event => {setAddress(event.target.value); setInvalid(false); onNotice("");}}
           onKeyDown={event => {if (event.key === "Escape") {setAddress(null); setInvalid(false); onNotice(""); event.target.blur();}}} />
-        <button type="submit" aria-label="前往网址" aria-busy={submitting} disabled={!frame || submitting}>{submitting ? <LoaderCircle className="spin" size={17} /> : <ArrowDownLeft size={17} />}</button>
+        <button type="submit" aria-label="Перейти по адресу" aria-busy={submitting} disabled={!frame || submitting}>{submitting ? <LoaderCircle className="spin" size={17} /> : <ArrowDownLeft size={17} />}</button>
       </form>;
 }
 
@@ -63,15 +63,15 @@ function RemoteKeyboard({frame, busy, send, onClose}) {
   };
   const tooLong = new TextEncoder().encode(draft).length > 8192;
   return <form className="remote-keyboard" onSubmit={insert}>
-    <input autoFocus type={frame.password ? "password" : "text"} aria-label="待插入文字" placeholder={frame.password ? "输入密码" : "输入文字"}
+    <input autoFocus type={frame.password ? "password" : "text"} aria-label="Текст для вставки" placeholder={frame.password ? "Введите пароль" : "Ввести текст"}
       autoComplete="off" autoCapitalize="none" spellCheck={false} autoCorrect="off" enterKeyHint="done"
       maxLength={8192} value={draft} onChange={e => setDraft(e.target.value)}
       onKeyDown={e => {if (e.key === "Enter" && (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229)) e.preventDefault();}} />
-    <button type="submit" className="icon-button" aria-label="插入文字" title="插入文字" disabled={busy || !draft || tooLong}><Check size={19} /></button>
-    <Tool label="删除前一字符" icon={Delete} disabled={busy || !!draft} onClick={() => send({type: "key", key: "Backspace", focus: frame.focus}, frame)} />
-    <Tool label="发送回车" icon={CornerDownLeft} disabled={busy || !!draft} onClick={() => send({type: "key", key: "Enter", focus: frame.focus}, frame)} />
-    <Tool label="收起输入框" icon={X} onClick={onClose} />
-    {tooLong && <p role="alert" className="remote-note">单次输入最多 8192 字节，请分段输入。</p>}
+    <button type="submit" className="icon-button" aria-label="Вставить текст" title="Вставить текст" disabled={busy || !draft || tooLong}><Check size={19} /></button>
+    <Tool label="Удалить предыдущий символ" icon={Delete} disabled={busy || !!draft} onClick={() => send({type: "key", key: "Backspace", focus: frame.focus}, frame)} />
+    <Tool label="Отправить Enter" icon={CornerDownLeft} disabled={busy || !!draft} onClick={() => send({type: "key", key: "Enter", focus: frame.focus}, frame)} />
+    <Tool label="Свернуть поле ввода" icon={X} onClick={onClose} />
+    {tooLong && <p role="alert" className="remote-note">За один раз можно ввести не более 8192 байт. Вводите частями.</p>}
   </form>;
 }
 
@@ -90,18 +90,18 @@ function LoginKeyboard({frame, busy, session, onClose}) {
     void session.send({type:"key", key, focus:frame.focus}, frame).then(ok => {
       if (!ok) {
         keys.current.length = 0;
-        setNotice("输入焦点或连接已变化，请检查远程输入框。");
+        setNotice("Фокус ввода или соединение изменились. Проверьте поле удалённого ввода.");
       }
       sending.current = false;
       if (keys.current.length) wake(value => value + 1);
     });
   }, [frame, busy, session, sequence]);
   const press = key => {
-    if (keys.current.length >= 32) {setNotice("请稍候，前面的按键正在发送。"); return;}
+    if (keys.current.length >= 32) {setNotice("Подождите, предыдущие клавиши ещё отправляются."); return;}
     keys.current.push(key); setNotice(""); wake(value => value + 1);
   };
   return <div className="remote-keyboard">
-    <input type="password" autoFocus aria-label="逐键登录输入" placeholder="逐键输入英文或符号"
+    <input type="password" autoFocus aria-label="Поочерёдный ввод при входе" placeholder="Вводите по одному символу: латиница или знаки"
       autoComplete="off" autoCapitalize="none" spellCheck={false} autoCorrect="off" enterKeyHint="done"
       onPaste={e => e.preventDefault()} onDrop={e => e.preventDefault()}
       onInput={e => {
@@ -109,16 +109,16 @@ function LoginKeyboard({frame, busy, session, onClose}) {
         e.currentTarget.value = "";
         if (e.nativeEvent.inputType === "deleteContentBackward") {press("Backspace"); return;}
         if (!e.nativeEvent.isComposing && /^[ -~]$/.test(value)) press(value);
-        else if (value) setNotice("登录键盘支持逐个输入英文、数字和符号。");
+        else if (value) setNotice("Клавиатура входа принимает латинские буквы, цифры и знаки по одному.");
       }}
       onKeyDown={e => {
         if (["Backspace","Tab","Enter"].includes(e.key) && !e.nativeEvent.isComposing) {
           e.preventDefault(); press(e.key);
         }
       }} />
-    <Tool label="删除前一字符" icon={Delete} onClick={() => press("Backspace")} />
-    <Tool label="发送回车" icon={CornerDownLeft} onClick={() => press("Enter")} />
-    <Tool label="收起输入框" icon={X} onClick={onClose} />
+    <Tool label="Удалить предыдущий символ" icon={Delete} onClick={() => press("Backspace")} />
+    <Tool label="Отправить Enter" icon={CornerDownLeft} onClick={() => press("Enter")} />
+    <Tool label="Свернуть поле ввода" icon={X} onClick={onClose} />
     {notice && <p className="remote-note" role="alert">{notice}</p>}
   </div>;
 }
@@ -129,7 +129,7 @@ function remoteHost(url) {
 
 export function RemoteDisplay({visible, onBack, onReopen, id, tool, start, initialURL, controls, addressSlot}) {
   const desktop = tool === "desktop";
-  const name = desktop ? "Claude Desktop" : tool === "claude" ? "Claude.ai" : "远程浏览器";
+  const name = desktop ? "Claude Desktop" : tool === "claude" ? "Claude.ai" : "Удалённый браузер";
   const [reading, setReading] = useState(false);
   const [showAddress, setShowAddress] = useState(tool === "browser");
   const [addressNotice, setAddressNotice] = useState("");
@@ -242,45 +242,45 @@ export function RemoteDisplay({visible, onBack, onReopen, id, tool, start, initi
       onPointerCancel={() => {gesture.current = null; controls.current?.cancelScroll();}} onWheel={wheel} onContextMenu={e => {if (!favorites) e.preventDefault();}}>
       {frame && favorites ? <PhoneFavorites frame={frame} navigate={url => controls.current.navigate(url)} onClose={() => setFavorites(false)}/> :
        frame ? <div className={reading ? "display-surface reading" : "display-surface"} ref={surface}>
-        <img className="remote-screen" alt={desktop ? "远程 Desktop 画面" : "远程浏览器画面"} src={frame.image} draggable={false} />
+        <img className="remote-screen" alt={desktop ? "Изображение удалённого Desktop" : "Изображение удалённого браузера"} src={frame.image} draggable={false} />
       </div> :
         <div className="remote-empty" role={state.error ? "alert" : "status"}>
-          {preview ? <><Globe2 aria-hidden="true" /><p>连接真实电脑后，即可使用{name}。</p></> :
+          {preview ? <><Globe2 aria-hidden="true" /><p>Подключитесь к настоящему компьютеру, чтобы использовать {name}.</p></> :
             state.error ? <><p>{state.error}</p>
-              {state.uncertain && <p className="note">输入结果待确认，请先查看最新画面。</p>}
+              {state.uncertain && <p className="note">Результат ввода ещё не подтверждён. Сначала посмотрите последнее изображение.</p>}
               <button className="action secondary" onClick={() => {
                 setKeyboard(""); setState({});
                 if (state.reopen) onReopen();
                 else controls.current.refresh();
-              }}>{state.reopen ? "重新打开" : "重新读取画面"}</button></> :
-              <><LoaderCircle className="spin" aria-hidden="true" /><p>{state.waiting ? `正在启动远程${desktop ? " Claude Desktop" : "浏览器"}…` : "正在读取远程画面…"}</p></>}
+              }}>{state.reopen ? "Открыть заново" : "Прочитать изображение заново"}</button></> :
+              <><LoaderCircle className="spin" aria-hidden="true" /><p>{state.waiting ? `Запуск удалённого ${desktop ? "Claude Desktop" : "браузера"}…` : "Чтение удалённого изображения…"}</p></>}
         </div>}
     </div>
     {typing ? (login
       ? <LoginKeyboard key={focus} frame={frame} busy={state.busy} session={controls.current} onClose={() => setKeyboard("")} />
       : <RemoteKeyboard key={focus} frame={frame} busy={state.busy} send={send} onClose={() => setKeyboard("")} />) :
-    <nav className="remote-tools" aria-label={desktop ? "远程桌面操作" : "远程网页操作"}>
+    <nav className="remote-tools" aria-label={desktop ? "Удалённые действия рабочего стола" : "Удалённые действия со страницей"}>
       {desktop ? <>
-        <Tool label="断开远程桌面" icon={X} onClick={onBack} />
+        <Tool label="Отключить удалённый рабочий стол" icon={X} onClick={onBack} />
         <button type="button" className="action" disabled={!frame} aria-pressed={reading} onClick={() => setReading(!reading)}>
-          {reading ? <Maximize size={17} /> : <ZoomIn size={17} />}{reading ? "全幅" : "放大阅读"}
+          {reading ? <Maximize size={17} /> : <ZoomIn size={17} />}{reading ? "Во всю ширину" : "Увеличить для чтения"}
         </button>
         {!frame?.shared && frame?.login_supported !== false && <button type="button" className="action" disabled={!frame || state.busy}
           onClick={() => send({type:login ? "desktop" : "login"}, frame)}>
-          {login ? <Monitor size={17} /> : <Globe2 size={17} />}{login ? "返回 Desktop" : "登录窗口"}
+          {login ? <Monitor size={17} /> : <Globe2 size={17} />}{login ? "Вернуться в Desktop" : "Окно входа"}
         </button>}
       </> : <>
-        <Tool label="关闭远程浏览器" icon={X} onClick={onBack} />
-        <Tool label="上一页" icon={ArrowLeft} disabled={!frame || state.busy || favorites} onClick={() => send({type:"back"}, frame)} />
-        <Tool label="下一页" icon={ArrowRight} disabled={!frame || state.busy || favorites} onClick={() => send({type:"forward"}, frame)} />
-        {tool === "claude" && <Tool label="网页地址" aria-pressed={showAddress} icon={Globe2} disabled={!frame} onClick={() => {setAddressNotice(""); setShowAddress(!showAddress);}} />}
-        {tool === "browser" && <Tool label="收藏夹" icon={BookOpen} disabled={!frame} aria-expanded={favorites}
+        <Tool label="Закрыть удалённый браузер" icon={X} onClick={onBack} />
+        <Tool label="Назад" icon={ArrowLeft} disabled={!frame || state.busy || favorites} onClick={() => send({type:"back"}, frame)} />
+        <Tool label="Вперёд" icon={ArrowRight} disabled={!frame || state.busy || favorites} onClick={() => send({type:"forward"}, frame)} />
+        {tool === "claude" && <Tool label="Адрес страницы" aria-pressed={showAddress} icon={Globe2} disabled={!frame} onClick={() => {setAddressNotice(""); setShowAddress(!showAddress);}} />}
+        {tool === "browser" && <Tool label="Закладки" icon={BookOpen} disabled={!frame} aria-expanded={favorites}
           onClick={() => {gesture.current = null; controls.current.cancelScroll(); setFavorites(!favorites);}} />}
-        <Tool label="重新加载网页" icon={RotateCw} disabled={!frame || state.busy || favorites} onClick={() => send({type:"reload"}, frame)} />
+        <Tool label="Перезагрузить страницу" icon={RotateCw} disabled={!frame || state.busy || favorites} onClick={() => send({type:"reload"}, frame)} />
       </>}
-      <Tool label="输入文字" icon={Keyboard} disabled={!focus || state.busy || favorites}
+      <Tool label="Ввести текст" icon={Keyboard} disabled={!focus || state.busy || favorites}
         onClick={() => flushSync(() => setKeyboard(focus))} />
     </nav>}
-    {desktop && frame?.login_supported === false && <p className="remote-home-note" role="status">需要登录时，请在电脑的 Cage 中完成 Claude Desktop 登录，手机会继续使用同一登录状态。</p>}
+    {desktop && frame?.login_supported === false && <p className="remote-home-note" role="status">Если требуется вход, выполните его в Claude Desktop через Cage на компьютере — телефон продолжит использовать тот же сеанс.</p>}
   </section>;
 }

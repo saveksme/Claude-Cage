@@ -24,8 +24,8 @@ async function requestAPI(path, { body, signal, keepalive } = {}) {
   }
   if (!response.ok) {
     let message;
-    if (response.status === 401) message = "连接授权已失效，请从 Cage 重新打开此页面。";
-    else if (response.status === 423) message = "Cage 已锁定。请在电脑上解锁，再重新读取。";
+    if (response.status === 401) message = "Авторизация подключения истекла. Откройте эту страницу заново из Cage.";
+    else if (response.status === 423) message = "Cage заблокирован. Разблокируйте его на компьютере и прочитайте заново.";
     else if ((response.headers.get("Content-Type") || "").startsWith("text/plain")) {
       message = (await response.text()).trim().slice(0, 1200);
     }
@@ -35,7 +35,7 @@ async function requestAPI(path, { body, signal, keepalive } = {}) {
   }
   if (response.status === 204) return null;
   try { return await response.json(); }
-  catch (error) { throw new Error("读取会话或画面结果失败：Cage 返回的数据格式无效。请重新读取；持续出现时从电脑上的 Cage 导出诊断包。", { cause: error }); }
+  catch (error) { throw new Error("Не удалось прочитать результат сеанса или изображения: Cage вернул данные неверного формата. Повторите чтение; если ошибка повторяется, экспортируйте диагностический пакет из Cage на компьютере.", { cause: error }); }
 }
 
 export const request = (path, options) => requestAPI("/api/mobile/cli" + path, options);

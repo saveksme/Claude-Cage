@@ -5,9 +5,9 @@ import { MacOSLogin } from "./macos-login";
 import "./macos-project-approval.css";
 
 const permissionMessages = {
-  project_screen_permission: "无法显示文件夹授权窗口。请在虚拟 Mac 的“系统设置 → 隐私与安全性 → 屏幕与系统音频录制”中允许 Cage Guest Window，并按系统提示重新打开助手。",
-  accessibility_permission: "无法点击文件夹授权窗口。请在虚拟 Mac 的“系统设置 → 隐私与安全性 → 辅助功能”中允许 Cage Guest Window，然后重试。",
-  requires_gui_login: "请先登录并解锁虚拟 Mac 的普通账户，然后重新打开项目。",
+  project_screen_permission: "Не удалось показать окно авторизации папки. Разрешите Cage Guest Window в разделе «Системные настройки → Конфиденциальность и безопасность → Запись экрана и аудио системы» виртуального Mac и перезапустите помощник по подсказке системы.",
+  accessibility_permission: "Не удалось нажать в окне авторизации папки. Разрешите Cage Guest Window в разделе «Системные настройки → Конфиденциальность и безопасность → Универсальный доступ» виртуального Mac и повторите.",
+  requires_gui_login: "Сначала войдите и разблокируйте обычный аккаунт виртуального Mac, затем снова откройте проект.",
 };
 
 export function InitializationProjectApproval({ workspace, jobRunning, onClose, onApproved = onClose }) {
@@ -44,12 +44,12 @@ export function InitializationProjectApproval({ workspace, jobRunning, onClose, 
     if (result.approval) setPending({ workspace: result.workspace, grant: result.approval });
     else onApproved();
   }} />;
-  return <Modal title="允许客机访问所选项目" onClose={requesting ? undefined : onClose} footer={<>
-    <button disabled={requesting} onClick={onClose}>取消</button>
-    {error && <button onClick={() => setError("")}>重新请求授权</button>}
+  return <Modal title="Разрешить гостевой системе доступ к выбранному проекту" onClose={requesting ? undefined : onClose} footer={<>
+    <button disabled={requesting} onClick={onClose}>Отмена</button>
+    {error && <button onClick={() => setError("")}>Запросить авторизацию заново</button>}
   </>}>
     <p className="macos-approval-path">{workspace}</p>
-    {error ? <p role="alert">{error}</p> : <p role="status">{jobRunning ? "当前客机操作结束后，会显示项目授权窗口。" : "正在连接客机的项目授权窗口…"}</p>}
+    {error ? <p role="alert">{error}</p> : <p role="status">{jobRunning ? "Окно авторизации проекта появится после завершения текущей операции в гостевой системе." : "Подключение к окну авторизации проекта в гостевой системе…"}</p>}
   </Modal>;
 }
 
@@ -93,7 +93,7 @@ export function MacOSProjectApproval({ pending, onCheck, onClose, onSettings }) 
             setNotice(
               valid
                 ? ""
-                : permissionMessages[result.error] || "等待虚拟 Mac 的项目授权窗口。已允许此文件夹时，可以直接验证授权。",
+                : permissionMessages[result.error] || "Ожидание окна авторизации проекта в виртуальном Mac. Если папка уже разрешена, можно сразу проверить авторизацию.",
             );
           }
         } catch (e) {
@@ -165,31 +165,31 @@ export function MacOSProjectApproval({ pending, onCheck, onClose, onSettings }) 
       });
       setFrame(null);
       if (result.error === "accessibility_permission") setMaintenance("input");
-      if (result.error) throw new Error(permissionMessages[result.error] || "客机授权窗口已变化，请等待新画面。");
+      if (result.error) throw new Error(permissionMessages[result.error] || "Окно авторизации гостевой системы изменилось. Дождитесь нового изображения.");
       await onCheck();
     });
   };
   return (
     <Modal
-      title="允许客机访问所选项目"
+      title="Разрешить гостевой системе доступ к выбранному проекту"
       onClose={busy ? undefined : cancel}
       footer={
         <>
           <button disabled={busy} onClick={cancel}>
-            取消
+            Отмена
           </button>
           <button disabled={busy} onClick={() => act(onCheck)}>
-            {ended ? "重新请求授权" : "验证授权"}
+            {ended ? "Запросить авторизацию заново" : "Проверить авторизацию"}
           </button>
         </>
       }
     >
-      <p>在下方的 macOS 授权窗口中确认所选项目。</p>
+      <p>Подтвердите выбранный проект в окне авторизации macOS ниже.</p>
       <p className="macos-approval-path">{pending.workspace}</p>
       {frame && (
         <img
           src={"data:image/png;base64," + frame.image}
-          alt="虚拟 Mac 的当前项目授权窗口"
+          alt="Текущее окно авторизации проекта в виртуальном Mac"
           onClick={click}
           className="macos-approval-frame"
           draggable={false}

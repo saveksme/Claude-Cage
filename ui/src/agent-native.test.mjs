@@ -93,7 +93,7 @@ test("native operations retain their production checks and never return the refr
   const result = await executeAgentNative({ connection_id: context.connection_id, request: { action: "refreshSession", connection_id: "override" } }, deps);
   assert.deepEqual(result, { refreshed: true });
   assert.deepEqual(received, { action: "refreshSession", input: {} });
-  deps.native = async () => { throw new Error("macOS 要求 Touch ID"); };
+  deps.native = async () => { throw new Error("macOS требует Touch ID"); };
   await assert.rejects(executeAgentNative({ connection_id: context.connection_id, request: { action: "accountDevice", operation: "unlock" } }, deps), /Touch ID/);
 });
 
@@ -154,7 +154,7 @@ test("a window stopped while waiting for a claim reports non-execution", async (
     api: async (path, value) => { if (path.includes("consumer=window")) return new Promise(resolve => { release = resolve; }); body = value; return {}; },
   });
   consumer.start(); await flush(); consumer.stop(); release({ id: "request-1", connection_id: context.connection_id, request: { action: "chooseFolder" } }); await flush();
-  assert.equal(actions, 0); assert.match(body.error, /未执行/); assert.equal(timers.scheduled.length, 0);
+  assert.equal(actions, 0); assert.match(body.error, /не выполнена/); assert.equal(timers.scheduled.length, 0);
 });
 
 test("a native registration ticket never goes to a changed origin or starts an action", async () => {

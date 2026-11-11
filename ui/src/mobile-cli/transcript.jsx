@@ -6,22 +6,22 @@ import "./transcript.css";
 
 export const TranscriptContext = createContext(null);
 const statuses = {
-  completed: "已完成",
-  failed: "失败",
-  killed: "已终止",
-  stopped: "已停止",
-  running: "运行中",
-  pending: "等待中",
-  called: "已调用",
+  completed: "Готово",
+  failed: "Ошибка",
+  killed: "Завершено принудительно",
+  stopped: "Остановлено",
+  running: "Выполняется",
+  pending: "Ожидание",
+  called: "Вызвано",
 };
 const wrapperLabels = {
-  "task-notification": "后台任务",
-  "system-reminder": "系统提示",
-  "local-command-stdout": "命令输出",
-  "local-command-stderr": "命令错误",
-  "command-name": "命令",
-  "command-message": "命令消息",
-  "command-args": "命令参数",
+  "task-notification": "Фоновая задача",
+  "system-reminder": "Системное примечание",
+  "local-command-stdout": "Вывод команды",
+  "local-command-stderr": "Ошибка команды",
+  "command-name": "Команда",
+  "command-message": "Сообщение команды",
+  "command-args": "Аргументы команды",
 };
 const wrapper =
   /^ {0,3}<(task-notification|system-reminder|local-command-std(?:out|err)|command-(?:name|message|args))>([\s\S]*?)<\/\1>/;
@@ -75,11 +75,11 @@ function Record({ token }) {
     (m) => !known.has(m[1]),
   );
   const names = {
-    "task-id": "任务编号",
-    "tool-use-id": "工具调用",
-    "output-file": "输出文件",
-    result: "结果",
-    usage: "用量",
+    "task-id": "ID задачи",
+    "tool-use-id": "Вызов инструмента",
+    "output-file": "Файл вывода",
+    result: "Результат",
+    usage: "Использование",
   };
   return (
     <details className="claude-record task-record">
@@ -87,12 +87,12 @@ function Record({ token }) {
         <Icon className={status === "failed" ? "bad" : "task-icon"} size={17} />
         <span>
           <small>
-            后台任务
+            Фоновая задача
             {status &&
               " · " +
                 (Object.hasOwn(statuses, status) ? statuses[status] : status)}
           </small>
-          <strong>{field("summary") || "任务通知"}</strong>
+          <strong>{field("summary") || "Уведомление задачи"}</strong>
         </span>
         <ChevronRight size={15} />
       </summary>
@@ -120,14 +120,14 @@ function Reference({ token }) {
     return (
       <a
         href={url}
-        title={"用远程浏览器打开 " + new URL(url).hostname}
+        title={"Открыть в удалённом браузере " + new URL(url).hostname}
         onClick={(e) => {
           e.preventDefault();
           openWeb(url);
         }}
       >
         {token.type === "image" ? (
-          token.text || "查看图片"
+          token.text || "Посмотреть изображение"
         ) : (
           <Tokens list={token.tokens} />
         )}
@@ -207,7 +207,7 @@ function Token({ token: t }) {
           type="checkbox"
           checked={t.checked}
           disabled
-          aria-label={t.checked ? "已完成" : "未完成"}
+          aria-label={t.checked ? "Выполнено" : "Не выполнено"}
         />
       );
     case "codespan":
@@ -283,8 +283,8 @@ export function ToolActivity({ tools }) {
       <summary>
         <Terminal size={16} />
         <span>
-          {tools.length} 次工具调用
-          {failures > 0 && <small className="bad"> · {failures} 次失败</small>}
+          Вызовы инструментов: {tools.length}
+          {failures > 0 && <small className="bad"> · ошибок: {failures}</small>}
         </span>
         <ChevronRight size={15} />
       </summary>
@@ -293,7 +293,7 @@ export function ToolActivity({ tools }) {
           <li key={tool.id}>
             <strong>{tool.name}</strong>
             <small className={tool.status === "failed" ? "bad" : ""}>
-              {statuses[tool.status] || "已调用"}
+              {statuses[tool.status] || "Вызвано"}
             </small>
             {tool.detail && <p>{tool.detail}</p>}
           </li>

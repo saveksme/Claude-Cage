@@ -145,7 +145,7 @@ export function MacOSLogin({ disabled, initialSetup = false, maintenance = "", l
         closeSession(r.session, endpoint, maintenance);
         return;
       }
-      if (!r.session) { setRecovery(r.recovery || ""); throw new Error(r.error || "暂时无法打开客机登录界面"); }
+      if (!r.session) { setRecovery(r.recovery || ""); throw new Error(r.error || "Не удалось открыть экран входа гостевой системы"); }
       setAdministrator(r.administrator || "");
       next.session = r.session;
       setSession(r.session);
@@ -220,7 +220,7 @@ export function MacOSLogin({ disabled, initialSetup = false, maintenance = "", l
         if (r.closed) { setRecovery(r.recovery || ""); end(r.error || ""); onSessionClosed?.(); return; }
         if (r.image) {
           if (maintenance && (!r.geometry || !Array.isArray(r.region) || r.region.length !== 4 || !r.region.every(Number.isInteger)))
-            throw new Error("客机维护画面缺少窗口定位，请更新组件后重试");
+            throw new Error("В изображении обслуживания гостевой системы отсутствует расположение окна. Обновите компонент и повторите.");
           setFrameTarget(maintenance ? { geometry: r.geometry, region: r.region } : null);
           setFrame(`data:${r.mime === "image/jpeg" ? "image/jpeg" : "image/png"};base64,${r.image}`);
           setFrameError("");
@@ -239,7 +239,7 @@ export function MacOSLogin({ disabled, initialSetup = false, maintenance = "", l
     const owner = lease.current;
     if (!owner?.session) return;
     const geometry = shown.current.geometry;
-    if (maintenance && !geometry) { setMessage("请等待授权窗口画面后再操作"); return; }
+    if (maintenance && !geometry) { setMessage("Дождитесь изображения окна авторизации, затем повторите действие"); return; }
     chain.current = chain.current.then(async () => {
       if (lease.current !== owner) return;
       const r = await api(endpoint, { action, session: owner.session, ...scope, ...(maintenance ? { geometry } : {}), ...data });
@@ -300,12 +300,12 @@ export function MacOSLogin({ disabled, initialSetup = false, maintenance = "", l
   }
 
   return <>
-    <button type="button" ref={opener} disabled={disabled || opened} onClick={open}>{label || (initialSetup ? "打开客机系统设置" : maintenance ? "打开客机授权设置" : "登录客机账户")}</button>
+    <button type="button" ref={opener} disabled={disabled || opened} onClick={open}>{label || (initialSetup ? "Открыть настройки гостевой системы" : maintenance ? "Открыть настройки авторизации гостевой системы" : "Войти в аккаунт гостевой системы")}</button>
     {!opened && message && <span role="status">{message}</span>}
     {!opened && ["environment-update", "environment-restart"].includes(recovery) && onSettings &&
-      <button type="button" onClick={onSettings}>{recovery === "environment-update" ? "查看环境组件" : "打开环境设置"}</button>}
+      <button type="button" onClick={onSettings}>{recovery === "environment-update" ? "Посмотреть компоненты среды" : "Открыть настройки среды"}</button>}
     {opened && createPortal(
-      <div className="mac-login-fullscreen" data-mode={initialSetup ? "setup" : maintenance ? "maintenance" : "login"} role="dialog" aria-modal="true" aria-label={initialSetup ? "首次设置虚拟 Mac" : maintenance ? "恢复客机系统权限" : "登录虚拟 Mac"}
+      <div className="mac-login-fullscreen" data-mode={initialSetup ? "setup" : maintenance ? "maintenance" : "login"} role="dialog" aria-modal="true" aria-label={initialSetup ? "Первичная настройка виртуального Mac" : maintenance ? "Восстановить разрешения гостевой системы" : "Вход в виртуальный Mac"}
         onKeyDownCapture={(e) => {
           if (e.key === "F6") {
             e.preventDefault();
@@ -320,15 +320,15 @@ export function MacOSLogin({ disabled, initialSetup = false, maintenance = "", l
         }}>
         <div className="mac-login-panel">
         <header className="mac-login-heading">
-          <h2>{initialSetup ? "虚拟 Mac 的系统设置" : maintenance ? "恢复客机系统权限" : "登录 macOS 客机"}</h2>
-          <p>{initialSetup ? "按下方提示完成当前授权，Cage 会自动检查。可以随时返回设置指引继续处理。" : maintenance ? "在当前系统设置窗口中完成授权。切换到其他客机应用或锁定后，画面会结束。" : "输入客机账户密码，按回车登录。"}</p>
+          <h2>{initialSetup ? "Системные настройки виртуального Mac" : maintenance ? "Восстановить разрешения гостевой системы" : "Вход в гостевую macOS"}</h2>
+          <p>{initialSetup ? "Выполните текущую авторизацию по подсказке ниже — Cage проверит автоматически. В любой момент можно вернуться к руководству по настройке." : maintenance ? "Выполните авторизацию в текущем окне системных настроек. При переключении на другое приложение гостевой системы или блокировке изображение закроется." : "Введите пароль аккаунта гостевой системы и нажмите Enter."}</p>
         </header>
-        <div className="mac-login-tools" role="toolbar" aria-label="画面工具">
-          <button ref={back} onClick={() => end()}><ArrowLeft size={16} aria-hidden="true" />{initialSetup ? "返回设置指引" : "返回工作台"}</button>
-          <button aria-pressed={!zoomed} onClick={() => changeZoom(false)}><Maximize size={16} aria-hidden="true" />{initialSetup || maintenance ? "适配" : "完整画面"}</button>
-          <button aria-pressed={zoomed} onClick={() => changeZoom(true)}><ZoomIn size={16} aria-hidden="true" />{initialSetup || maintenance ? "放大" : "登录区域"}</button>
+        <div className="mac-login-tools" role="toolbar" aria-label="Инструменты изображения">
+          <button ref={back} onClick={() => end()}><ArrowLeft size={16} aria-hidden="true" />{initialSetup ? "Вернуться к руководству" : "Вернуться в рабочую среду"}</button>
+          <button aria-pressed={!zoomed} onClick={() => changeZoom(false)}><Maximize size={16} aria-hidden="true" />{initialSetup || maintenance ? "По размеру" : "Полное изображение"}</button>
+          <button aria-pressed={zoomed} onClick={() => changeZoom(true)}><ZoomIn size={16} aria-hidden="true" />{initialSetup || maintenance ? "Увеличить" : "Область входа"}</button>
           {initialSetup && setupActions}
-          {initialSetup && managedCredential && <button disabled={!session} onClick={() => enqueue("fill-password",{})}>填写授权密码</button>}
+          {initialSetup && managedCredential && <button disabled={!session} onClick={() => enqueue("fill-password",{})}>Заполнить пароль авторизации</button>}
           {!maintenance && (!initialSetup || managedCredential) && <button onClick={async () => {
             const owner = lease.current;
             try {
@@ -337,21 +337,21 @@ export function MacOSLogin({ disabled, initialSetup = false, maintenance = "", l
               setAuthorizationPassword(result.password); setMessage("");
             }
             catch (e) { if (lease.current === owner) setMessage(e.message); }
-          }}>{initialSetup ? "查看授权密码" : "查看客机密码"}</button>}
-          {authorizationPassword && <span className="mac-login-password">{authorizationPassword}<button onClick={() => setAuthorizationPassword("")}>隐藏</button></span>}
+          }}>{initialSetup ? "Показать пароль авторизации" : "Показать пароль гостевой системы"}</button>}
+          {authorizationPassword && <span className="mac-login-password">{authorizationPassword}<button onClick={() => setAuthorizationPassword("")}>Скрыть</button></span>}
         </div>
         {maintenance && <div className="mac-setup-hint">
-          {maintenance === "projects" && <p>Cage 会直接打开「文件系统扩展」面板。打开 macFUSE 和 macFUSE (local) 两个开关，Cage 会自动检查并重新连接项目。</p>}
-          {administrator && <p>系统要求管理员时，用户名填写 {administrator}。选中系统授权窗口的密码框后，点击「填写管理员密码」，再由你确认授权。</p>}
-          {administrator && <button type="button" onClick={() => enqueue("fill-password", {})}>填写管理员密码</button>}
+          {maintenance === "projects" && <p>Cage сразу откроет панель «Расширения файловой системы». Включите оба переключателя macFUSE и macFUSE (local) — Cage проверит и переподключит проект автоматически.</p>}
+          {administrator && <p>Когда система запрашивает администратора, укажите имя {administrator}. Выделите поле пароля в окне системной авторизации, нажмите «Заполнить пароль администратора» и подтвердите авторизацию сами.</p>}
+          {administrator && <button type="button" onClick={() => enqueue("fill-password", {})}>Заполнить пароль администратора</button>}
         </div>}
         {initialSetup && setupHint && <div className="mac-setup-hint">
           <p>{setupHint}</p>
-          <p role={setupError ? "alert" : "status"}>{setupStatus} 查看完整步骤或进入工作台时，点击「返回设置指引」。</p>
+          <p role={setupError ? "alert" : "status"}>{setupStatus} Чтобы увидеть все шаги или перейти в рабочую среду, нажмите «Вернуться к руководству».</p>
         </div>}
         <input ref={keyboard} className="mac-login-keyboard" type="text" autoComplete="off" autoCapitalize="none"
           autoCorrect="off" spellCheck={false}
-          aria-label="客机登录键盘。按 F6 切换工具栏，按 Shift 加 Escape 返回工作台。"
+          aria-label="Клавиатура входа гостевой системы. F6 переключает панель инструментов, Shift+Escape возвращает в рабочую среду."
           onKeyDown={guestKey}
           onBeforeInput={(e) => e.preventDefault()}
           onInput={(e) => { e.currentTarget.value = ""; }}
@@ -359,7 +359,7 @@ export function MacOSLogin({ disabled, initialSetup = false, maintenance = "", l
             e.preventDefault();
             const text = e.clipboardData.getData("text/plain");
             if (text.length > 256 || [...text].some((c) => !charKeys[c])) {
-              setMessage("请用键盘输入该密码。");
+              setMessage("Введите этот пароль с клавиатуры.");
               return;
             }
             for (const c of text) {
@@ -391,7 +391,7 @@ export function MacOSLogin({ disabled, initialSetup = false, maintenance = "", l
           {frame && <div className="mac-login-canvas" style={{
             width: Math.max(size.width, imageWidth), height: Math.max(size.height, imageHeight),
           }}>
-            <img ref={imageRef} key={maintenance ? frameTarget?.geometry : undefined} alt={initialSetup ? "Apple 客机首次系统设置" : maintenance ? "客机系统设置或授权窗口" : "Apple 客机登录屏幕"} draggable={false} src={frame}
+            <img ref={imageRef} key={maintenance ? frameTarget?.geometry : undefined} alt={initialSetup ? "Первичная настройка гостевой системы Apple" : maintenance ? "Системные настройки или окно авторизации гостевой системы" : "Экран входа гостевой системы Apple"} draggable={false} src={frame}
               style={{ width: imageWidth, height: imageHeight }}
               onLoad={(e) => {
                 if (e.currentTarget.naturalHeight) setAspect(e.currentTarget.naturalWidth / e.currentTarget.naturalHeight);
@@ -400,9 +400,9 @@ export function MacOSLogin({ disabled, initialSetup = false, maintenance = "", l
           </div>}
         </div>
         {(visibleMessage || !frame) && <p className="mac-login-status" role={visibleMessage ? "alert" : "status"}>
-          {visibleMessage || (initialSetup ? "正在读取客机首次设置画面…" : maintenance ? "正在确认系统授权窗口…" : "正在确认客机登录画面…")}
+          {visibleMessage || (initialSetup ? "Чтение экрана первичной настройки гостевой системы…" : maintenance ? "Проверка окна системной авторизации…" : "Проверка экрана входа гостевой системы…")}
         </p>}
-        {!initialSetup && !maintenance && <p className="mac-login-help">拖动画面可查看其他账户或提示</p>}
+        {!initialSetup && !maintenance && <p className="mac-login-help">Перетаскивайте изображение, чтобы увидеть другие аккаунты или подсказки</p>}
         </div>
       </div>, document.body)}
   </>;

@@ -14,22 +14,22 @@ import { createMacFrameConnection } from "./macos-frame-connection.mjs";
 import "./macos-claude-window.css";
 
 const messages = {
-  requires_gui_login: "请先登录并解锁虚拟 Mac 的图形账户。",
-  screen_recording_permission: "请在虚拟 Mac 的系统授权中，允许 Cage Guest Window 录制屏幕。",
-  accessibility_permission: "要操作窗口，请允许虚拟 Mac 中的 Cage Guest Window 使用辅助功能。",
-  not_running: "请打开虚拟 Mac 中的 Claude Desktop。",
-  no_visible_window: "Claude 尚未显示窗口，请重新打开应用。",
-  identity_error: "虚拟 Mac 中的应用未通过 Anthropic 签名检查。",
-  window_changed: "Claude 的活动窗口已变化，请打开应用并在新画面中重试。",
-  unknown_action: "客机窗口输入组件需要更新，请在环境设置中更新组件后重试。",
-  input_connection_required: "窗口输入需要重新连接，请恢复画面后重试。",
-  input_owned_by_another_view: "另一个连接正在操作此窗口，请等待它释放按键或拖动。",
+  requires_gui_login: "Сначала войдите и разблокируйте графический аккаунт виртуального Mac.",
+  screen_recording_permission: "Разрешите Cage Guest Window запись экрана в системных разрешениях виртуального Mac.",
+  accessibility_permission: "Чтобы управлять окнами, разрешите Cage Guest Window использовать универсальный доступ в виртуальном Mac.",
+  not_running: "Откройте Claude Desktop в виртуальном Mac.",
+  no_visible_window: "Claude ещё не показывает окно. Откройте приложение заново.",
+  identity_error: "Приложение в виртуальном Mac не прошло проверку подписи Anthropic.",
+  window_changed: "Активное окно Claude изменилось. Откройте приложение и повторите на новом экране.",
+  unknown_action: "Компоненту ввода гостевого окна требуется обновление. Обновите компонент в настройках среды и повторите.",
+  input_connection_required: "Вводу в окно требуется переподключение. Восстановите изображение и повторите.",
+  input_owned_by_another_view: "Другое соединение управляет этим окном. Дождитесь, пока оно отпустит клавиши или завершит перетаскивание.",
 };
 
 async function windowRequest(action, fields = {}, connection) {
   const result = connection ? await connection.request(action, fields) : await api("/macos/claude/window", { action, ...fields });
   if (result.error) {
-    const error = new Error(messages[result.error] || "未能读取或操作虚拟 Mac 中的应用窗口。");
+    const error = new Error(messages[result.error] || "Не удалось прочитать или изменить окно приложения в виртуальном Mac.");
     error.code = result.error;
     throw error;
   }
@@ -150,7 +150,7 @@ export function MacOSClaudeWindow({ visible, keyboard = "mac", remoteRef, sideba
                 nextStatus = 0;
                 frame.current = null;
                 setImage(null);
-                setError(messages[reason] || "未能读取虚拟 Mac 的窗口画面，请重新连接。");
+                setError(messages[reason] || "Не удалось получить изображение окна виртуального Mac. Переподключитесь.");
               });
             }
             frameConnection.current.resize(viewport.current);
@@ -198,7 +198,7 @@ export function MacOSClaudeWindow({ visible, keyboard = "mac", remoteRef, sideba
     copy: () => controls.current?.input.copy(),
     paste: () => controls.current?.input.readAndPaste(),
     pasteText: text => controls.current?.input.paste(text),
-    transfer: () => onFallback("", "可在此使用本机复制、粘贴。"),
+    transfer: () => onFallback("", "Здесь можно использовать локальные копирование и вставку."),
   }));
 
   useEffect(() => {
@@ -221,7 +221,7 @@ export function MacOSClaudeWindow({ visible, keyboard = "mac", remoteRef, sideba
       systemClipboard: () => true,
       copyText: (sendCopy, valid) => copyGuestText({ request: value => api("/clipboard/copy", value), sendCopy, valid }),
       surface: () => surface.current,
-      inputLabel: "向 Claude Desktop 输入",
+      inputLabel: "Ввод в Claude Desktop",
       tabId: () => frame.current ? `${frame.current.pid}:${frame.current.window}:${frame.current.geometry}` : "",
       isActive: () => Boolean(current.current.screenVisible && current.current.input && frame.current),
       onStatus: text => current.current.onStatus(text),
@@ -232,7 +232,7 @@ export function MacOSClaudeWindow({ visible, keyboard = "mac", remoteRef, sideba
         return { available: false };
       }),
       insertComposition: (_, value) => transport.send("ime", value).then(result => {
-        if (value.mode !== "cancel" && !result.available) throw new Error("输入位置已变化，请重新输入");
+        if (value.mode !== "cancel" && !result.available) throw new Error("Позиция ввода изменилась. Введите заново.");
         return result;
       }),
       preparePaste,
@@ -251,20 +251,20 @@ export function MacOSClaudeWindow({ visible, keyboard = "mac", remoteRef, sideba
     const transport = lease?.transport || controls.current?.transport;
     const valid = () => target && epoch === generation.current && transport?.valid(target);
     const ready = Promise.resolve(content).then(value => ({ value }), error => ({ error }));
-    if (!transport) { prepared?.dispose(); return Promise.reject(new Error("窗口尚未连接，请稍后重试")); }
+    if (!transport) { prepared?.dispose(); return Promise.reject(new Error("Окно ещё не подключено. Повторите позже.")); }
     return transport.run(async () => {
       const { value, error } = await ready;
       if (error) throw error;
-      if (!valid()) throw new Error("Claude 窗口已切换，请回到原窗口重新传递附件");
+      if (!valid()) throw new Error("Окно Claude переключилось. Вернитесь в исходное окно и передайте вложение заново.");
       setFileError(""); setTransferring(true);
       if (value.files || value.fileSelection) {
-        await sendFiles(value, "desktop", "", { valid, windowTarget: target, onProgress: (loaded, total) => onStatus(total ? `正在传递附件 · ${Math.floor(loaded * 100 / total)}%` : "正在传递附件…") });
+        await sendFiles(value, "desktop", "", { valid, windowTarget: target, onProgress: (loaded, total) => onStatus(total ? `Передача вложения · ${Math.floor(loaded * 100 / total)}%` : "Передача вложения…") });
       } else if (value.png) {
         await sendImage(value, "desktop", "", { prepared });
       } else if (value.text) {
         await request("text", { ...target, text: value.text });
       }
-      if (valid()) onStatus(value.text ? "已粘贴" : "附件已交给 Claude Desktop，请在应用中确认上传结果");
+      if (valid()) onStatus(value.text ? "Вставлено" : "Вложение передано Claude Desktop. Подтвердите результат загрузки в приложении.");
     }).finally(() => { prepared?.dispose(); setTransferring(false); });
   }
   const fileFailure = error => { setFileError(error.message); onStatus(error.message); };
@@ -277,24 +277,24 @@ export function MacOSClaudeWindow({ visible, keyboard = "mac", remoteRef, sideba
     } catch (error) { fileFailure(error); }
   }
   if (!visible) return null;
-  return <section className="claude-desktop-view mac-claude" aria-label="虚拟 Mac 中的 Claude Desktop">
+  return <section className="claude-desktop-view mac-claude" aria-label="Claude Desktop в виртуальном Mac">
     <BrowserUploads requests={uploads} onStatus={onStatus} />
     <DesktopToolbar desktop={state} platform="macOS" zoom={zoom} setZoom={setZoom} onConfirm={onConfirm}
       onStop={() => action("stop")} refresh={() => refresh(n => n+1)} sidebarCollapsed={sidebarCollapsed} onExpand={onExpand}>
       <MacOSLogin />
-      <button disabled={!state?.input || !image || transferring} onClick={() => void chooseFiles()}>添加附件</button>
-      <input ref={picker} type="file" multiple hidden aria-label="选择 Claude 附件" onChange={event => { const files = Array.from(event.target.files || []); event.target.value = ""; if (files.length) void receive({ files, kind: "paste" }, pickerTarget.current || undefined).catch(fileFailure); }} />
-      {(!state?.running || error) && <button onClick={() => action("launch")} disabled={!state?.installed}>{state?.running ? "重新连接应用" : "打开应用"}</button>}
-      {state?.installed && !state.screen && <button onClick={() => action("request-screen")}>授权窗口画面</button>}
-      {state?.installed && !state.input && <button onClick={() => action("request-input")}>授权键鼠</button>}
+      <button disabled={!state?.input || !image || transferring} onClick={() => void chooseFiles()}>Добавить вложение</button>
+      <input ref={picker} type="file" multiple hidden aria-label="Выбрать вложение для Claude" onChange={event => { const files = Array.from(event.target.files || []); event.target.value = ""; if (files.length) void receive({ files, kind: "paste" }, pickerTarget.current || undefined).catch(fileFailure); }} />
+      {(!state?.running || error) && <button onClick={() => action("launch")} disabled={!state?.installed}>{state?.running ? "Переподключить приложение" : "Открыть приложение"}</button>}
+      {state?.installed && !state.screen && <button onClick={() => action("request-screen")}>Разрешить запись экрана</button>}
+      {state?.installed && !state.input && <button onClick={() => action("request-input")}>Разрешить ввод с клавиатуры и мыши</button>}
     </DesktopToolbar>
     {error && <p role="alert">{error}</p>}
     {fileError && <p role="alert">{fileError}</p>}
-    {state && !state.installed && <p>此虚拟 Mac 尚未安装官方 Claude Desktop。</p>}
+    {state && !state.installed && <p>В этом виртуальном Mac не установлен официальный Claude Desktop.</p>}
     {state?.running && !state.screen && <p>{messages.screen_recording_permission}</p>}
     {state?.running && state.screen && !state.input && <p>{messages.accessibility_permission}</p>}
     <div ref={pane} className="mac-claude-frame" style={{ "--desktop-zoom": zoom }}>
-      {image && <img ref={surface} key={image.geometry || `${image.pid}-${image.window}`} alt="Claude Desktop 客机窗口" src={image.src} draggable={false}
+      {image && <img ref={surface} key={image.geometry || `${image.pid}-${image.window}`} alt="Окно гостевой системы Claude Desktop" src={image.src} draggable={false}
         onLoad={e => {
           const img = e.currentTarget;
           const width = image.width || img.naturalWidth;
@@ -305,7 +305,7 @@ export function MacOSClaudeWindow({ visible, keyboard = "mac", remoteRef, sideba
           matchWindowBackground(img, pane.current, backgroundSample);
           image.acknowledge?.();
         }}
-        onError={() => { frameConnection.current?.close(); frameConnection.current = null; frame.current = null; setImage(null); setError("窗口画面无法解码，请重新连接。"); }}
+        onError={() => { frameConnection.current?.close(); frameConnection.current = null; frame.current = null; setImage(null); setError("Не удалось декодировать изображение окна. Переподключитесь."); }}
         />}
     </div>
   </section>;

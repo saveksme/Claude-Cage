@@ -3,7 +3,7 @@ export const sessionRetryDelay = attempt => Math.min(8000, 1000 * 2 ** (attempt 
 export const retryableSessionError = error => !error.status || error.status >= 500 || [408, 425, 429].includes(error.status);
 
 export function sessionFailureMessage(error) {
-  return error.status ? error.message : "手机与电脑的连接暂时中断。";
+  return error.status ? error.message : "Связь между телефоном и компьютером временно прервана.";
 }
 
 function pause(ms, signal) {

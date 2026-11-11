@@ -3,9 +3,9 @@ import { test } from "node:test";
 import { projectSessionRows, sessionKey } from "./session-order.mjs";
 
 const sessions = [
-  { id: "one", title: "第一段", pinned: true },
-  { id: "two", title: "第二段", active: true },
-  { id: "three", title: "第三段" },
+  { id: "one", title: "Первый", pinned: true },
+  { id: "two", title: "Второй", active: true },
+  { id: "three", title: "Третий" },
 ];
 const keys = rows => rows.map(sessionKey);
 test("external running state blocks only history without an owned live terminal", () => {

@@ -14,7 +14,7 @@ export function installRemoteInput(
   transport,
   container,
   { mode, guestPlatform = () => "linux", systemClipboard = () => true, onStatus, onFallback, isActive,
-    insertText, insertComposition, caretRect, surface, inputLabel = "Cage 网页输入", tabId: getTargetId = () => "", pasteContent, preparePaste, setCopyContext, copyText },
+    insertText, insertComposition, caretRect, surface, inputLabel = "Ввод на странице Cage", tabId: getTargetId = () => "", pasteContent, preparePaste, setCopyContext, copyText },
 ) {
   const listeners = [],
     handled = new Set(),
@@ -202,7 +202,7 @@ export function installRemoteInput(
     // X0tigervnc cannot map arbitrary Unicode to its finite X11 keycode pool.
     // The browser inserts committed text directly, without clipboard mutation.
     insertText(text).catch(() => {
-      if (!disposed) onStatus("文字输入未完成，请重新连接画面后重试");
+      if (!disposed) onStatus("Ввод текста не завершён. Переподключите изображение и повторите.");
     });
   };
   const queueComposition = (value) => {
@@ -213,7 +213,7 @@ export function installRemoteInput(
     // call to another promise would let the next Enter overtake the commit.
     insertComposition(targetId, { session: compositionSession, sequence: compositionSequence++, ...value }).catch((error) => {
         if (!disposed && value.mode !== "cancel")
-          say(error.message || "输入法组合文字未能同步");
+          say(error.message || "Составной текст ввода не удалось синхронизировать");
     });
   };
   const resetComposition = () => {
@@ -335,7 +335,7 @@ export function installRemoteInput(
     const valid = () => !disposed && Boolean(copyContext) && context === copyContext && id === getTargetId() && focused() &&
       document.visibilityState !== "hidden" && document.hasFocus();
     if (!valid()) return;
-    if (error) { copyRequested = false; clearTimeout(copyTimer); say("复制未完成，请重新选择内容后重试。"); return; }
+    if (error) { copyRequested = false; clearTimeout(copyTimer); say("Копирование не завершено. Выделите содержимое заново и повторите."); return; }
     const revision = copyRevision;
     let content = { text };
     try {
@@ -354,9 +354,9 @@ export function installRemoteInput(
       copyRequested = false;
       clearTimeout(copyTimer);
       if (nativeAvailable()) {
-        if (typeof expected !== "number") throw new Error("无法确认本机剪贴板版本，请重新复制。");
+        if (typeof expected !== "number") throw new Error("Не удалось определить версию локального буфера обмена. Скопируйте заново.");
         const result = await native("clipboardSyncWrite", { ...content, revision: expected });
-        if (result?.superseded) { if (valid()) say("本机剪贴板已更新，请重新复制客机内容。"); return; }
+        if (result?.superseded) { if (valid()) say("Локальный буфер обмена обновлён. Скопируйте содержимое гостевой системы заново."); return; }
       } else if (typeof content.png === "string") {
         const bytes = Uint8Array.from(atob(content.png), character => character.charCodeAt(0));
         if (bytes.length > 20 * 1024 * 1024) return;
@@ -364,11 +364,11 @@ export function installRemoteInput(
       } else {
         await writeClipboard(content.text);
       }
-      if (valid()) say("已复制到本机");
+      if (valid()) say("Скопировано на этот компьютер");
     } catch (error) {
       if (!valid()) return;
-      if (typeof content.text === "string") onFallback(content.text, "请在这里复制到本机。");
-      else say(error.name === "NotAllowedError" ? "浏览器未允许写入图片剪贴板，请允许剪贴板访问后重试。" : error.message || "复制内容读取失败，请重试。");
+      if (typeof content.text === "string") onFallback(content.text, "Скопируйте отсюда на этот компьютер.");
+      else say(error.name === "NotAllowedError" ? "Браузер не разрешил запись изображения в буфер обмена. Разрешите доступ к буферу и повторите." : error.message || "Не удалось прочитать скопированное содержимое. Повторите.");
     }
   };
   const waitForCopy = () => {
@@ -376,13 +376,13 @@ export function installRemoteInput(
     clearTimeout(copyTimer);
     copyTimer = setTimeout(() => {
       copyRequested = false;
-      onFallback(lastText, "未收到新的选中文本，可在这里复制 Cage 剪贴板。");
+      onFallback(lastText, "Новый выделенный текст не получен; здесь можно скопировать буфер обмена Cage.");
     }, 1600);
   };
   const copy = (key = "c") => {
     if (disposed || !isActive()) return;
     copyRequested = true;
-    say("正在复制所选文本…");
+    say("Копирование выделенного текста…");
     clearTimeout(copyTimer);
     if (sharedClipboard()) { chord(key); copyRequested = false; return; }
     prepareCopy();
@@ -393,15 +393,15 @@ export function installRemoteInput(
       return transport.runKeyAction(async sendKey => {
         const before = await caretRect?.();
         const sendCopy = async () => {
-          if (!valid()) throw new Error("复制窗口已变化，请重新选择文本。");
+          if (!valid()) throw new Error("Окно копирования изменилось. Выделите текст заново.");
           for (const value of shortcutKeys(key)) await sendKey(...value);
         };
         const content = await copyText(sendCopy, valid, { id, context, key });
         if (content === undefined) { await sendCopy(); waitForCopy(); return; }
         const after = await caretRect?.();
-        if (before?.available && (!after?.available || before.context !== after.context)) throw new Error("复制位置已变化，请重新选择文本。");
+        if (before?.available && (!after?.available || before.context !== after.context)) throw new Error("Позиция копирования изменилась. Выделите текст заново.");
         if (valid()) await receiveCopy({ ...content, id, context });
-      }).catch(error => { if (valid()) say(error.message || "未收到新的选中文本，请重新选择后复制。"); });
+      }).catch(error => { if (valid()) say(error.message || "Новый выделенный текст не получен. Выделите заново и скопируйте."); });
     }
     chord(key);
     waitForCopy();
@@ -409,39 +409,39 @@ export function installRemoteInput(
   const paste = (text) => {
     if (disposed) return;
     pending++;
-    say("正在粘贴…");
+    say("Вставка…");
     transport.focus();
     transport.pasteText(text).then(
       () => {
         pending--;
-        say(pending ? "正在粘贴…" : "已粘贴");
+        say(pending ? "Вставка…" : "Вставлено");
       },
       () => {
         pending--;
-        say("粘贴连接未就绪，请重新连接画面后重试");
+        say("Подключение для вставки не готово. Переподключите изображение и повторите.");
       },
     );
   };
   const receive = (content, preparation = preparePaste?.()) => {
     if (disposed || !isActive()) { preparation?.dispose(); return; }
     pending++;
-    say("正在传递剪贴板内容…");
+    say("Передача содержимого буфера обмена…");
     transport.focus();
     return pasteContent(content, preparation).then(
       () => {
         pending--;
-        say(pending ? "正在粘贴…" : "已传递到当前输入位置");
+        say(pending ? "Вставка…" : "Передано в текущую позицию ввода");
       },
       (error) => {
         pending--;
         if (error.name === "NotAllowedError" && !disposed) {
           onFallback(
             "",
-            "浏览器未允许读取剪贴板。图片可直接拖入画面；文本可在这里粘贴。",
+            "Браузер не разрешил чтение буфера обмена. Изображение можно перетащить в окно; текст можно вставить здесь.",
           );
           return;
         }
-        say(error.message || "图片或文本未能传入，请重新连接后重试");
+        say(error.message || "Не удалось передать изображение или текст. Переподключитесь и повторите.");
       },
     ).finally(() => preparation?.dispose());
   };
@@ -449,18 +449,18 @@ export function installRemoteInput(
     if (disposed || !isActive()) return;
     if (sharedClipboard()) {
       const id = getTargetId();
-      say("正在粘贴…");
+      say("Вставка…");
       return transport.runKeyAction(async sendKey => {
         const before = await caretRect?.();
         await window.cageSyncClipboard();
         const after = await caretRect?.();
         if (disposed || !isActive() || id !== getTargetId() ||
             (before?.available && (!after?.available || before.context !== after.context))) {
-          throw new Error("粘贴位置已切换，请回到原输入位置重试");
+          throw new Error("Позиция вставки переключилась. Вернитесь в исходную позицию и повторите.");
         }
         for (const key of shortcutKeys("v")) await sendKey(...key);
-        say("已粘贴");
-      }).catch(error => say(error.message || "剪贴板尚未同步，请重新复制后重试"));
+        say("Вставлено");
+      }).catch(error => say(error.message || "Буфер обмена ещё не синхронизирован. Скопируйте заново и повторите."));
     }
     const preparation = preparePaste?.();
     return receive(readClipboardContent(), preparation);
@@ -661,7 +661,7 @@ export function installRemoteInput(
         receive({ files, kind: "paste" });
       } else if (event.clipboardData.types.includes("text/plain"))
         paste(event.clipboardData.getData("text/plain"));
-      else say("剪贴板中没有可粘贴的图片或文本");
+      else say("В буфере обмена нет изображения или текста для вставки.");
     },
     true,
   );

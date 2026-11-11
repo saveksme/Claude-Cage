@@ -60,7 +60,7 @@ export function ProjectMedia({ reference, label, sessionID }) {
               part.mime,
             )
           )
-            throw Error("文件预览数据无效。");
+            throw Error("Неверные данные предпросмотра файла.");
           version = part.version;
           size = part.size;
           mime = part.mime;
@@ -68,7 +68,7 @@ export function ProjectMedia({ reference, label, sessionID }) {
             c.charCodeAt(0),
           );
           if (!bytes.length || offset + bytes.length > size)
-            throw Error("文件传输不完整。");
+            throw Error("Передача файла не завершена.");
           chunks.push(bytes);
           offset += bytes.length;
           setProgress(Math.round((offset * 100) / size));
@@ -79,7 +79,7 @@ export function ProjectMedia({ reference, label, sessionID }) {
         if (!controller.signal.aborted)
           setError(
             e.status === 404
-              ? "未找到媒体文件，或电脑端 Cage 需要更新。"
+              ? "Медиафайл не найден или требуется обновить Cage на компьютере."
               : e.message,
           );
       }
@@ -118,14 +118,14 @@ export function ProjectMedia({ reference, label, sessionID }) {
         <span>{title}</span>
         <small>
           {error
-            ? "重试"
+            ? "Повторить"
             : loading
-              ? progress + "% · 取消"
+              ? progress + "% · Отмена"
               : media
-                ? "收起"
+                ? "Свернуть"
                 : kind === "video"
-                  ? "加载视频"
-                  : "查看图片"}
+                  ? "Загрузить видео"
+                  : "Посмотреть изображение"}
         </small>
       </button>
       {error && (
@@ -142,13 +142,13 @@ export function ProjectMedia({ reference, label, sessionID }) {
             playsInline
             preload="metadata"
             aria-label={title}
-            onError={() => setError("此设备无法播放该视频编码。")}
+            onError={() => setError("Это устройство не может воспроизвести данный кодек видео.")}
           />
         ) : (
           <img
             src={media}
             alt={title}
-            onError={() => setError("此设备无法解码该图片。")}
+            onError={() => setError("Это устройство не может декодировать это изображение.")}
           />
         ))}
     </span>

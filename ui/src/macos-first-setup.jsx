@@ -8,9 +8,9 @@ import { Modal } from "./modal";
 import "./initialization.css";
 
 const steps = [
-  { id: "screen", label: "窗口录制", hint: "打开 Cage Guest Window 的窗口录制开关。如果提示「退出并重新打开」，按提示操作。" },
-  { id: "input", label: "辅助功能", hint: "打开 Cage Guest Window 的辅助功能开关，允许 Cage 操作客机窗口。" },
-  { id: "projects", label: "文件系统扩展", hint: "打开 macFUSE 和 macFUSE (local) 两个开关，用于在客机中访问你选择的项目。" },
+  { id: "screen", label: "Запись окна", hint: "Включите запись окна для Cage Guest Window. Если появится предложение «Завершить и открыть заново», следуйте ему." },
+  { id: "input", label: "Универсальный доступ", hint: "Включите универсальный доступ для Cage Guest Window, чтобы Cage мог управлять окном гостевой системы." },
+  { id: "projects", label: "Расширения файловой системы", hint: "Включите оба переключателя macFUSE и macFUSE (local), чтобы в гостевой системе был доступ к выбранному проекту." },
 ];
 
 export function MacOSFirstSetup() {
@@ -35,7 +35,7 @@ export function MacOSFirstSetup() {
     try {
       result = await api(lifecycle ? `/${action}` : "/macos/first-setup", action === "start" ? { guest_system: "macos" } : action === "stop" ? {} : { action }, undefined, {}, { signal });
     } catch (e) {
-      if (signal.aborted) throw new Error("等待客机响应超时。请重新检查状态，确认刚才的操作是否已完成后继续。");
+      if (signal.aborted) throw new Error("Истекло время ожидания ответа гостевой системы. Проверьте состояние и убедитесь, что предыдущее действие завершилось, затем продолжите.");
       // A finish response can be lost after the server has closed this entry.
       if (e.status === 410) await current.current.refresh();
       throw e;
@@ -86,7 +86,7 @@ export function MacOSFirstSetup() {
         try { await request("finish"); if (c.active) await current.current.refresh(); }
         catch (e) { if (c.active) { setCompletionFailed(true); setError(e.message); } }
       }
-    } catch (e) { if (c.active) setReadError(e.name === "TimeoutError" ? "读取客机状态超时。请重新检查状态；已有安装进度会保留。" : e.message); }
+    } catch (e) { if (c.active) setReadError(e.name === "TimeoutError" ? "Истекло время чтения состояния гостевой системы. Проверьте состояние ещё раз; прогресс установки сохранится." : e.message); }
     finally { c.inFlight = false; if (c.active) setBusy(false); }
   }
 
@@ -129,50 +129,50 @@ export function MacOSFirstSetup() {
   const running = Boolean(state?.job?.running);
   const canOperate = Boolean(state?.vm_running && !running && !busy);
   const canFinish = Boolean(state?.ready && !account.macos_password_pending && !pending && !readError);
-  const progress = !state ? "正在读取安装进度…" : running ? state.job.message || "正在启动和配置虚拟 Mac…" :
-    account.macos_password_pending ? "客机密码尚未同步，请重试同步后继续授权。" : !state.vm_running ? "虚拟 Mac 尚未启动，可从已有磁盘继续。" :
-    !state.ready ? "虚拟 Mac 已启动，正在等待客机连接。若停在登录画面，请打开客机画面完成登录。" :
-    readError ? "暂时无法确认权限状态，已显示的结果供参考。恢复连接后会继续检查。" :
-    pending ? `当前需要确认「${pending.label}」。完成后 Cage 会自动检查并继续。` :
-    completionFailed ? "三项权限已验证，最后的设置收尾未完成。请重试完成设置。" : "三项权限已验证，正在保存设置；随后继续工作区授权和联网检查。";
+  const progress = !state ? "Чтение хода установки…" : running ? state.job.message || "Запуск и настройка виртуального Mac…" :
+    account.macos_password_pending ? "Пароль гостевой системы ещё не синхронизирован. Повторите синхронизацию и продолжите авторизацию." : !state.vm_running ? "Виртуальный Mac ещё не запущен; можно продолжить с существующего диска." :
+    !state.ready ? "Виртуальный Mac запущен, ожидается подключение гостевой системы. Если она осталась на экране входа, откройте изображение гостевой системы и войдите." :
+    readError ? "Сейчас не удаётся подтвердить состояние разрешений; показанный результат носит справочный характер. После восстановления соединения проверка продолжится." :
+    pending ? `Сейчас нужно подтвердить «${pending.label}». После этого Cage проверит автоматически и продолжит.` :
+    completionFailed ? "Все три разрешения проверены, но завершающий шаг настройки не выполнен. Повторите завершение настройки." : "Все три разрешения проверены, настройки сохраняются; затем последуют авторизация рабочей области и проверка сети.";
   const controls = <button type="button" className="primary" disabled={!canOperate} onClick={() => act(pending?.id || permissionPage)}>
-    {busy ? "正在处理…" : `打开${pending?.label || selected.label}`}
+    {busy ? "Обработка…" : `Открыть: ${pending?.label || selected.label}`}
   </button>;
   const failure = error || readError || (!running && state?.job?.error) || (!state?.ready && state?.environment_update_error);
 
   return <main className="initialization"><section className="initialization-content mac-setup-content">
-    <div className="initialization-title"><p className="mac-setup-eyebrow">安装与检查 · macOS 系统权限</p><h1>完成虚拟 Mac 的系统授权</h1>
-      <p>安装文件和客机磁盘已保留。下面三项授权在虚拟 Mac 内完成，每项验证通过后会自动继续。</p></div>
-    <ol className="mac-setup-checklist" aria-label="系统授权进度">
+    <div className="initialization-title"><p className="mac-setup-eyebrow">Установка и проверка · Разрешения macOS</p><h1>Завершите настройку разрешений виртуального Mac</h1>
+      <p>Установочные файлы и диск гостевой системы сохранены. Три разрешения ниже выдаются внутри виртуального Mac; после каждого Cage продолжит автоматически.</p></div>
+    <ol className="mac-setup-checklist" aria-label="Ход системных разрешений">
       {steps.map(({ id, label }, index) => <li key={id} data-complete={Boolean(permissions[id])} aria-current={pending?.id === id ? "step" : undefined}>
         <span className="mac-setup-marker">{permissions[id] ? <Check size={16} aria-hidden="true" /> : index + 1}</span>
-        <span>{label}</span><small>{permissions[id] ? "已验证" : pending?.id === id ? "等待确认" : "稍后确认"}</small>
+        <span>{label}</span><small>{permissions[id] ? "Проверено" : pending?.id === id ? "Ожидает подтверждения" : "Проверить позже"}</small>
       </li>)}
     </ol>
-    <section className="initialization-operation mac-setup-task" aria-label="当前设置步骤">
-      <h2>{!state?.ready ? "连接虚拟 Mac" : pending ? `确认${pending.label}` : "完成系统设置"}</h2>
+    <section className="initialization-operation mac-setup-task" aria-label="Текущий шаг настройки">
+      <h2>{!state?.ready ? "Подключение виртуального Mac" : pending ? `Подтверждение: ${pending.label}` : "Завершение системной настройки"}</h2>
       <p role="status">{busy && <LoaderCircle size={16} className="spin" aria-hidden="true" />} {progress}</p>
       {pending && state?.ready && <><p>{selected.hint}</p>{pending.id === "projects" && permissions.projects_error && <p>{permissions.projects_error}</p>}</>}
       <div className="initialization-recovery">
-        {state && !running && (!state.ready || account.macos_password_pending || state.job?.error) && <button className="primary" disabled={busy} onClick={() => act("start")}>{account.macos_password_pending ? "重试同步客机密码" : "继续启动并连接"}</button>}
+        {state && !running && (!state.ready || account.macos_password_pending || state.job?.error) && <button className="primary" disabled={busy} onClick={() => act("start")}>{account.macos_password_pending ? "Повторить синхронизацию пароля" : "Продолжить запуск и подключение"}</button>}
         {pending && state?.ready && controls}
-        {completionFailed && <button className="primary" disabled={busy || !canFinish} onClick={() => act("finish")}>重试完成设置</button>}
-        <button disabled={busy || running} onClick={() => void check()}>重新检查状态</button>
+        {completionFailed && <button className="primary" disabled={busy || !canFinish} onClick={() => act("finish")}>Повторить завершение настройки</button>}
+        <button disabled={busy || running} onClick={() => void check()}>Проверить состояние заново</button>
       </div>
-      {running && <button disabled={busy} onClick={() => act("stop")}>停止当前操作，保留进度</button>}
+      {running && <button disabled={busy} onClick={() => act("stop")}>Остановить текущую операцию, сохранив прогресс</button>}
       {state?.vm_running && <MacOSLogin initialSetup autoOpen={Boolean(permissions.managed_credential)} managedCredential={permissions.managed_credential} disabled={!canOperate}
-        label="打开客机画面" setupActions={controls} setupHint={`${selected.hint} 系统要求管理员时，用户名填 cagesetup；选中密码框后可点击「填写授权密码」。`}
+        label="Открыть изображение гостевой системы" setupActions={controls} setupHint={`${selected.hint} Если система требует администратора, укажите имя cagesetup; выделив поле пароля, нажмите «Заполнить пароль авторизации».`}
         setupStatus={failure || progress} setupError={Boolean(failure)} />}
     </section>
-    {failure && <section className="initialization-notice" role="alert"><h2>这一步尚未完成</h2><p>{failure}</p><p>已有安装进度会保留。可以重新打开当前设置页，或重新检查状态后继续。</p></section>}
-    <details className="mac-setup-help"><summary>管理员密码与找不到设置页时的帮助</summary>
-      <p>系统要求管理员时，用户名填 <strong>cagesetup</strong>，{account.macos_password_pending ? "密码同步完成前可能仍需原客机密码。" : account.macos_credentials_ready ? "密码与 Cage 账户相同。" : "在客机画面中选中密码框，再点击「填写授权密码」。"}你确认授权后继续；此临时管理员在收尾时停用。</p>
-      <p>文件系统扩展的手动入口：客机「系统设置 → 通用 → 登录项与扩展 → 按类别 → 文件系统扩展」，同时打开 macFUSE 和 macFUSE (local)。</p>
-      <div className="initialization-recovery">{steps.map(({ id, label }) => <button key={id} disabled={!canOperate} onClick={() => act(id)}>重新打开{label}</button>)}</div>
+    {failure && <section className="initialization-notice" role="alert"><h2>Этот шаг ещё не завершён</h2><p>{failure}</p><p>Прогресс установки сохранится. Можно заново открыть текущую страницу настроек или проверить состояние и продолжить.</p></section>}
+    <details className="mac-setup-help"><summary>Пароль администратора и помощь, если страница настроек не найдена</summary>
+      <p>Если система требует администратора, укажите имя <strong>cagesetup</strong>; {account.macos_password_pending ? "до завершения синхронизации может понадобиться прежний пароль гостевой системы." : account.macos_credentials_ready ? "пароль совпадает с паролем аккаунта Cage." : "выделите поле пароля на изображении гостевой системы и нажмите «Заполнить пароль авторизации»."} Продолжайте после вашего подтверждения авторизации; этот временный администратор отключается на завершающем шаге.</p>
+      <p>Ручной путь к расширениям файловой системы: в гостевой системе «Системные настройки → Основные → Элементы входа и расширения → По категориям → Расширения файловой системы», включите macFUSE и macFUSE (local).</p>
+      <div className="initialization-recovery">{steps.map(({ id, label }) => <button key={id} disabled={!canOperate} onClick={() => act(id)}>Открыть заново: {label}</button>)}</div>
     </details>
-    <p className="mac-setup-retention">系统授权完成后，还会确认共享工作区和网络隔离。全部检查通过后即可进入工作台。</p>
-    <div className="initialization-support"><button className="text-button" onClick={() => setDetails(true)}>查看操作详情</button><button className="text-button" onClick={() => setDiagnostics(!diagnostics)}>日志与诊断</button></div>
+    <p className="mac-setup-retention">После системных разрешений будут проверены общая рабочая область и сетевая изоляция. Когда все проверки пройдут, можно войти в рабочую среду.</p>
+    <div className="initialization-support"><button className="text-button" onClick={() => setDetails(true)}>Подробности операций</button><button className="text-button" onClick={() => setDiagnostics(!diagnostics)}>Журналы и диагностика</button></div>
     {diagnostics && <DiagnosticSettings />}
-    {details && <Modal title="系统设置操作详情" onClose={() => setDetails(false)}><div className="modal-body"><p>{progress}</p>{failure && <p role="alert">{failure}</p>}<pre className="job-log">{state?.job?.log || "当前步骤没有额外操作日志。可通过「日志与诊断」导出完整记录。"}</pre></div></Modal>}
+    {details && <Modal title="Подробности системных настроек" onClose={() => setDetails(false)}><div className="modal-body"><p>{progress}</p>{failure && <p role="alert">{failure}</p>}<pre className="job-log">{state?.job?.log || "Для текущего шага нет дополнительных журналов операций. Полную запись можно экспортировать через «Журналы и диагностика»."}</pre></div></Modal>}
   </section></main>;
 }

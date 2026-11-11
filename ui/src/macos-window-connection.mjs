@@ -11,7 +11,7 @@ export function createMacWindowConnection() {
   ready.catch(() => {});
   const fail = () => {
     closed = true;
-    const error = new Error("虚拟 Mac 的窗口连接已关闭，请重新连接。");
+    const error = new Error("Соединение с окном виртуального Mac закрыто. Подключитесь заново.");
     readyReject(error);
     for (const request of pending.values()) request.reject(error);
     pending.clear();
@@ -31,7 +31,7 @@ export function createMacWindowConnection() {
   return {
     async request(action, fields = {}) {
       await ready;
-      if (closed) throw new Error("虚拟 Mac 的窗口连接已关闭，请重新连接。");
+      if (closed) throw new Error("Соединение с окном виртуального Mac закрыто. Подключитесь заново.");
       const id = ++nextID;
       return new Promise((resolve, reject) => {
         pending.set(id, { resolve, reject });

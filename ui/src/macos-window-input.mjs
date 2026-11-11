@@ -10,11 +10,11 @@ export function createMacWindowInput({ element, frame, active, request, onError,
   let keyboard, disposed = false, queued, pending = 0, move, drag, lastClick;
   const keys = new Set(), listeners = [];
   const run = action => {
-    if (disposed) return Promise.reject(new Error("窗口输入连接已关闭"));
-    if (pending >= 128) return Promise.reject(new Error("窗口输入等待过多，请重新连接"));
+    if (disposed) return Promise.reject(new Error("Соединение ввода окна закрыто"));
+    if (pending >= 128) return Promise.reject(new Error("Слишком много ожидающих событий ввода окна. Подключитесь заново."));
     pending++;
     const result = (queued || Promise.resolve()).then(async () => {
-      if (disposed) throw new Error("窗口输入连接已关闭");
+      if (disposed) throw new Error("Соединение ввода окна закрыто");
       try { return await action(); }
       catch (error) {
         keys.clear();
@@ -32,7 +32,7 @@ export function createMacWindowInput({ element, frame, active, request, onError,
   };
   const valid = target => !disposed && active() && identity(target) === identity(frame());
   const send = (action, fields, target = frame()) => run(() => {
-    if (!target || !valid(target)) throw new Error("输入窗口已变化，请重新操作");
+    if (!target || !valid(target)) throw new Error("Окно ввода изменилось. Повторите действие");
     return request(action, { ...target, ...fields });
   });
   const report = promise => { void promise.catch(error => { if (!disposed) onError(error.message); }); };
@@ -49,7 +49,7 @@ export function createMacWindowInput({ element, frame, active, request, onError,
   };
   const focus = () => keyboard?.focus({ preventScroll: true });
   const key = (symbol, code, down, target) => {
-    if (!target || !valid(target)) throw new Error("输入窗口已变化，请重新操作");
+    if (!target || !valid(target)) throw new Error("Окно ввода изменилось. Повторите действие");
     if (down) keys.add(code); else keys.delete(code);
     const character = symbol >= 0x01000000 ? symbol & 0x00ffffff : symbol;
     const name = character >= 32 && character < 0xff00 ? String.fromCodePoint(character) : code;
@@ -80,7 +80,7 @@ export function createMacWindowInput({ element, frame, active, request, onError,
     move = entry;
     report(run(() => {
       if (move === entry) move = undefined;
-      if (!valid(target)) throw new Error("输入窗口已变化，请重新操作");
+      if (!valid(target)) throw new Error("Окно ввода изменилось. Повторите действие");
       return request("pointer", { ...target, ...entry.fields });
     }));
   });
