@@ -30,6 +30,14 @@ test("HTTP failures name the operation and avoid upstream HTML or opaque runtime
     httpErrorMessage("/input/files", 409, specific, "text/plain; charset=utf-8"),
     specific,
   );
+  for (const sensitive of [
+    "Не удалось открыть C:\\Users\\Иван\\private-secret",
+    "Ошибка авторизации: token=private-secret",
+  ]) {
+    const message = httpErrorMessage("/input/files", 409, sensitive, "text/plain; charset=utf-8");
+    assert.ok(!message.includes("private-secret"));
+    assert.ok(!message.includes("Иван"));
+  }
   assert.doesNotMatch(
     httpErrorMessage(
       "/input/files",
@@ -70,4 +78,12 @@ test("native errors retain precise rules and explain opaque failures in context"
     nativeFailureMessage("uploadHostFiles", "请选择本机项目中的文件"),
     /\p{Script=Han}/u,
   );
+  for (const sensitive of [
+    "Не удалось открыть C:\\Users\\Иван\\private-secret",
+    "Ошибка авторизации: token=private-secret",
+  ]) {
+    const message = nativeFailureMessage("uploadHostFiles", sensitive);
+    assert.ok(!message.includes("private-secret"));
+    assert.ok(!message.includes("Иван"));
+  }
 });

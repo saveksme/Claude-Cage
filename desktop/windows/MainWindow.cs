@@ -245,7 +245,6 @@ internal sealed class MainWindow : Form
                             lang: (document.documentElement?.lang || '').trim().toLowerCase(),
                             cyrillic: /\p{Script=Cyrillic}/u.test(text),
                             han: /\p{Script=Han}/u.test(text),
-                            text: text.slice(0, 4096),
                             errors: window.__cageSmokeErrors || [],
                           };
                         })()

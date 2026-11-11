@@ -44,7 +44,7 @@ const statusLabels = {
   pending: "Ожидание входа", ready: "Вход выполнен", signed_out: "Требуется вход",
   duplicate: "Аккаунт уже в списке", changed: "Личность входа изменилась",
 };
-const localTimestamp = new Intl.DateTimeFormat(undefined, {
+const localTimestamp = new Intl.DateTimeFormat("ru-RU", {
   month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit",
 });
 const timeLabel = (seconds) => localTimestamp.format(seconds * 1000);

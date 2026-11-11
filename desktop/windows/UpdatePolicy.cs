@@ -14,7 +14,7 @@ internal static partial class UpdatePolicy
     {
         if (!Uri.TryCreate(raw, UriKind.Absolute, out var url) ||
             !IsWorkbench(raw, url.Port) || url.Port <= 0 || url.Fragment.Length < 2)
-            throw new InvalidDataException("Фон вернул недопустимый адрес рабочей среды");
+            throw new InvalidDataException("Служба Cage вернула недопустимый адрес рабочей среды");
         return url;
     }
 

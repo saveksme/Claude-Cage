@@ -19,6 +19,7 @@ const (
 	GateChecking      = "checking"
 	GateOpen          = "open"
 	GateLease         = 90 * time.Second
+	GateReasonExpired = "Срок действия проверки или мониторинга истёк"
 	DiagnosticHost    = "198.18.0.254"
 	DiagnosticAddress = "198.18.0.254:80"
 )
@@ -148,7 +149,7 @@ func (g *EgressGate) Status() GateStatus {
 		!g.raw.Allows("tcp", netip.MustParseAddrPort("127.0.0.1:17777"))
 	if s.Mode != GateClosed && !time.Now().Before(s.Until) {
 		s.Mode = GateClosed
-		s.Reason = "Срок действия проверки или мониторинга истёк"
+		s.Reason = GateReasonExpired
 	}
 	s.Connections = len(g.connections)
 	if s.Report != nil {
@@ -179,7 +180,7 @@ func (g *EgressGate) armUntilLocked(until time.Time) {
 			g.mu.Unlock()
 			return
 		}
-		connections := g.transitionLocked(GateClosed, false, "Срок действия проверки или мониторинга истёк")
+		connections := g.transitionLocked(GateClosed, false, GateReasonExpired)
 		g.mu.Unlock()
 		closeGateConnections(connections)
 	})

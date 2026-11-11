@@ -44,7 +44,7 @@ func TestExitProbeTimeoutKeepsExistingLeaseWithoutRenewing(t *testing.T) {
 		t.Fatalf("successful observation did not renew and clear the retry notice: before=%+v after=%+v monitorError=%q", before, gate.Status(), s.safety.monitorError)
 	}
 	s.safety.VerifiedAt = time.Now().Add(-time.Minute)
-	gate.Close("Срок авторизации проверки или мониторинга истёк")
+	gate.Close(cage.GateReasonExpired)
 	s.monitorSafetyWithProbe(func(context.Context, cage.Config) (string, error) {
 		t.Fatal("expired gate must not probe or reopen")
 		return "", nil

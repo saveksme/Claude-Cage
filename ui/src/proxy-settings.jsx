@@ -37,7 +37,7 @@ function usageLabel(raw) {
   return [
     values.total ? `${bytes(used)} / ${bytes(values.total)}` : "",
     Number(values.expire) > 0
-      ? `До ${new Date(Number(values.expire) * 1000).toLocaleDateString()}`
+      ? `До ${new Date(Number(values.expire) * 1000).toLocaleDateString("ru-RU")}`
       : "",
   ]
     .filter(Boolean)
@@ -780,7 +780,7 @@ export function ProxySettings({ status, onApplied, onConfirm, onDirty, initializ
                     : "ручное обновление"}
                 </small>
                 <small>
-                  Обновлено {new Date(s.updated_at).toLocaleString()}
+                  Обновлено {new Date(s.updated_at).toLocaleString("ru-RU")}
                   {usageLabel(s.usage) && ` · ${usageLabel(s.usage)}`}
                 </small>
                 {s.error && (

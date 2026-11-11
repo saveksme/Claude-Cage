@@ -1,3 +1,11 @@
+function safeLocalizedMessage(message) {
+  return message.length > 0 && message.length <= 2000 &&
+    /\p{Script=Cyrillic}/u.test(message) &&
+    !/\p{Script=Han}/u.test(message) &&
+    !/[/\\\0]/.test(message) &&
+    !/(?:token|secret|password|passwd|authorization|bearer\s|api[_-]key|private[_-]key|credential)/i.test(message);
+}
+
 export function operationName(path = "", method = "GET") {
   const reading = method === "GET";
   if (path.startsWith("/api/mobile/cli"))
@@ -42,9 +50,7 @@ export function httpErrorMessage(path, status, text = "", contentType = "", meth
   const message = text.trim();
   if (
     contentType.startsWith("text/plain") &&
-    message.length <= 2000 &&
-    /\p{Script=Cyrillic}/u.test(message) &&
-    !/\p{Script=Han}/u.test(message) &&
+    safeLocalizedMessage(message) &&
     !/<(?:html|body|script|!doctype)\b/i.test(message)
   )
     return message;
@@ -79,7 +85,7 @@ export function nativeFailureMessage(action, message = "") {
     "Истекло время ожидания нативной операции, повторите попытку",
     "Операция не удалась",
   ]);
-  if (/\p{Script=Cyrillic}/u.test(message) && !generic.has(message.trim()))
+  if (safeLocalizedMessage(message) && !generic.has(message.trim()))
     return message;
   const names = {
     chooseFolder: "выбор папки на этом компьютере",

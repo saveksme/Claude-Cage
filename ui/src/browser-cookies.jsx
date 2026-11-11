@@ -73,7 +73,7 @@ export function BrowserCookies({ tab, onClose }) {
               title={cookie.partitionKeyOpaque ? "Cookie этого раздела можно удалить только очисткой всех сайтов" : "Удалить этот Cookie"}
               onClick={() => run("delete", cookie.key)}><Trash2 size={14} /></button></div>
           <div className="cookie-metadata">{cookie.domain} · Путь {cookie.path} · {cookie.size} B</div>
-          <div className="cookie-metadata">{cookie.session ? "Истекает при завершении сеанса" : `Истекает: ${new Date(cookie.expires * 1000).toLocaleString()}`}
+          <div className="cookie-metadata">{cookie.session ? "Истекает при завершении сеанса" : `Истекает: ${new Date(cookie.expires * 1000).toLocaleString("ru-RU")}`}
             {cookie.secure && " · Secure"}{cookie.httpOnly && " · HttpOnly"}{cookie.sameSite && ` · SameSite=${cookie.sameSite}`}
             {(cookie.partitionKey || cookie.partitionKeyOpaque) && ` · Раздел: ${cookie.partitionKey?.topLevelSite || "непрозрачный"}`}</div>
           {value?.key === cookie.key && <pre className="cookie-value">{value.value || "(пустое значение)"}</pre>}

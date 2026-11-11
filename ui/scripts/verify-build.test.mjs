@@ -40,5 +40,12 @@ test("build verification rejects Chinese interface text", async () => {
     await writeFile(join(directory, "assets/main.js"), 'export const label = "Настройки";');
     await writeFile(join(directory, "index.html"), html.replace('lang="ru"', 'lang="zh-CN"'));
     await assert.rejects(verifyBuild(directory), /Russian document language/);
+    await writeFile(join(directory, "index.html"), html);
+    assert.equal(await verifyBuild(directory), 3);
+    await writeFile(join(directory, "index.html"), html + "<p>设置</p>");
+    await assert.rejects(verifyBuild(directory), /Chinese UI text/);
+    await writeFile(join(directory, "index.html"), html);
+    await writeFile(join(directory, "assets/main.css"), 'body::before { content: "设置"; }');
+    await assert.rejects(verifyBuild(directory), /Chinese UI text/);
   } finally { await rm(directory, { recursive: true, force: true }); }
 });

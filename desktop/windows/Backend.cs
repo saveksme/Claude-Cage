@@ -33,7 +33,7 @@ internal static class Backend
                     _ = process.SafeHandle;
                     if (process.HasExited) { process.Dispose(); continue; }
                     if (!string.Equals(Path.GetFullPath(process.MainModule!.FileName), Path.GetFullPath(Executable), StringComparison.OrdinalIgnoreCase))
-                        throw new IOException("Личность фонового процесса самопроверки не совпадает с текущим приложением; ожидание других программ не выполнялось");
+                        throw new IOException("Исполняемый файл фонового процесса самопроверки не совпадает с текущим приложением; ожидание других программ не выполнялось");
                     processes.Add(process);
                 }
                 catch { process.Dispose(); throw; }
@@ -66,7 +66,7 @@ internal static class Backend
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
         timeout.CancelAfter(deadline ?? TimeSpan.FromMinutes(3));
         using var process = new Process { StartInfo = StartInfo(executable, arguments) };
-        if (!process.Start()) throw new IOException("Не удалось запустить фон Cage");
+        if (!process.Start()) throw new IOException("Не удалось запустить службу Cage");
         using var abort = timeout.Token.Register(() => { try { if (!process.HasExited) process.Kill(); } catch (InvalidOperationException) { } });
         try
         {
@@ -74,7 +74,7 @@ internal static class Backend
             var text = await ReadLimited(process.StandardOutput, outputLimit, timeout.Token);
             await process.WaitForExitAsync(timeout.Token); await errors;
             try { return (process.ExitCode, JsonDocument.Parse(text).RootElement.Clone()); }
-            catch (JsonException) { throw new IOException("Фон Cage не вернул допустимое состояние; проверьте журнал рабочей среды"); }
+            catch (JsonException) { throw new IOException("Служба Cage не вернула допустимое состояние; проверьте журнал рабочей среды"); }
         }
         finally
         {
@@ -88,7 +88,7 @@ internal static class Backend
         while ((count = await reader.ReadAsync(buffer.AsMemory(), token)) > 0)
         {
             text.Append(buffer, 0, count);
-            if (text.Length > limit) throw new IOException("Ответ фона превышает допустимый размер");
+            if (text.Length > limit) throw new IOException("Ответ службы Cage превышает допустимый размер");
         }
         return text.ToString();
     }

@@ -28,7 +28,7 @@ func (e *failure) Error() string { return e.message }
 func (e *failure) Unwrap() error { return e.cause }
 
 func New(action, reason, next string, cause error) error {
-	return &failure{message: action + " не выполнено: " + strings.TrimRight(reason, "。；;.") + ". " + next, cause: cause}
+	return &failure{message: action + ": " + strings.TrimRight(reason, "。；;.") + ". " + next, cause: cause}
 }
 
 func Wrap(action string, cause error, next string) error {
@@ -42,19 +42,36 @@ func Wrap(action string, cause error, next string) error {
 	return New(action, reason, next, cause)
 }
 
+func safeLocalizedMessage(message string) bool {
+	if message == "" || len(message) > 4096 || strings.ContainsAny(message, "/\\\x00") {
+		return false
+	}
+	lower := strings.ToLower(message)
+	for _, marker := range []string{"token", "secret", "password", "passwd", "authorization", "bearer ", "api_key", "api-key", "private_key", "private-key", "credential"} {
+		if strings.Contains(lower, marker) {
+			return false
+		}
+	}
+	return strings.IndexFunc(message, func(r rune) bool {
+		return unicode.Is(unicode.Han, r) || unicode.Is(unicode.Cyrillic, r)
+	}) >= 0
+}
+
 // Existing localized validation messages describe product rules and must survive
 // unchanged. Unknown system exceptions receive an operation and a next step.
 func Display(action string, cause error, next string) error {
 	if cause == nil {
 		return nil
 	}
+	var known *failure
+	if errors.As(cause, &known) {
+		return cause
+	}
 	switch cause.(type) {
 	case *fs.PathError, *os.SyscallError, syscall.Errno, *exec.ExitError, net.Error:
 		return Wrap(action, cause, next)
 	}
-	if strings.IndexFunc(cause.Error(), func(r rune) bool {
-		return unicode.Is(unicode.Han, r) || unicode.Is(unicode.Cyrillic, r)
-	}) >= 0 {
+	if safeLocalizedMessage(cause.Error()) {
 		return cause
 	}
 	return Wrap(action, cause, next)

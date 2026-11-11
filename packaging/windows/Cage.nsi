@@ -49,7 +49,7 @@ VIAddVersionKey /LANG=1033 "LegalCopyright" "Cage contributors"
 !define MUI_ABORTWARNING
 !define MUI_FINISHPAGE_RUN "$INSTDIR\Cage.exe"
 !define MUI_FINISHPAGE_RUN_NOTCHECKED
-!define MUI_FINISHPAGE_TEXT "Cage установлен.$\r$\n$\r$\nЕсли виртуализация недоступна, включите платформу Windows Hypervisor в компонентах Windows и перезагрузите систему. Проекты и данные Cage сохраняются при обновлении и удалении."
+!define MUI_FINISHPAGE_TEXT "Cage установлен.$\r$\n$\r$\nЕсли виртуализация недоступна, включите «Платформа гипервизора Windows» в компонентах Windows и перезагрузите систему. Проекты и данные Cage сохраняются при обновлении и удалении."
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_LICENSE "${APP_DIR}/LICENSE.txt"
 !define MUI_DIRECTORYPAGE_TEXT_TOP "$(CageDirectoryHelp)"
@@ -589,7 +589,7 @@ Function un.onInit
   !insertmacro CheckStopped "resources\runtime\qemu\qemu-system-x86_64.exe"
 FunctionEnd
 
-Section "un.Cage"
+Section "Uninstall"
   !insertmacro UninstallPhase "acquiring_installation_lock"
   !insertmacro AcquireInstallationMutex
   !insertmacro UninstallPhase "checking_pending_transaction"

@@ -1102,7 +1102,7 @@ func (s *Server) monitorSafetyWithProbe(probe func(context.Context, cage.Config)
 		// A packet helper can reconnect before the next GUI status tick. Its
 		// gate stays closed until a fresh check, even though the helper never
 		// exited and the new receipt is already available.
-		recheckClosed := state.Reason == "Срок авторизации проверки или мониторинга истёк" || s.windowsGuest != nil && state.Reason == windowsPacketDisconnectedReason
+		recheckClosed := state.Reason == cage.GateReasonExpired || s.windowsGuest != nil && state.Reason == windowsPacketDisconnectedReason
 		if state.Mode == cage.GateClosed && recheckClosed && state.Report != nil {
 			s.mu.Lock()
 			pending := s.recovery.RunID != ""

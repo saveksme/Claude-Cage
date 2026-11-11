@@ -10,7 +10,7 @@ internal static class UpdateRecovery
     {
         var (exit, result) = await Backend.JsonAt(BackendPath(backup), ["prepare-update", "--json", "--stop"], cancellation);
         if (exit != 0 || result.Text("status") != "prepared")
-            throw new IOException("Старый фон не смог подтвердить остановку среды; резервная копия исходного приложения сохранена");
+            throw new IOException("Прежняя служба Cage не смогла подтвердить остановку среды; резервная копия исходного приложения сохранена");
     }
 
     public static void CleanupDirectory(string? path)

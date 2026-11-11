@@ -177,6 +177,9 @@ func TestGateRevokesEstablishedTunnelAndLease(t *testing.T) {
 	if g.Status().Mode != GateClosed {
 		t.Fatal("expired gate stayed open")
 	}
+	if reason := g.Status().Reason; reason != GateReasonExpired {
+		t.Fatalf("expired gate returned %q instead of the shared recovery reason", reason)
+	}
 }
 
 func TestGateCancelsStalledProxyHandshake(t *testing.T) {

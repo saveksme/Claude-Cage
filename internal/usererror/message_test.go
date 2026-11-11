@@ -41,3 +41,24 @@ func TestKnownFailureIsReadableAndPreservesCause(t *testing.T) {
 		t.Fatalf("localized system error bypassed safe explanation: %s", message)
 	}
 }
+
+func TestDisplayDoesNotTrustSensitiveThirdPartyMessages(t *testing.T) {
+	for _, text := range []string{
+		"Не удалось открыть C:\\Users\\Иван\\private-secret: отказано",
+		"Не удалось прочитать /home/ivan/private-secret",
+		"Ошибка авторизации: token=private-secret",
+		"Подробности https://user:private-secret@example.com/token",
+	} {
+		message := Display("Чтение файла", errors.New(text), "Повторите попытку.").Error()
+		if strings.Contains(message, "private-secret") || strings.Contains(message, "Иван") || strings.Contains(message, "/home/") {
+			t.Fatalf("untyped Russian error leaked private data: %s", message)
+		}
+	}
+}
+
+func TestFailureUsesNeutralRussianActionFraming(t *testing.T) {
+	message := Wrap("Запрос внешнего IP", context.DeadlineExceeded, "Повторите проверку.").Error()
+	if !strings.HasPrefix(message, "Запрос внешнего IP: ") || strings.Contains(message, "не выполнено") {
+		t.Fatalf("unnatural action framing: %s", message)
+	}
+}

@@ -20,8 +20,8 @@ export async function verifyBuild(directory = defaultDirectory) {
           const parsed = spawnSync(process.execPath, ["--check", "--input-type=module"], { input: bytes, encoding: "utf8" });
           if (parsed.error) throw parsed.error;
           if (parsed.status !== 0) throw new Error(`Invalid JavaScript build resource: ${name}\n${parsed.stderr}`);
-          if (/\p{Script=Han}/u.test(bytes.toString("utf8"))) throw new Error(`Chinese UI text in build resource: ${name}`);
         }
+        if (/\p{Script=Han}/u.test(bytes.toString("utf8"))) throw new Error(`Chinese UI text in build resource: ${name}`);
       }
       files[name] = createHash("sha256").update(bytes).digest("hex");
     }
