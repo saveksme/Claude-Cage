@@ -21,6 +21,7 @@ import (
 	"github.com/sylvinus/agent-vm/internal/host"
 	"github.com/sylvinus/agent-vm/internal/hostimage"
 	"github.com/sylvinus/agent-vm/internal/managedproxy"
+	"github.com/sylvinus/agent-vm/internal/usererror"
 )
 
 var loadConfig = cage.Load
@@ -302,7 +303,7 @@ func (s *Server) runCage(args ...string) error {
 		// "Failed to start base VM" footer. Surface that reason in job.error.
 		for _, line := range strings.Split(s.jobs.snapshot().Log, "\n") {
 			if _, reason, ok := strings.Cut(line, "Error: QEMU 启动失败："); ok {
-				return fmt.Errorf("Не удалось выполнить «%s»: виртуальная машина не запустилась. QEMU не запустился: %s. Посмотрите подробности операции; если запуск по-прежнему невозможен, экспортируйте диагностический пакет в настройках.", action, reason)
+				return usererror.New(action, "Виртуальная машина не запустилась. QEMU не запустился: "+diagnostics.Redact(reason), "Посмотрите подробности операции; если запуск по-прежнему невозможен, экспортируйте диагностический пакет в настройках.", err)
 			}
 		}
 		diagnostics.Log("error", "environment-operation", fmt.Sprintf("operation=%s error=%v context=%v", args[0], err, ctx.Err()))
