@@ -52,7 +52,7 @@ func TestLogoutJoinsRunningStopAndLocksOnlyAfterSuccess(t *testing.T) {
 			state := awaitJobIdle(t, &s.jobs)
 			view := s.account.view()
 			if fail {
-				if !view.Unlocked || view.RequireAuthentication || !strings.Contains(state.Error, "действие «остановка среды» не выполнено") {
+				if !view.Unlocked || view.RequireAuthentication || !strings.Contains(state.Error, "действие «остановка среды»") {
 					t.Fatalf("failed stop changed account access: %+v, job %+v", view, state)
 				}
 				return

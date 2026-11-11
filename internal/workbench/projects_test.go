@@ -203,7 +203,7 @@ func TestRestoreProjectSharesReportsTheFailedDirectoryAndReason(t *testing.T) {
 	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &status) != nil {
 		t.Fatalf("cannot read project status: %s", w.Body.String())
 	}
-	if status.ProjectError == "" || len(status.ProjectErrors) != 1 || status.ProjectErrors[0].Path != blocked || !strings.Contains(status.ProjectErrors[0].Message, "正在运行的工作台程序") {
+	if status.ProjectError == "" || len(status.ProjectErrors) != 1 || status.ProjectErrors[0].Path != blocked || !strings.Contains(status.ProjectErrors[0].Message, "работает программа рабочей среды") {
 		t.Fatalf("failure did not identify the blocked project and executable protection: %+v", status)
 	}
 	if s.projectShares[connected] == nil {

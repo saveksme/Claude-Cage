@@ -12,10 +12,10 @@ import (
 func TestFailedNetworkRecoveryShowsLatestCheckReason(t *testing.T) {
 	s, _ := failedMonitoringServer(t)
 	err := s.runNetworkRecovery(s.recovery, func() error {
-		return errors.New("出口采样不完整：浏览器没有收到检测结果")
+		return errors.New("Проверка браузера не вернула полный результат; обновите или перезапустите среду")
 	})
 	message := s.currentNetworkErrorLocked()
-	if err == nil || !strings.Contains(message, "浏览器没有收到检测结果") || !strings.Contains(message, "повторится через") || strings.Contains(message, "guest observation timed out") {
+	if err == nil || !strings.Contains(message, "Проверка браузера не вернула полный результат") || !strings.Contains(message, "повторится через") || strings.Contains(message, "guest observation timed out") {
 		t.Fatalf("latest failure or next retry was hidden: %s error=%v", message, err)
 	}
 }

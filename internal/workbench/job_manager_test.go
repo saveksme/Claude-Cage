@@ -298,13 +298,13 @@ func TestJobManagerPreservesProjectRecovery(t *testing.T) {
 	var operation sync.Mutex
 	defer manager.close()
 	_, err := manager.submit(&operation, "safety", 0, nil, nil, func() error {
-		return fmt.Errorf("network prerequisite: %w", &projectShareError{Path: "/shared/workspace", Recovery: "project-approval", Message: "请允许工作区访问"})
+		return fmt.Errorf("network prerequisite: %w", &projectShareError{Path: "/shared/workspace", Recovery: "project-approval", Message: "Разрешите этот проект в окне авторизации гостевой системы, которое показывает Cage, затем проверьте авторизацию."})
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	job := awaitJobIdle(t, &manager)
-	if job.Recovery != "project-approval" || job.Workspace != "/shared/workspace" || !strings.Contains(job.Error, "请允许工作区访问") {
+	if job.Recovery != "project-approval" || job.Workspace != "/shared/workspace" || !strings.Contains(job.Error, "Разрешите этот проект в окне авторизации гостевой системы") {
 		t.Fatalf("lost actionable failure: %+v", job)
 	}
 	_, err = manager.submit(&operation, "safety", 0, nil, nil, func() error { return nil })

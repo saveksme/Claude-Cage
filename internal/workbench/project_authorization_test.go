@@ -34,10 +34,13 @@ func TestProjectAuthorizationProtectsCredentialsAcrossGuests(t *testing.T) {
 			if system == "windows" {
 				s.windowsGuest = &guestos.WindowsProfile{}
 			}
-			for _, directory := range []string{credentials, siblingState} {
+			for directory, want := range map[string]string{
+				credentials:  "Этот каталог содержит учётные данные",
+				siblingState: "Конфигурацию Cage, хранилище среды и резервные копии нельзя открывать в общий доступ",
+			} {
 				body, _ := json.Marshal(map[string]any{"workspace": directory, "add": true})
 				response := windowsBrowserRequestForTest(s, http.MethodPost, "/api/projects/open", body)
-				if response.Code != http.StatusBadRequest || !strings.Contains(response.Body.String(), "共享") {
+				if response.Code != http.StatusBadRequest || !strings.Contains(response.Body.String(), want) {
 					t.Fatalf("credential project admission: status=%d body=%s", response.Code, response.Body.String())
 				}
 				paths, err := s.projectPaths()
@@ -74,7 +77,7 @@ func TestProjectRestoreRevalidatesExistingCredentialGrant(t *testing.T) {
 	if len(s.projectShares) != 0 || len(s.projectErrors) != 1 || s.projectErrors[0].Path != credentials {
 		t.Fatalf("old credential grant was not rejected on restore: %+v", s.projectErrors)
 	}
-	if !strings.Contains(s.projectErrors[0].Message, "凭据") {
+	if !strings.Contains(s.projectErrors[0].Message, "учётные данные") {
 		t.Fatalf("restore did not report the authorization failure: %+v", s.projectErrors)
 	}
 }

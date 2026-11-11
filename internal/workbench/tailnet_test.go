@@ -54,7 +54,7 @@ func TestTailnetGuestContract(t *testing.T) {
 			t.Error("invalid input")
 		}
 		if input["action"] == "add-key" {
-			_ = json.NewEncoder(w).Encode(map[string]string{"tailnet_error": "请粘贴一条有效的 SSH 公钥"})
+			_ = json.NewEncoder(w).Encode(map[string]string{"tailnet_error": "Вставьте действительный открытый ключ SSH"})
 			return
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{"installed": true, "backend": "NeedsLogin", "auth_url": "https://login.tailscale.com/a/test"})
@@ -64,7 +64,7 @@ func TestTailnetGuestContract(t *testing.T) {
 	if w := request(s, "POST", "/api/tailscale/connect", s.origin, "{}", true); w.Code != 200 || !strings.Contains(w.Body.String(), "login.tailscale.com") {
 		t.Fatalf("connect: %d %s", w.Code, w.Body.String())
 	}
-	if w := request(s, "POST", "/api/tailscale/add-key", s.origin, `{"key":"invalid"}`, true); w.Code != 502 || !strings.Contains(w.Body.String(), "有效的 SSH 公钥") {
+	if w := request(s, "POST", "/api/tailscale/add-key", s.origin, `{"key":"invalid"}`, true); w.Code != 502 || !strings.Contains(w.Body.String(), "действительный открытый ключ SSH") {
 		t.Fatalf("key error: %d %s", w.Code, w.Body.String())
 	}
 }

@@ -83,7 +83,7 @@ func TestExitProbeTimeoutKeepsLiveTunnelUntilManualPause(t *testing.T) {
 		t.Fatalf("sampling timeout changed permission: before=%+v after=%+v", before, after)
 	}
 	echo("after timeout")
-	if !strings.Contains(s.currentNetworkErrorLocked(), "超时") {
+	if !strings.Contains(s.currentNetworkErrorLocked(), "Проверка выхода временно истекла по времени") {
 		t.Fatal("sampling timeout was not visible")
 	}
 	if err := s.pauseNetworkNow("手动暂停"); err != nil {

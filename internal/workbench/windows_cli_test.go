@@ -145,7 +145,7 @@ func TestWindowsCLIProcessFailureExplainsStageWithoutLeakingStderr(t *testing.T)
 		t.Run(test.stage, func(t *testing.T) {
 			t.Setenv("CAGE_WINDOWS_CLI_RELAY_PROCESS_FAILURE", test.stage)
 			err := s.windowsCLIRequest(context.Background(), map[string]any{"action": "channel", "mode": "discover"}, new(any))
-			if err == nil || !strings.Contains(err.Error(), test.message) || strings.Contains(err.Error(), "private-token") || strings.Contains(err.Error(), "官方账号") {
+			if err == nil || !strings.Contains(err.Error(), test.message) || strings.Contains(err.Error(), "private-token") || strings.Contains(err.Error(), "официальный аккаунт") {
 				t.Fatalf("relay failure was misclassified or exposed stderr: %v", err)
 			}
 		})

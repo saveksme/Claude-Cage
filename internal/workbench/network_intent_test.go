@@ -116,7 +116,7 @@ func TestPauseAndResumeStorageFailuresKeepGateClosed(t *testing.T) {
 				response = httptest.NewRecorder()
 				s.launch(response, "start", func() error { t.Error("resume ran without durable intent"); return nil })
 			}
-			if response.Code != 400 || !strings.Contains(response.Body.String(), "无法保存") {
+			if response.Code != 400 || !strings.Contains(response.Body.String(), "Не удалось сохранить состояние приостановки сети") {
 				t.Fatalf("storage failure not reported: %d %s", response.Code, response.Body.String())
 			}
 			if !s.networkPaused || gate.Status().Mode != cage.GateClosed {
