@@ -9,7 +9,7 @@ export function SafetyMessage({ message }) {
   return <>
     <span className="safety-message-text">{message}</span>
     <button type="button" className="text-button safety-checklist-link" onClick={openChecklist}>
-      查看检查清单
+      Открыть список проверок
     </button>
   </>;
 }

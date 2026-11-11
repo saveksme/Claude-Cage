@@ -4,12 +4,12 @@ import { api, writeClipboard } from "./api";
 import { Modal } from "./modal";
 import "./tailscale.css";
 
-const labels = { Running: "已连接", NeedsLogin: "等待登录", NeedsMachineAuth: "等待管理员批准", Starting: "正在连接", Stopped: "已断开", NotInstalled: "尚未安装" };
+const labels = { Running: "Подключено", NeedsLogin: "Ожидание входа", NeedsMachineAuth: "Ожидание одобрения администратора", Starting: "Подключение", Stopped: "Отключено", NotInstalled: "Не установлен" };
 const descriptions = {
-  Stopped: "登录 Tailscale，让 Cage 加入你的私网。其他设备加入同一网络后，会显示在这里。",
-  NeedsLogin: "在打开的 Tailscale 官方页面完成登录并授权此设备，然后返回这里。",
-  NeedsMachineAuth: "登录已完成。请让此网络的管理员在 Tailscale 管理台批准 Cage 设备。",
-  Starting: "正在连接 Tailscale，设备清单会在连接成功后自动更新。",
+  Stopped: "Войдите в Tailscale, чтобы добавить Cage в вашу частную сеть. Другие устройства, подключённые к той же сети, появятся здесь.",
+  NeedsLogin: "Завершите вход и авторизуйте это устройство на официальной странице Tailscale, затем вернитесь сюда.",
+  NeedsMachineAuth: "Вход выполнен. Попросите администратора этой сети одобрить устройство Cage в консоли управления Tailscale.",
+  Starting: "Подключение к Tailscale; список устройств обновится после успешного подключения.",
 };
 const deviceName = peer => peer.hostname || peer.name?.split(".")[0] || peer.ip;
 function DeviceIcon({ os }) { return ["android", "iOS"].includes(os) ? <Smartphone size={20} /> : <Monitor size={20} />; }
@@ -27,8 +27,8 @@ export function TailscalePanel({ status, onClose, onOpenBrowser, onInstall, onCo
   const visible = peers.filter(peer => [deviceName(peer), peer.name, peer.ip, peer.os].some(value => value?.toLowerCase().includes(query.trim().toLowerCase())));
   const openLogin = async url => {
     loginRequested.current = false;
-    try { if (await onOpenBrowser(url) === false && mounted.current) setError("登录页面未能打开，请点击“打开登录页面”重试。"); }
-    catch { if (mounted.current) setError("登录页面未能打开，请点击“打开登录页面”重试。"); }
+    try { if (await onOpenBrowser(url) === false && mounted.current) setError("Не удалось открыть страницу входа. Нажмите «Открыть страницу входа» и повторите попытку."); }
+    catch { if (mounted.current) setError("Не удалось открыть страницу входа. Нажмите «Открыть страницу входа» и повторите попытку."); }
   };
   const refresh = async () => {
     if (inflight.current || !ready) return;
@@ -68,12 +68,12 @@ export function TailscalePanel({ status, onClose, onOpenBrowser, onInstall, onCo
     if (result?.auth_url) await openLogin(result.auth_url);
     else if (!result || result.backend === "Running") loginRequested.current = false;
   };
-  const copy = async (text, message = "已复制") => {
+  const copy = async (text, message = "Скопировано") => {
     try { await writeClipboard(text); setNotice(message); }
-    catch { setNotice("复制失败，请选中文本手动复制。"); }
+    catch { setNotice("Не удалось скопировать. Выделите текст и скопируйте вручную."); }
   };
   const stop = async logout => {
-    if (!await onConfirm({ title: logout ? "退出 Tailscale 登录？" : "断开 Tailscale？", body: logout ? "私网连接会中断，下次连接需要重新登录。已添加的 SSH 公钥保留。" : "正在使用的私网连接会中断，登录状态和 SSH 公钥保留。", confirm: logout ? "退出登录" : "断开连接" })) return;
+    if (!await onConfirm({ title: logout ? "Выйти из Tailscale?" : "Отключить Tailscale?", body: logout ? "Подключение к частной сети прервётся; для следующего подключения потребуется снова войти. Добавленные открытые ключи SSH сохранятся." : "Используемые подключения к частной сети прервутся; состояние входа и открытые ключи SSH сохранятся.", confirm: logout ? "Выйти" : "Отключить" })) return;
     loginRequested.current = false;
     if (await act(logout ? "logout" : "disconnect")) { setSelected(""); setSSHOpen(false); }
   };
@@ -82,75 +82,75 @@ export function TailscalePanel({ status, onClose, onOpenBrowser, onInstall, onCo
       <div className={`tailscale-overview${connected ? " connected" : ""}`}>
         <div className="tailscale-state" role="status">
           <div className="tailscale-network-icon"><Network size={24} /></div>
-          <div><strong>{!ready ? "等待 Cage 环境就绪" : labels[state?.backend] || (state ? "连接状态待确认" : "正在读取状态…")}</strong>
-            <span>{connected ? (state.tailnet || "Tailscale 私网") : "你的设备，连接在一起"}</span>
+          <div><strong>{!ready ? "Ожидание готовности среды Cage" : labels[state?.backend] || (state ? "Состояние подключения не подтверждено" : "Чтение состояния…")}</strong>
+            <span>{connected ? (state.tailnet || "Частная сеть Tailscale") : "Ваши устройства в одной сети"}</span>
           </div>
-          <button className="icon-button" aria-label="刷新 Tailscale 状态" disabled={!ready || busy} onClick={refresh}><RefreshCw size={16} /></button>
+          <button className="icon-button" aria-label="Обновить состояние Tailscale" disabled={!ready || busy} onClick={refresh}><RefreshCw size={16} /></button>
         </div>
-        <p className="field-help">{!ready ? "启动 Cage 环境后，即可登录并连接私网。" : connected ? "Cage 已加入私网。选择设备，查看地址并使用它的服务。" : descriptions[state?.backend] || "正在读取当前环境的 Tailscale 状态。"}</p>
-        {state?.account && connected && <p className="tailscale-account">登录账号 · {state.account}</p>}
+        <p className="field-help">{!ready ? "После запуска среды Cage можно войти и подключиться к частной сети." : connected ? "Cage подключён к частной сети. Выберите устройство, чтобы увидеть адрес и использовать его службы." : descriptions[state?.backend] || "Чтение состояния Tailscale текущей среды."}</p>
+        {state?.account && connected && <p className="tailscale-account">Аккаунт · {state.account}</p>}
         {ready && state && <div className="tailscale-actions">
           {!state.installed ? <button className="primary-button" disabled={busy} onClick={async () => {
             setBusy(true); setError("");
             try { await onInstall(); } catch (e) { setError(e.message); }
             finally { if (mounted.current) setBusy(false); }
-          }}>{["macos", "windows-11"].includes(status.guest_system) ? "更新环境组件以安装" : "安装 Tailscale"}</button> : <>
-            {!connected && !["NeedsMachineAuth", "Starting"].includes(state.backend) && <button className="primary-button" disabled={busy} onClick={login}>{busy ? <LoaderCircle size={15} className="spin" /> : <ExternalLink size={15} />}{state.enabled ? "重新发起登录" : "连接并登录"}</button>}
-            {state.auth_url && !connected && <button className="quiet-button" disabled={busy} onClick={() => openLogin(state.auth_url)}>打开登录页面</button>}
-            {state.enabled && <button className="quiet-button" disabled={busy} onClick={() => stop(false)}>断开连接</button>}
-            {connected && <button className="quiet-button" disabled={busy} onClick={() => stop(true)}>退出登录</button>}
+          }}>{["macos", "windows-11"].includes(status.guest_system) ? "Обновите компоненты среды, чтобы установить" : "Установить Tailscale"}</button> : <>
+            {!connected && !["NeedsMachineAuth", "Starting"].includes(state.backend) && <button className="primary-button" disabled={busy} onClick={login}>{busy ? <LoaderCircle size={15} className="spin" /> : <ExternalLink size={15} />}{state.enabled ? "Начать вход заново" : "Подключиться и войти"}</button>}
+            {state.auth_url && !connected && <button className="quiet-button" disabled={busy} onClick={() => openLogin(state.auth_url)}>Открыть страницу входа</button>}
+            {state.enabled && <button className="quiet-button" disabled={busy} onClick={() => stop(false)}>Отключить</button>}
+            {connected && <button className="quiet-button" disabled={busy} onClick={() => stop(true)}>Выйти</button>}
           </>}
         </div>}
       </div>
       {error && <p className="error-message" role="alert">{error}</p>}
-      {connected && state.health?.length > 0 && <div className="tailscale-health" role="status"><strong>网络需要留意</strong>{state.health.map((message, i) => <p key={i}>{message}</p>)}</div>}
-      {connected && <section className="tailscale-self" aria-label="当前 Cage 设备">
+      {connected && state.health?.length > 0 && <div className="tailscale-health" role="status"><strong>Сеть требует внимания</strong>{state.health.map((message, i) => <p key={i}>{message}</p>)}</div>}
+      {connected && <section className="tailscale-self" aria-label="Текущее устройство Cage">
         <DeviceIcon os={state.os} />
-        <div><strong>{state.hostname || state.name?.split(".")[0] || "Cage"} <span className="tailscale-badge">当前环境</span></strong><span className="tailscale-address">{address || "正在分配地址…"}{state.os ? ` · ${state.os}` : ""}</span></div>
-        {address && <button className="quiet-button" onClick={() => copy(address, "已复制 Cage 私网地址")}><Copy size={14} />复制地址</button>}
+        <div><strong>{state.hostname || state.name?.split(".")[0] || "Cage"} <span className="tailscale-badge">Текущая среда</span></strong><span className="tailscale-address">{address || "Назначение адреса…"}{state.os ? ` · ${state.os}` : ""}</span></div>
+        {address && <button className="quiet-button" onClick={() => copy(address, "Адрес Cage в частной сети скопирован")}><Copy size={14} />Скопировать адрес</button>}
       </section>}
       <section className="tailscale-section tailscale-devices" aria-labelledby="tailscale-devices-title">
-        <div className="tailscale-section-heading"><h3 id="tailscale-devices-title">网络中的设备{connected && <span>{peers.length}</span>}</h3>{connected && peers.length > 0 && <span className="field-help">{peers.filter(peer => peer.online).length} 台在线</span>}</div>
-        {connected && peers.length > 0 && <label className="tailscale-search"><Search size={16} /><input aria-label="搜索设备" type="search" placeholder="搜索设备名称或地址" value={query} onChange={e => setQuery(e.target.value)} /></label>}
-        {!connected ? <div className="tailscale-empty"><Monitor size={26} /><strong>连接后查看你的设备</strong><p>在浏览器完成登录，设备清单会自动出现。</p></div>
-          : peers.length === 0 ? <div className="tailscale-empty"><Monitor size={26} /><strong>私网已连接，还没有发现其他设备</strong><p>在电脑或手机安装 Tailscale，并加入同一网络。这里只显示此网络允许 Cage 发现的设备。</p></div>
-          : visible.length === 0 ? <p className="tailscale-empty">没有匹配的设备，请尝试其他名称或地址。</p>
+        <div className="tailscale-section-heading"><h3 id="tailscale-devices-title">Устройства в сети{connected && <span>{peers.length}</span>}</h3>{connected && peers.length > 0 && <span className="field-help">{peers.filter(peer => peer.online).length} онлайн</span>}</div>
+        {connected && peers.length > 0 && <label className="tailscale-search"><Search size={16} /><input aria-label="Поиск устройств" type="search" placeholder="Поиск по имени или адресу устройства" value={query} onChange={e => setQuery(e.target.value)} /></label>}
+        {!connected ? <div className="tailscale-empty"><Monitor size={26} /><strong>Устройства появятся после подключения</strong><p>Завершите вход в браузере; список устройств появится автоматически.</p></div>
+          : peers.length === 0 ? <div className="tailscale-empty"><Monitor size={26} /><strong>Частная сеть подключена, но других устройств пока нет</strong><p>Установите Tailscale на компьютер или телефон и подключитесь к той же сети. Здесь показываются только устройства, которые эта сеть разрешает обнаруживать Cage.</p></div>
+          : visible.length === 0 ? <p className="tailscale-empty">Нет подходящих устройств. Попробуйте другое имя или адрес.</p>
           : <div className="tailscale-peers">{visible.map(peer => <article className="tailscale-peer" key={peer.id || peer.ip}>
             <div className="tailscale-peer-row"><DeviceIcon os={peer.os} /><div className="tailscale-peer-info"><strong>{deviceName(peer)}</strong><span>{peer.ip}{peer.os ? ` · ${peer.os}` : ""}</span></div>
-              <span className={`tailscale-presence${peer.online ? " online" : ""}`}><i />{peer.online ? "在线" : "离线"}</span>
-              <button className="icon-button" aria-label={`复制 ${deviceName(peer)} 的地址`} onClick={() => copy(peer.ip, "已复制设备私网地址")}><Copy size={15} /></button>
-              <button className="quiet-button" aria-expanded={selected === peer.ip} aria-controls={`tailnet-device-${peer.ip}`} onClick={() => { setSelected(selected === peer.ip ? "" : peer.ip); setUsername(""); setPort("80"); }}>使用设备<ChevronDown size={14} /></button>
+              <span className={`tailscale-presence${peer.online ? " online" : ""}`}><i />{peer.online ? "в сети" : "не в сети"}</span>
+              <button className="icon-button" aria-label={`Скопировать адрес ${deviceName(peer)}`} onClick={() => copy(peer.ip, "Адрес устройства в частной сети скопирован")}><Copy size={15} /></button>
+              <button className="quiet-button" aria-expanded={selected === peer.ip} aria-controls={`tailnet-device-${peer.ip}`} onClick={() => { setSelected(selected === peer.ip ? "" : peer.ip); setUsername(""); setPort("80"); }}>Использовать устройство<ChevronDown size={14} /></button>
             </div>
             {selected === peer.ip && <div className="tailscale-device-detail" id={`tailnet-device-${peer.ip}`}>
               {peer.name && <p className="field-help tailscale-dns">{peer.name}</p>}
-              {!peer.online && <p className="field-help">设备当前离线，请先在该设备上连接 Tailscale。</p>}
-              <label className="field-label" htmlFor="tailnet-service-port">访问设备上的服务</label>
-              <p className="field-help">填写服务端口，为 Cage 内的浏览器、数据库客户端或其他应用创建本地连接地址。</p>
-              <div className="tailscale-connect-form"><input id="tailnet-service-port" aria-label="服务端口" type="number" min="1" max="65535" inputMode="numeric" value={port} onChange={e => setPort(e.target.value)} /><button className="quiet-button" disabled={busy || !Number.isInteger(Number(port)) || Number(port) < 1 || Number(port) > 65535} onClick={async () => { if (await act("open-service", { host: peer.ip, port: Number(port) })) setNotice("本地连接地址已就绪，请在 Cage 环境内使用。"); }}>创建连接地址</button></div>
-              {(state.forwards || []).filter(entry => entry.host === peer.ip).map(entry => <div className="tailscale-forward" key={`${entry.host}:${entry.port}`}><span><strong>端口 {entry.port}</strong><code>{entry.address}</code></span><button className="icon-button" aria-label={`复制端口 ${entry.port} 的连接地址`} onClick={() => copy(entry.address, "已复制 Cage 内可用的连接地址")}><Copy size={14} /></button><button className="quiet-button" onClick={async () => { try { if (await onOpenBrowser(`http://${entry.address}`) === false) setError("服务页面未能打开，请重试。"); } catch { setError("服务页面未能打开，请重试。"); } }}>打开 HTTP 页面</button></div>)}
-              <label className="field-label" htmlFor="tailnet-ssh-user"><Terminal size={14} />SSH 连接</label>
-              <p className="field-help">填写这台设备的系统用户名。目标设备需开启 SSH，并允许当前账号登录。</p>
-              <div className="tailscale-connect-form"><input id="tailnet-ssh-user" value={username} onChange={e => setUsername(e.target.value)} placeholder="设备的系统用户名" autoComplete="off" maxLength={128} /><button className="quiet-button" disabled={!username.trim() || !/^[a-zA-Z0-9_.@\\-]+$/.test(username.trim())} onClick={() => copy(`ssh -l '${username.trim()}' ${peer.ip}`, "已复制 SSH 命令，请在 Cage 终端运行")}>复制 SSH 命令</button></div>
-              <p className="field-help">SSH、SFTP 与使用 OpenSSH 的工具可直接使用以上私网地址。其他应用的接入方式见下方“应用访问私网”。</p>
+              {!peer.online && <p className="field-help">Устройство сейчас не в сети. Сначала подключите Tailscale на этом устройстве.</p>}
+              <label className="field-label" htmlFor="tailnet-service-port">Доступ к службам устройства</label>
+              <p className="field-help">Укажите порт службы, чтобы создать локальный адрес подключения для браузера, клиента базы данных или другого приложения в Cage.</p>
+              <div className="tailscale-connect-form"><input id="tailnet-service-port" aria-label="Порт службы" type="number" min="1" max="65535" inputMode="numeric" value={port} onChange={e => setPort(e.target.value)} /><button className="quiet-button" disabled={busy || !Number.isInteger(Number(port)) || Number(port) < 1 || Number(port) > 65535} onClick={async () => { if (await act("open-service", { host: peer.ip, port: Number(port) })) setNotice("Локальный адрес подключения готов; используйте его внутри среды Cage."); }}>Создать адрес подключения</button></div>
+              {(state.forwards || []).filter(entry => entry.host === peer.ip).map(entry => <div className="tailscale-forward" key={`${entry.host}:${entry.port}`}><span><strong>Порт {entry.port}</strong><code>{entry.address}</code></span><button className="icon-button" aria-label={`Скопировать адрес подключения порта ${entry.port}`} onClick={() => copy(entry.address, "Адрес подключения, доступный в Cage, скопирован")}><Copy size={14} /></button><button className="quiet-button" onClick={async () => { try { if (await onOpenBrowser(`http://${entry.address}`) === false) setError("Не удалось открыть страницу службы. Повторите попытку."); } catch { setError("Не удалось открыть страницу службы. Повторите попытку."); } }}>Открыть HTTP-страницу</button></div>)}
+              <label className="field-label" htmlFor="tailnet-ssh-user"><Terminal size={14} />Подключение SSH</label>
+              <p className="field-help">Укажите системное имя пользователя этого устройства. На целевом устройстве должен быть включён SSH и разрешён вход текущему аккаунту.</p>
+              <div className="tailscale-connect-form"><input id="tailnet-ssh-user" value={username} onChange={e => setUsername(e.target.value)} placeholder="Системное имя пользователя устройства" autoComplete="off" maxLength={128} /><button className="quiet-button" disabled={!username.trim() || !/^[a-zA-Z0-9_.@\\-]+$/.test(username.trim())} onClick={() => copy(`ssh -l '${username.trim()}' ${peer.ip}`, "Команда SSH скопирована; выполните её в терминале Cage")}>Скопировать команду SSH</button></div>
+              <p className="field-help">SSH, SFTP и инструменты с поддержкой OpenSSH могут использовать указанный адрес частной сети. Для остальных приложений см. «Доступ приложений к частной сети» ниже.</p>
             </div>}
           </article>)}</div>}
       </section>
       {connected && <section className="tailscale-section">
-        <button className="tailscale-disclosure" aria-expanded={sshOpen} aria-controls="tailnet-inbound-ssh" onClick={() => setSSHOpen(!sshOpen)}><span><KeyRound size={16} />从其他设备 SSH 到 Cage</span><ChevronDown size={16} /></button>
+        <button className="tailscale-disclosure" aria-expanded={sshOpen} aria-controls="tailnet-inbound-ssh" onClick={() => setSSHOpen(!sshOpen)}><span><KeyRound size={16} />SSH с других устройств в Cage</span><ChevronDown size={16} /></button>
         {sshOpen && <div id="tailnet-inbound-ssh" className="tailscale-detail">
-          <p className="field-help">仅在需要远程终端、SFTP 或编辑器连接时配置。将连接设备的 SSH 公钥添加到这里，私钥保留在原设备。</p>
-          {address && <div className="tailscale-command"><code>{`ssh ${state.user}@${address}`}</code><button className="icon-button" aria-label="复制连接 Cage 命令" onClick={() => copy(`ssh ${state.user}@${address}`)}><Copy size={15} /></button></div>}
-          <label className="field-label" htmlFor="tailscale-key">连接设备的 SSH 公钥</label>
+          <p className="field-help">Настраивайте только если нужны удалённый терминал, SFTP или подключение редактора. Добавьте сюда открытый ключ SSH подключающегося устройства; закрытый ключ остаётся на нём.</p>
+          {address && <div className="tailscale-command"><code>{`ssh ${state.user}@${address}`}</code><button className="icon-button" aria-label="Скопировать команду подключения к Cage" onClick={() => copy(`ssh ${state.user}@${address}`)}><Copy size={15} /></button></div>}
+          <label className="field-label" htmlFor="tailscale-key">Открытый ключ SSH подключающегося устройства</label>
           <textarea id="tailscale-key" rows={3} placeholder="ssh-ed25519 AAAA…" value={key} onChange={e => setKey(e.target.value)} maxLength={8192} spellCheck={false} />
-          <button className="quiet-button" disabled={busy || !key.trim()} onClick={() => act("add-key", { key: key.trim() })}>添加公钥</button>
-          <div className="tailscale-keys">{(state.keys || []).map(entry => <div className="tailscale-key" key={entry}><code title={entry}>{entry}</code><button className="icon-button" disabled={busy} aria-label="移除 SSH 公钥" onClick={() => act("remove-key", { key: entry })}><Trash2 size={14} /></button></div>)}</div>
+          <button className="quiet-button" disabled={busy || !key.trim()} onClick={() => act("add-key", { key: key.trim() })}>Добавить открытый ключ</button>
+          <div className="tailscale-keys">{(state.keys || []).map(entry => <div className="tailscale-key" key={entry}><code title={entry}>{entry}</code><button className="icon-button" disabled={busy} aria-label="Удалить открытый ключ SSH" onClick={() => act("remove-key", { key: entry })}><Trash2 size={14} /></button></div>)}</div>
         </div>}
       </section>}
       {connected && state.proxy_url && <section className="tailscale-section">
-        <button className="tailscale-disclosure" aria-expanded={appsOpen} aria-controls="tailnet-apps" onClick={() => setAppsOpen(!appsOpen)}><span><Network size={16} />应用访问私网</span><ChevronDown size={16} /></button>
-        {appsOpen && <div id="tailnet-apps" className="tailscale-detail"><p className="field-help">需要直接使用设备域名、HTTPS 或多个端口时，在 Cage 内的应用中配置 HTTP 代理。仅允许访问此私网中可见的设备，公网继续使用原有出口。</p><button className="quiet-button" onClick={() => copy(state.proxy_url, "已复制私网 HTTP 代理地址（含本地访问凭据）")}>复制私网代理地址</button><p className="field-help">代理地址含本地访问凭据，请仅用于 Cage 内的应用。此接入方式支持 TCP 服务；UDP、系统 VPN 和子网路由未启用。</p></div>}
+        <button className="tailscale-disclosure" aria-expanded={appsOpen} aria-controls="tailnet-apps" onClick={() => setAppsOpen(!appsOpen)}><span><Network size={16} />Доступ приложений к частной сети</span><ChevronDown size={16} /></button>
+        {appsOpen && <div id="tailnet-apps" className="tailscale-detail"><p className="field-help">Если приложению в Cage нужны доменные имена устройств, HTTPS или несколько портов, настройте HTTP-прокси в приложении. Разрешён доступ только к видимым устройствам этой частной сети; для публичного интернета используется прежний выход.</p><button className="quiet-button" onClick={() => copy(state.proxy_url, "Адрес HTTP-прокси частной сети скопирован (с локальными учётными данными)")}>Скопировать адрес прокси частной сети</button><p className="field-help">Адрес прокси содержит локальные учётные данные; используйте его только в приложениях внутри Cage. Поддерживаются TCP-службы; UDP, системный VPN и маршрутизация подсетей не включены.</p></div>}
       </section>}
-      <p className="field-help tailscale-footer">其他设备需安装 Tailscale 并加入同一网络。设备访问受网络权限控制；暂停 Cage 联网或停止环境会中断私网连接。</p>
+      <p className="field-help tailscale-footer">На других устройствах нужно установить Tailscale и подключиться к той же сети. Доступ устройств контролируется правами сети; приостановка доступа Cage к сети или остановка среды прерывает подключение к частной сети.</p>
       {notice && <p className="tailscale-notice" role="status"><Check size={14} />{notice}</p>}
     </div>
   </Modal>;

@@ -14,7 +14,7 @@ export function NetworkLatency({ enabled, revision, selected }) {
         const proxy = await api("/proxy");
         if (cancelled) return;
         if (!proxy.active || !proxy.running || !proxy.selected) {
-          setSample({ label: "延迟 —", detail: "当前代理未连接" });
+          setSample({ label: "Задержка —", detail: "Текущий прокси не подключён" });
         } else {
           const result = await api("/proxy/delay", { node_id: proxy.selected });
           if (cancelled) return;
@@ -31,20 +31,20 @@ export function NetworkLatency({ enabled, revision, selected }) {
             setSample({
               label: `${Math.round(result.delay)} ms`,
               detail:
-                "当前节点到 www.gstatic.com 的 HTTP 往返延迟（统一延迟口径），通常不含建连开销，不代表网页首开耗时。每 30 秒更新，点击重新检测；环境联网状态单独检查。",
+                "HTTP-задержка текущего узла до www.gstatic.com (единая методика); обычно не включает установку соединения и не показывает время первого открытия страницы. Обновляется каждые 30 секунд, нажмите для повторной проверки; состояние доступа среды проверяется отдельно.",
             });
           } else {
             setSample({
-              label: "延迟不可用",
-              detail: "当前节点测速未成功，点击重试",
+              label: "Задержка недоступна",
+              detail: "Не удалось измерить задержку текущего узла, нажмите для повтора",
             });
           }
         }
       } catch {
         if (!cancelled)
           setSample({
-            label: "延迟不可用",
-            detail: "无法测量当前节点延迟，点击重试",
+            label: "Задержка недоступна",
+            detail: "Не удалось измерить задержку текущего узла, нажмите для повтора",
           });
       } finally {
         if (!cancelled) timer = setTimeout(measure, 30000);
@@ -59,11 +59,11 @@ export function NetworkLatency({ enabled, revision, selected }) {
   return (
     <button
       className="status-latency"
-      aria-label={`网络延迟：${enabled ? sample?.label || "检测中" : "未连接"}`}
+      aria-label={`Сетевая задержка: ${enabled ? sample?.label || "проверка" : "не подключено"}`}
       title={
         enabled
-          ? sample?.detail || "正在检测当前节点的网络延迟"
-          : "环境启动并连接代理后检测网络延迟"
+          ? sample?.detail || "Проверка сетевой задержки текущего узла"
+          : "Сетевая задержка проверяется после запуска среды и подключения прокси"
       }
       disabled={!enabled}
       onClick={() => {
@@ -72,7 +72,7 @@ export function NetworkLatency({ enabled, revision, selected }) {
       }}
     >
       <Activity size={12} />
-      <span>{enabled ? sample?.label || "测延迟…" : "延迟 —"}</span>
+      <span>{enabled ? sample?.label || "Измерение задержки…" : "Задержка —"}</span>
     </button>
   );
 }

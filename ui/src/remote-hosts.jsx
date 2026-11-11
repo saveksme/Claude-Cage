@@ -28,7 +28,7 @@ const identity = (context) =>
   `${context.mode}:${context.connection_id || "disconnected"}`;
 const occupied = (status) =>
   Boolean(status?.running || status?.busy || status?.live_terminals);
-const unknown = () => ({ known: false, message: "本机状态待确认" });
+const unknown = () => ({ known: false, message: "Состояние этого компьютера не подтверждено" });
 const recentKey = "cage-recent-environment";
 function recent() {
   try {
@@ -45,12 +45,14 @@ function remember(value) {
   }
 }
 function localSummary(status) {
-  if (!status?.known) return "本机状态待确认";
-  if (status.busy) return "本机正在处理环境操作";
+  if (!status?.known) return "Состояние этого компьютера не подтверждено";
+  if (status.busy) return "На этом компьютере выполняется операция со средой";
   if (status.live_terminals)
-    return `本机有 ${status.live_terminals} 个活动终端`;
-  if (status.running) return "本机环境正在运行";
-  return status.service_running ? "本机控制服务已启动" : "本机环境已停止";
+    return `Активных терминалов на этом компьютере: ${status.live_terminals}`;
+  if (status.running) return "Среда на этом компьютере запущена";
+  return status.service_running
+    ? "Служба управления этого компьютера запущена"
+    : "Среда на этом компьютере остановлена";
 }
 
 export function ClientRoot({ children }) {
@@ -64,7 +66,7 @@ export function ClientRoot({ children }) {
     const value = await api("/client/context");
     if (!mounted.current || query !== serial.current) return value;
     if (!["none", "local", "remote"].includes(value.mode))
-      throw new Error("客户端未返回有效的工作环境，请更新 Cage。");
+      throw new Error("Клиент не вернул допустимую рабочую среду. Обновите Cage.");
     const next = identity(value);
     if (currentIdentity.current && currentIdentity.current !== next) {
       // Destroy callbacks, local files in flight and input handlers from the previous generation.
@@ -106,7 +108,7 @@ export function ClientRoot({ children }) {
       {error && (
         <div className="client-error error-message" role="alert">
           {error}
-          <button onClick={() => location.reload()}>重新连接</button>
+          <button onClick={() => location.reload()}>Переподключиться</button>
         </div>
       )}
       {context ? (
@@ -117,7 +119,7 @@ export function ClientRoot({ children }) {
         !error && (
           <div className="client-loading">
             <LoaderCircle className="spin" size={18} />
-            正在连接 Cage…
+            Подключение к Cage…
           </div>
         )
       )}
@@ -171,13 +173,13 @@ function Environment({ context, refresh, children }) {
   const needsDeploy = connectionHostID === selected && connection?.error_code === "deployment_required";
   const phase = connection?.phase || "";
   const connectingLabel = phase.startsWith("cloud_upload_")
-    ? `正在上传部署包 ${phase.slice("cloud_upload_".length)}%`
-    : { cloud_install: "正在安装云端环境…", cloud_detect: "正在检测服务器…", cloud_start: "正在启动服务…" }[phase] || "正在验证…";
+    ? `Загрузка пакета развёртывания ${phase.slice("cloud_upload_".length)}%`
+    : { cloud_install: "Установка облачной среды…", cloud_detect: "Проверка сервера…", cloud_start: "Запуск службы…" }[phase] || "Проверка…";
   const hostName = remote
-    ? context.name || "远程主机"
+    ? context.name || "Удалённый хост"
     : local
-      ? "本机环境"
-      : "选择工作环境";
+      ? "Локальная среда"
+      : "Выбор рабочей среды";
   const route = () => ({ connection_id: context.connection_id || "" });
   const load = useCallback(async () => {
     const { hosts = [] } = await api("/client/hosts");
@@ -242,7 +244,7 @@ function Environment({ context, refresh, children }) {
       setLocalLocked(e.status === 423);
       setError(
         e.status === 423
-          ? "本机环境已锁定。请先返回本机解锁，再停止本机环境。"
+          ? "Локальная среда заблокирована. Вернитесь на этот компьютер, разблокируйте его, затем остановите локальную среду."
           : e.message,
       );
     } finally {
@@ -300,7 +302,7 @@ function Environment({ context, refresh, children }) {
         if (actual.known && !actual.service_running && !occupied(actual)) {
           setDecision(null);
           throw new Error(
-            "本机环境已停止。目标连接未完成，请重新连接 SSH 主机。",
+            "Среда на этом компьютере остановлена. Целевое подключение не завершено; подключитесь к SSH-хосту заново.",
           );
         }
       }
@@ -385,7 +387,7 @@ function Environment({ context, refresh, children }) {
   const trust = async () => {
     const saved = hosts.find((h) => h.id === connectionHostID);
     if (!saved || !connection.host_key)
-      throw new Error("主机配置已变化，请重新连接。");
+      throw new Error("Конфигурация хоста изменилась. Подключитесь заново.");
     const secret =
       password ||
       (secretForTrust.current?.id === saved.id
@@ -467,7 +469,7 @@ function Environment({ context, refresh, children }) {
         })
       }
     >
-      返回本机解锁
+      Вернуться на этот компьютер и разблокировать
     </button>
   );
   const access = { expanded: showHosts, open: openSidebar };
@@ -491,13 +493,13 @@ function Environment({ context, refresh, children }) {
         <strong>{ready ? hostName : "Cage"}</strong>
         {ready && (
           <span className="client-toolbar-hint">
-            {remote ? "SSH · 云端运行" : "当前工作环境"}
+            {remote ? "SSH · работа в облаке" : "Текущая рабочая среда"}
           </span>
         )}
         {ready && !showHosts && (
           <button className="ssh-fallback" onClick={openSidebar}>
             <Server size={15} />
-            SSH 主机
+            SSH-хосты
           </button>
         )}
       </header>}
@@ -507,16 +509,16 @@ function Environment({ context, refresh, children }) {
           <div>
             <strong>
               {occupied(localStatus)
-                ? "本机也在运行"
+                ? "На этом компьютере тоже идёт работа"
                 : localSummary(localStatus)}
             </strong>
             {occupied(localStatus) && (
               <span>
                 {localStatus.live_terminals
-                  ? `${localStatus.live_terminals} 个活动终端`
+                  ? `Активных терминалов: ${localStatus.live_terminals}`
                   : localStatus.busy
-                    ? "有操作正在进行"
-                    : "正在占用本机资源"}
+                    ? "Выполняется операция"
+                    : "Ресурсы этого компьютера заняты"}
               </span>
             )}
           </div>
@@ -528,7 +530,7 @@ function Environment({ context, refresh, children }) {
                 setStop(localStatus);
               }}
             >
-              停止本机环境
+              Остановить локальную среду
             </button>
           )}
         </div>
@@ -541,19 +543,19 @@ function Environment({ context, refresh, children }) {
         {showHosts && (
           <aside
             className="workspace-sidebar ssh-sidebar"
-            aria-label="SSH 主机"
+            aria-label="SSH-хосты"
           >
             <div className="sidebar-top">
               <span className="sidebar-brand">
                 <Server size={18} />
-                SSH 主机
+                SSH-хосты
               </span>
               {ready && (
                 <button
                   className="icon-button"
                   disabled={Boolean(busy) || verifying}
                   onClick={closeSidebar}
-                  aria-label="返回工作台侧栏"
+                  aria-label="Вернуться к боковой панели рабочей среды"
                 >
                   <ArrowLeft size={16} />
                 </button>
@@ -561,11 +563,11 @@ function Environment({ context, refresh, children }) {
             </div>
             <div className="ssh-sidebar-body">
               <div className="ssh-list-heading">
-                <span>已保存的主机</span>
+                <span>Сохранённые хосты</span>
                 <button
                   className="icon-button"
-                  aria-label="添加远程主机"
-                  title="添加远程主机"
+                  aria-label="Добавить удалённый хост"
+                  title="Добавить удалённый хост"
                   disabled={Boolean(busy)}
                   onClick={() => setForm({ host: null })}
                 >
@@ -588,24 +590,24 @@ function Environment({ context, refresh, children }) {
                     </small>
                   </span>
                   {context.host_id === item.id && active && (
-                    <Check size={15} aria-label="已连接" />
+                    <Check size={15} aria-label="Подключено" />
                   )}
                 </button>
               ))}
               {!hosts.length && (
                 <div className="ssh-empty">
-                  <p>还没有远程主机</p>
+                  <p>Удалённых хостов пока нет</p>
                   <button onClick={() => setForm({ host: null })}>
                     <Plus size={14} />
-                    添加主机
+                    Добавить хост
                   </button>
                 </div>
               )}
               {host && (
-                <section className="ssh-host-actions" aria-label="所选主机操作">
+                <section className="ssh-host-actions" aria-label="Действия с выбранным хостом">
                   {host.auth.kind === "key_file" && !hostConnected && (
                     <label>
-                      密钥口令（如果已设置）
+                      Парольная фраза ключа (если задана)
                       <input
                         type="password"
                         autoComplete="off"
@@ -620,7 +622,7 @@ function Environment({ context, refresh, children }) {
                       disabled={Boolean(busy)}
                       onClick={() => act("disconnect", disconnect)}
                     >
-                      断开连接
+                      Отключиться
                     </button>
                   ) : (
                     !pinnedFailure && (
@@ -637,7 +639,7 @@ function Environment({ context, refresh, children }) {
                       >
                         {busy === "verify" || verifying
                           ? connectingLabel
-                          : needsDeploy ? "部署并连接" : "连接此主机"}
+                          : needsDeploy ? "Развернуть и подключиться" : "Подключиться к этому хосту"}
                       </button>
                     )
                   )}
@@ -652,7 +654,7 @@ function Environment({ context, refresh, children }) {
                         })
                       }
                     >
-                      编辑
+                      Изменить
                     </button>
                     <button
                       disabled={Boolean(busy) || hostConnected || verifying}
@@ -664,18 +666,18 @@ function Environment({ context, refresh, children }) {
                         })
                       }
                     >
-                      移除连接
+                      Удалить подключение
                     </button>
                   </div>
                 </section>
               )}
               {!context.client_only && (!local || localLost) && (
                 <div className="ssh-local-action">
-                  {localButton("进入本机工作台")}
+                  {localButton("Войти в локальную рабочую среду")}
                 </div>
               )}
               {!context.client_only && local && (
-                <p className="ssh-help">云端连接就绪后再切换工作台。</p>
+                <p className="ssh-help">Переключайте рабочую среду после подключения к облаку.</p>
               )}
               {error && !decision && !stop && !remove && (
                 <p className="error-message" role="alert">
@@ -686,11 +688,11 @@ function Environment({ context, refresh, children }) {
                 (!connectionHostID || connectionHostID === selected) && (
                   <div className="ssh-connection" role="alert">
                     <strong>
-                      {connection.message || "连接失败，请重试。"}
+                      {connection.message || "Не удалось подключиться. Повторите попытку."}
                     </strong>
                     {pinnedFailure && (
                       <>
-                        <p>请与服务器管理员核对“{host?.name}”的主机指纹。</p>
+                        <p>Сверьте отпечаток хоста «{host?.name}» с администратором сервера.</p>
                         <code>
                           {connection.host_key.algorithm}
                           <br />
@@ -702,7 +704,7 @@ function Environment({ context, refresh, children }) {
                           onClick={() => act("trust", trust)}
                         >
                           <ShieldCheck size={15} />
-                          我已核对指纹，信任此主机
+                          Я сверил отпечаток и доверяю этому хосту
                         </button>
                       </>
                     )}
@@ -710,7 +712,7 @@ function Environment({ context, refresh, children }) {
                 )}
               {remote && !active && !connection?.message && (
                 <p className="ssh-help" role="status">
-                  连接已断开。请重新连接并核对云端任务。
+                  Соединение разорвано. Подключитесь заново и проверьте облачные задачи.
                 </p>
               )}
               {gateway && candidate && !decision && (
@@ -719,14 +721,14 @@ function Environment({ context, refresh, children }) {
                     <button
                       onClick={() => act("verify", () => verified(candidate))}
                     >
-                      继续连接
+                      Продолжить подключение
                     </button>
                   )}
                   <button
                     disabled={decisionBusy}
                     onClick={() => cancel().catch((e) => setError(e.message))}
                   >
-                    取消此次连接
+                    Отменить это подключение
                   </button>
                 </>
               )}
@@ -736,28 +738,28 @@ function Environment({ context, refresh, children }) {
         {ready ? (
           <div className="client-workbench">{children}</div>
         ) : defaultLocal && !error && candidate?.connection?.state !== "failed" && !expanded ? (
-          <div className="client-loading" role="status">正在打开 Cage 工作台…</div>
+          <div className="client-loading" role="status">Открытие рабочей среды Cage…</div>
         ) : (
           <main className="environment-picker">
             <div>
               <img className="environment-logo" src={logo} alt="" />
               <h1>
                 {localLost
-                  ? "重新连接本机工作台"
+                  ? "Переподключиться к локальной рабочей среде"
                   : remote && !active
-                    ? "重新连接 SSH 主机"
-                    : defaultLocal ? "本机工作台连接未完成" : "连接 SSH 主机"}
+                    ? "Переподключиться к SSH-хосту"
+                    : defaultLocal ? "Подключение к локальной рабочей среде не завершено" : "Подключиться к SSH-хосту"}
               </h1>
               <p>
                 {context.client_only
-                  ? "通过 SSH 连接服务器，首次连接可自动部署 Cage。项目、应用和网络由服务器管理。"
-                  : "本机和 SSH 主机使用同一个工作台。项目、应用和网络由选中的环境管理。"}
+                  ? "Подключитесь к серверу по SSH; при первом подключении Cage можно развернуть автоматически. Проектами, приложениями и сетью управляет сервер."
+                  : "Этот компьютер и SSH-хосты используют одну рабочую среду. Проектами, приложениями и сетью управляет выбранная среда."}
               </p>
               {!context.client_only &&
                 localStatus?.known &&
                 localStatus.available === false &&
                 !localStatus.service_running && (
-                  <p>本机运行组件不可用，可通过 SSH 连接服务器。</p>
+                  <p>Компоненты запуска на этом компьютере недоступны; можно подключиться к серверу по SSH.</p>
                 )}
               {!showHosts && error && (
                 <p className="error-message" role="alert">
@@ -767,27 +769,27 @@ function Environment({ context, refresh, children }) {
               <div className="environment-actions">
                 {!context.client_only &&
                   (!showHosts || localLost) &&
-                  localButton("重新连接本机")}
+                  localButton("Переподключиться к этому компьютеру")}
                 {!showHosts && (
                   <button disabled={Boolean(busy)} onClick={openSidebar}>
                     <Server size={16} />
-                    连接 SSH 主机
+                    Подключиться к SSH-хосту
                   </button>
                 )}
               </div>
               {!showHosts && hosts.length > 0 && (
                 <div className="environment-recent">
-                  <h2>已保存的主机</h2>
+                  <h2>Сохранённые хосты</h2>
                   {hosts.map((item) => (
                     <button key={item.id} onClick={() => choose(item)}>
                       <Server size={15} />
                       {item.name}
-                      {recent() === item.id && <small>上次使用</small>}
+                      {recent() === item.id && <small>Последнее использование</small>}
                     </button>
                   ))}
                 </div>
               )}
-              {busy === "local" && <p role="status">正在连接本机工作台…</p>}
+              {busy === "local" && <p role="status">Подключение к локальной рабочей среде…</p>}
               {!showHosts && candidate?.connection?.state === "failed" && (
                 <p role="alert" className="error-message">
                   {candidate.connection.message}
@@ -812,12 +814,12 @@ function Environment({ context, refresh, children }) {
       )}
       {remove && (
         <Modal
-          title="移除 SSH 主机"
+          title="Удалить SSH-хост"
           onClose={busy ? undefined : () => setRemove(null)}
           footer={
             <>
               <button disabled={Boolean(busy)} onClick={() => setRemove(null)}>
-                取消
+                Отмена
               </button>
               <button
                 className="primary"
@@ -835,25 +837,25 @@ function Environment({ context, refresh, children }) {
                   })
                 }
               >
-                确认移除
+                Подтвердить удаление
               </button>
             </>
           }
         >
           <div className="ssh-dialog-body">
-            <p>移除“{remove.name}”的本机连接配置？云端文件和任务会保留。</p>
+            <p>Удалить локальную конфигурацию подключения к «{remove.name}»? Облачные файлы и задачи сохранятся.</p>
             {error && <p role="alert">{error}</p>}
           </div>
         </Modal>
       )}
       {decision && (
         <Modal
-          title="切换到 SSH 主机"
+          title="Переключиться на SSH-хост"
           onClose={decisionBusy ? undefined : cancelDecision}
           footer={
             <>
               <button disabled={decisionBusy} onClick={cancelDecision}>
-                取消
+                Отмена
               </button>
               <button
                 disabled={decisionBusy}
@@ -863,7 +865,7 @@ function Environment({ context, refresh, children }) {
                   )
                 }
               >
-                保留本机运行
+                Оставить работу на этом компьютере
               </button>
               <button
                 className="primary"
@@ -878,28 +880,31 @@ function Environment({ context, refresh, children }) {
                   )
                 }
               >
-                停止本机并连接
+                Остановить локальную среду и подключиться
               </button>
             </>
           }
         >
           <div className="ssh-dialog-body">
             <p>
-              <Check size={16} /> 已验证{" "}
+              <Check size={16} /> SSH и служба Cage хоста{" "}
               {hosts.find(
                 (h) =>
                   h.id ===
                   (decision.pending.connection?.host_id ||
                     decision.pending.host_id),
-              )?.name || "目标主机"}{" "}
-              的 SSH 与 Cage 服务。
+              )?.name || "целевой хост"}{" "}
+              проверены.
             </p>
             <p>
-              <strong>{localSummary(decision.status)}。</strong>{" "}
-              停止本机会结束终端任务并释放资源，未保存的内容可能丢失。选择保留后可以在云端工作台稍后停止。
+              <strong>{localSummary(decision.status)}.</strong>{" "}
+              Остановка на этом компьютере завершит терминальные задачи и
+              освободит ресурсы; несохранённые данные могут быть потеряны. Если
+              выбрать сохранение, локальную среду можно остановить позже из
+              облачной рабочей среды.
             </p>
             {busy === "commit" && (
-              <p role="status">正在确认环境切换，请稍候…</p>
+              <p role="status">Подтверждение переключения среды…</p>
             )}
             {error && (
               <p role="alert" className="error-message">
@@ -912,12 +917,12 @@ function Environment({ context, refresh, children }) {
       )}
       {stop && (
         <Modal
-          title="停止本机环境？"
+          title="Остановить локальную среду?"
           onClose={busy ? undefined : () => setStop(null)}
           footer={
             <>
               <button disabled={Boolean(busy)} onClick={() => setStop(null)}>
-                取消
+                Отмена
               </button>
               <button
                 className="primary"
@@ -933,7 +938,7 @@ function Environment({ context, refresh, children }) {
                   })
                 }
               >
-                确认停止本机
+                Подтвердить остановку
               </button>
             </>
           }
@@ -941,9 +946,11 @@ function Environment({ context, refresh, children }) {
           <div className="ssh-dialog-body">
             <p>
               {localSummary(stop)}
-              。停止将结束本机终端任务并释放资源，未保存的内容可能丢失。云端任务继续运行。
+              . Остановка завершит терминальные задачи на этом компьютере и
+              освободит ресурсы; несохранённые данные могут быть потеряны.
+              Облачные задачи продолжат работу.
             </p>
-            {busy === "stop" && <p role="status">正在停止本机环境…</p>}
+            {busy === "stop" && <p role="status">Остановка локальной среды…</p>}
             {error && (
               <p role="alert" className="error-message">
                 {error}

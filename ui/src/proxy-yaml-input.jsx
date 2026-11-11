@@ -52,16 +52,16 @@ export function ProxyYAMLInput({
     onReadingChange(false);
     setError("");
     if (files.length !== 1) {
-      setError("一次只能导入一个配置文件，请逐个添加来源。");
+      setError("За один раз можно импортировать только один файл конфигурации; добавляйте источники по одному.");
       return;
     }
     const value = files[0];
     if (!/\.(ya?ml|json)$/i.test(value.name)) {
-      setError("请选择 .yaml、.yml 或 .json 配置文件。");
+      setError("Выберите файл конфигурации .yaml, .yml или .json.");
       return;
     }
     if (value.size > 8 * 1024 * 1024) {
-      setError("文件超过 8 MiB，请精简配置后重试。");
+      setError("Файл больше 8 MiB. Упростите конфигурацию и повторите попытку.");
       return;
     }
     setReading(true);
@@ -70,7 +70,7 @@ export function ProxyYAMLInput({
       const text = await value.text();
       if (current !== request.current) return;
       if (!text.trim()) {
-        setError("文件内容为空，请选择含节点的配置文件。");
+        setError("Файл пуст. Выберите файл конфигурации с узлами.");
         return;
       }
       onFileRead(value, text);
@@ -78,7 +78,7 @@ export function ProxyYAMLInput({
       setEdited(false);
     } catch {
       if (current === request.current)
-        setError("文件读取失败，请重新选择或粘贴配置。");
+        setError("Не удалось прочитать файл. Выберите его снова или вставьте конфигурацию.");
     } finally {
       if (current === request.current) {
         setReading(false);
@@ -138,7 +138,7 @@ export function ProxyYAMLInput({
         type="button"
         className="proxy-yaml-dropzone"
         disabled={disabled}
-        aria-label={selected ? "重新选择 YAML 文件" : "选择 YAML 文件"}
+        aria-label={selected ? "Выбрать другой файл YAML" : "Выбрать файл YAML"}
         aria-describedby={`${helpID}${error ? ` ${errorID}` : ""}`}
         aria-busy={reading}
         onClick={() => input.current?.click()}
@@ -155,29 +155,29 @@ export function ProxyYAMLInput({
         <span className="proxy-yaml-file">
           <strong>
             {dragging
-              ? "松开以读取配置文件"
+              ? "Отпустите, чтобы прочитать файл конфигурации"
               : reading
-                ? "正在读取配置…"
+                ? "Чтение конфигурации…"
                 : selected
                   ? selected.name
-                  : "将配置文件拖到这里"}
+                  : "Перетащите файл конфигурации сюда"}
           </strong>
           <span>
-            {selected ? "点击或拖入其他文件替换" : "也可以点击选择文件"}
+            {selected ? "Нажмите или перетащите другой файл для замены" : "Или нажмите, чтобы выбрать файл"}
           </span>
         </span>
         <span className="proxy-yaml-choose" aria-hidden="true">
-          {selected ? "更换文件" : "选择文件"}
+          {selected ? "Заменить файл" : "Выбрать файл"}
         </span>
       </button>
       <p id={helpID} className="proxy-yaml-help">
-        支持 YAML / YML / JSON，单个文件不超过 8 MiB
+        Поддерживаются YAML / YML / JSON, один файл не больше 8 MiB
       </p>
       <p className="proxy-yaml-status" role="status">
         {reading
-          ? "正在读取文件，请稍候。"
+          ? "Чтение файла, подождите."
           : selected
-            ? `${fileSize} · ${edited ? "内容已编辑" : "文件已读取"}，待导入验证`
+            ? `${fileSize} · ${edited ? "Содержимое изменено" : "Файл прочитан"}, ожидает импорта и проверки`
             : ""}
       </p>
       {error && (
@@ -187,9 +187,9 @@ export function ProxyYAMLInput({
         </p>
       )}
       <label>
-        {selected ? "配置内容" : "或直接粘贴配置"}
+        {selected ? "Содержимое конфигурации" : "Или вставьте конфигурацию"}
         <textarea
-          aria-label="节点 YAML"
+          aria-label="YAML узлов"
           rows={7}
           value={content}
           disabled={disabled || reading}
@@ -203,7 +203,8 @@ export function ProxyYAMLInput({
         />
       </label>
       <p className="field-help">
-        只导入节点和明确的代理链，Cage 自行管理 DNS、监听端口及出站规则。
+        Импортируются только узлы и явные цепочки прокси; DNS, порты
+        прослушивания и правила исходящих соединений Cage настраивает сам.
       </p>
     </div>
   );

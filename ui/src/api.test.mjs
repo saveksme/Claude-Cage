@@ -39,7 +39,7 @@ const json = (data, status = 200) =>
   new Response(JSON.stringify(data), { status });
 test("aborted session opens preserve their cancellation reason and do not replay", async t => {
   const controller = new AbortController();
-  const reason = new Error("打开会话超时");
+  const reason = new Error("Истекло время ожидания открытия сеанса");
   let calls = 0;
   nativeRuntime(t, async (_path, options) => {
     calls++;
@@ -152,6 +152,6 @@ test("a new control address reconnects without sending a ticket to the old origi
       return { url: "http://localhost:17778/#test-ticket" };
     },
   );
-  await assert.rejects(api("/stop", {}), /地址已更新/);
+  await assert.rejects(api("/stop", {}), /Адрес рабочей среды обновлён/);
   assert.deepEqual(actions, ["refreshSession", "reconnect"]);
 });

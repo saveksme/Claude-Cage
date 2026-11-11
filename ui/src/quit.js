@@ -17,7 +17,10 @@ export async function stopAndExit({
   delay = () => new Promise((resolve) => setTimeout(resolve, 350)),
 }) {
   const job = await stop();
-  if (!job.id) throw new Error("停止请求未返回任务编号，请重试。");
+  if (!job.id)
+    throw new Error(
+      "Запрос остановки не вернул идентификатор задачи. Повторите попытку.",
+    );
   while (!isCancelled()) {
     const status = await readStatus();
     if (isCancelled()) return false;
