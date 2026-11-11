@@ -18,7 +18,7 @@ func PhoneDesktopProvisionScript() string {
 sudo install -d -m 0755 /usr/local/lib/cage-phone-desktop
 if [ -x /usr/bin/claude-desktop ] && { ! command -v xsettingsd >/dev/null || ! /usr/bin/python3 -c 'from PIL import Image; from Xlib.ext import composite,xtest' 2>/dev/null; }; then
   sudo env DEBIAN_FRONTEND=noninteractive APT_CONFIG="${CAGE_APT_CONFIG:-/dev/null}" apt-get install -y --no-install-recommends python3-pil python3-xlib xsettingsd ||
-    printf '%s\n' '手机 Desktop 组件暂未就绪，可在电脑上修复 Desktop 安装。' >&2
+    printf '%s\n' 'Компонент Desktop для телефона пока не готов. Установку Desktop можно исправить на компьютере.' >&2
 fi
 `)
 	for _, name := range []string{"control.py", "session.sh", "xdg-open", "handler.desktop", "openbox.xml", "view.py", "network.mjs", "browser-phone-desktop.mjs"} {

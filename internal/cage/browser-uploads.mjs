@@ -47,9 +47,9 @@ export class UploadManager {
   }
 
   start(tabId, sessionId, { kind, x, y }) {
-    if (!["drop", "paste"].includes(kind)) throw new Error("文件传递方式无效");
+    if (!["drop", "paste"].includes(kind)) throw new Error("Недопустимый способ передачи файлов");
     if (kind === "drop" && ![x, y].every(v => Number.isFinite(v) && v >= 0 && v <= 1))
-      throw new Error("拖入位置无效");
+      throw new Error("Недопустимое место перетаскивания");
     this.cancelTab(tabId, false);
     const id = randomUUID();
     this.requests.set(id, { id, tabId, sessionId, kind, x, y, multiple: true, files: [], busy: false });
@@ -60,15 +60,15 @@ export class UploadManager {
   request(id) {
     const request = this.requests.get(id);
     if (!request)
-      throw new Error("上传窗口已关闭或网页已刷新，请重新点击网页的上传按钮");
+      throw new Error("Окно загрузки закрыто или страница обновлена. Нажмите кнопку загрузки на странице заново");
     return request;
   }
 
   async receive(id, name, stream) {
     const request = this.request(id);
-    if (!validFileName(name)) throw new Error("文件名无效");
+    if (!validFileName(name)) throw new Error("Недействительное имя файла");
     if (request.busy || request.files.length >= (request.multiple ? 100 : 1))
-      throw new Error("请选择允许数量的文件");
+      throw new Error("Выберите допустимое количество файлов");
     request.busy = true;
     const directory = join(this.directory, id, randomUUID());
     const path = join(directory, name);
@@ -80,13 +80,13 @@ export class UploadManager {
       file = await open(path, "wx", 0o600);
       for await (const chunk of stream) {
         size += chunk.length;
-        if (size > uploadLimit) throw new Error("每个文件不能超过 2 GB");
-        if (this.requests.get(id) !== request) throw new Error("上传已取消");
+        if (size > uploadLimit) throw new Error("Каждый файл не может превышать 2 GB");
+        if (this.requests.get(id) !== request) throw new Error("Загрузка отменена");
         await file.writeFile(chunk);
       }
       await file.close();
       file = null;
-      if (this.requests.get(id) !== request) throw new Error("上传已取消");
+      if (this.requests.get(id) !== request) throw new Error("Загрузка отменена");
       request.files.push(path);
       accepted = true;
       return { ok: true, name, size };
@@ -100,7 +100,7 @@ export class UploadManager {
   async finish(id) {
     const request = this.request(id);
     if (request.busy || !request.files.length)
-      throw new Error("请先选择并传递文件");
+      throw new Error("Сначала выберите и передайте файл");
     request.busy = true;
     try {
       if (request.kind === "chooser") {
@@ -114,16 +114,16 @@ export class UploadManager {
               y: r?.height ? Math.max(0, Math.min(innerHeight - 1, r.top + r.height / 2)) : innerHeight / 2 };
           })()`, returnByValue: true,
         }, request.sessionId);
-        if (exceptionDetails || !result?.value) throw new Error("无法确定文件接收位置");
+        if (exceptionDetails || !result?.value) throw new Error("Не удалось определить место приёма файла");
         const viewport = result.value;
         const x = request.kind === "drop" ? Math.min(viewport.width - 1, request.x * viewport.width) : viewport.x;
         const y = request.kind === "drop" ? Math.min(viewport.height - 1, request.y * viewport.height) : viewport.y;
         for (const type of ["dragEnter", "dragOver", "drop"]) {
-          if (this.requests.get(id) !== request) throw new Error("上传已取消");
+          if (this.requests.get(id) !== request) throw new Error("Загрузка отменена");
           await this.cdp("Input.dispatchDragEvent", { type, x, y, data: { items: [], files: request.files, dragOperationsMask: 1 } }, request.sessionId);
         }
       }
-      if (this.requests.get(id) !== request) throw new Error("上传已取消");
+      if (this.requests.get(id) !== request) throw new Error("Загрузка отменена");
       this.requests.delete(id);
       // Chromium File objects can read lazily. Retain bytes until the document
       // is replaced or the tab closes, rather than deleting during submission.

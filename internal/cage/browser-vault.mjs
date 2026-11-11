@@ -145,9 +145,9 @@ export class BrowserVault {
   }
   async evaluate(entry, expression) {
     const contextId = this.context(entry);
-    if (!contextId) throw new Error("登录页面已变化，请稍后重试");
+    if (!contextId) throw new Error("Страница входа изменилась. Повторите попытку позже");
     const result = await this.cdp("Runtime.evaluate", { expression, contextId, returnByValue: true }, entry.sid);
-    if (result.exceptionDetails) throw new Error("网页未能处理密码操作");
+    if (result.exceptionDetails) throw new Error("Страница не смогла выполнить операцию с паролем");
     return result.result?.value;
   }
   async request(input) {
@@ -157,7 +157,7 @@ export class BrowserVault {
       return { ok: true };
     }
     if (input.action === "status") {
-      if (!/^[a-f0-9]{64}$/.test(input.lease)) throw new Error("解锁状态无效");
+      if (!/^[a-f0-9]{64}$/.test(input.lease)) throw new Error("Недействительное состояние разблокировки");
       if (this.lease !== input.lease) { this.pending.clear(); this.usernames.clear(); }
       this.lease = input.lease;
       this.deadline = this.now() + 6500;
@@ -180,21 +180,21 @@ export class BrowserVault {
       result.candidates = [...this.pending.values()].map(({ expires, ...value }) => value);
       return result;
     }
-    if (!this.lease || input.lease !== this.lease) throw new Error("保险箱已锁定，请重试");
+    if (!this.lease || input.lease !== this.lease) throw new Error("Хранилище паролей заблокировано. Повторите попытку");
     if (input.action === "candidate") {
       const value = this.pending.get(input.candidate);
-      if (!value) throw new Error("登录记录已过期，请重新登录");
+      if (!value) throw new Error("Срок действия записи входа истёк. Войдите заново");
       return value;
     }
     if (input.action === "dismiss") { this.pending.delete(input.candidate); return { ok: true }; }
     if (input.action === "fill") {
       const entry = [...this.sessions.values()].find(value => value.tab === input.tab);
-      if (!entry || input.tab !== this.active() || (this.tab(input.tab)?.login || this.tab(input.tab)?.incognito)) throw new Error("当前网页已切换");
+      if (!entry || input.tab !== this.active() || (this.tab(input.tab)?.login || this.tab(input.tab)?.incognito)) throw new Error("Текущая страница изменилась");
       const filled = await this.evaluate(entry, `globalThis.cageVault?.fill(${JSON.stringify(input)}) === true`);
       if (filled) this.usernames.set(entry.tab, { origin: input.origin, username: input.username, expires: this.now() + 120000 });
-      if (!filled) throw new Error("未找到可填写的登录框，或页面已变化");
+      if (!filled) throw new Error("Не найдено поле входа, доступное для заполнения, или страница изменилась");
       return { ok: true };
     }
-    throw new Error("密码操作无效");
+    throw new Error("Недопустимая операция с паролем");
   }
 }

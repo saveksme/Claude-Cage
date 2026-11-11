@@ -74,7 +74,7 @@ class FileBrokerTests(unittest.TestCase):
             key = self.broker.start('image')['id']
             self.broker.receive(key, 'image.png', [b'old image'])
             context = 'b' * 32
-            with self.assertRaisesRegex(ValueError, '接收位置已变化'):
+            with self.assertRaisesRegex(ValueError, 'Место приёма изображения изменилось'):
                 self.broker.finish_image(key)
             self.assertEqual(len(received), 1)
             self.assertFalse((Path(self.temp.name) / key).exists())

@@ -31,9 +31,9 @@ def main():
     for binary in (NODE, ENTRY):
         st = os.stat(binary)
         if st.st_uid != 0 or st.st_mode & 0o022:
-            raise RuntimeError('编辑器程序身份无法确认，未停止现有进程')
+            raise RuntimeError('Не удалось подтвердить подлинность программы редактора; существующий процесс не остановлен')
     if not hasattr(os, 'pidfd_open') or not hasattr(signal, 'pidfd_send_signal'):
-        raise RuntimeError('系统不支持安全识别旧编辑器进程，未停止现有进程')
+        raise RuntimeError('Система не поддерживает безопасное определение старого процесса редактора; существующий процесс не остановлен')
     for proc in Path('/proc').iterdir():
         if not proc.name.isdigit():
             continue
@@ -51,7 +51,7 @@ def main():
             if not exited.poll(5000):
                 signal.pidfd_send_signal(handle, signal.SIGKILL)
                 if not exited.poll(2000):
-                    raise RuntimeError('旧编辑器尚未退出，请稍后重试')
+                    raise RuntimeError('Старый редактор ещё не завершился. Повторите попытку позже')
         except (FileNotFoundError, ProcessLookupError, PermissionError):
             continue
         finally:

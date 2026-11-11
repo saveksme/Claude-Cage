@@ -54,42 +54,42 @@ var requiredSafetyChecks = [...]string{
 func (r SafetyReport) Authorizes(runID, configuration string, now time.Time) error {
 	if r.Policy != SafetyPolicyVersion || r.ID == "" || r.CheckID == "" || runID == "" || configuration == "" ||
 		r.RunID != runID || r.Configuration != configuration {
-		return errors.New("检测报告不属于当前环境配置，请重新检测")
+		return errors.New("Отчёт проверки не относится к текущей конфигурации среды. Повторите проверку")
 	}
 	if r.CreatedAt.IsZero() || r.CreatedAt.After(now.Add(time.Minute)) || !now.Before(r.CreatedAt.Add(SafetyReportLifetime)) {
-		return errors.New("检测报告已过期，请重新检测")
+		return errors.New("Срок действия отчёта проверки истёк. Повторите проверку")
 	}
 	seen := make(map[string]SafetyCheck, len(r.Checks))
 	for _, check := range r.Checks {
 		if _, duplicate := seen[check.ID]; duplicate {
-			return errors.New("检测报告包含重复项目")
+			return errors.New("Отчёт проверки содержит повторяющиеся пункты")
 		}
 		if check.State != CheckPassed && check.State != CheckFailed && check.State != CheckUnknown {
-			return errors.New("检测状态无效")
+			return errors.New("Недопустимое состояние проверки")
 		}
 		seen[check.ID] = check
 		if check.Critical && check.State != CheckPassed {
-			state := "未通过"
+			state := "не пройдена"
 			if check.State == CheckUnknown {
-				state = "未能确认"
+				state = "не удалось подтвердить"
 			}
 			title := safetyCheckTitle(check)
 			evidence := strings.TrimRight(diagnostics.Redact(check.Evidence), "。；;")
 			if evidence == "" {
-				evidence = "没有取得检测结果"
+				evidence = "результат проверки не получен"
 			}
 			next := strings.TrimRight(diagnostics.Redact(check.Remedy), "。；;")
 			if next == "" {
-				next = "打开“检查清单”查看此项结果，重新检测；仍失败时在设置中导出诊断包"
+				next = "Откройте «Список проверок», чтобы увидеть результат этого пункта, и повторите проверку; если снова не удастся, экспортируйте диагностический пакет в настройках"
 			}
-			return fmt.Errorf("联网检查未通过：%s%s。%s。%s。外网保持关闭。", title, state, evidence, next)
+			return fmt.Errorf("Проверка «%s»: %s. %s. %s. Внешняя сеть остаётся закрытой.", title, state, evidence, next)
 		}
 	}
 	for _, id := range requiredSafetyChecks {
 		check, found := seen[id]
 		if !found || !check.Critical || check.State != CheckPassed || check.Evidence == "" ||
 			check.CheckedAt.Before(r.CreatedAt) || check.CheckedAt.After(now.Add(time.Minute)) {
-			return fmt.Errorf("联网检查缺少有效证据：%s的记录缺失、过期或不完整。请重新检测；仍失败时在设置中导出诊断包。外网保持关闭。", safetyCheckTitle(SafetyCheck{ID: id}))
+			return fmt.Errorf("Для сетевой проверки не хватает действительных доказательств: запись «%s» отсутствует, устарела или неполна. Повторите проверку; если снова не удастся, экспортируйте диагностический пакет в настройках. Внешняя сеть остаётся закрытой.", safetyCheckTitle(SafetyCheck{ID: id}))
 		}
 	}
 	return nil
@@ -100,10 +100,10 @@ func safetyCheckTitle(check SafetyCheck) string {
 		return check.Title
 	}
 	titles := map[string]string{
-		"egress_policy": "环境外出站约束", "proxy_transport": "代理连接", "dns_transport": "DNS 解析", "guest_settings": "系统时区与语言", "browser_settings": "浏览器时区与语言", "filesystem_boundary": "项目目录共享", "management_boundary": "宿主管理接口隔离", "fail_closed": "代理故障断网", "udp_policy": "UDP 出站约束", "ipv6_policy": "IPv6 出站约束", "exit_consistency": "出口 IP 与地区",
+		"egress_policy": "Ограничения исходящих соединений среды", "proxy_transport": "Подключение через прокси", "dns_transport": "Разрешение DNS", "guest_settings": "Часовой пояс и язык системы", "browser_settings": "Часовой пояс и язык браузера", "filesystem_boundary": "Общий каталог проекта", "management_boundary": "Изоляция интерфейса управления хостом", "fail_closed": "Отключение при сбое прокси", "udp_policy": "Ограничения исходящего UDP", "ipv6_policy": "Ограничения исходящего IPv6", "exit_consistency": "Внешний IP и регион",
 	}
 	if title := titles[check.ID]; title != "" {
 		return title
 	}
-	return "必需检测项目"
+	return "Обязательный пункт проверки"
 }

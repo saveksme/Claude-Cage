@@ -20,7 +20,7 @@ async function readBrowserSettings(cdp, exclusions, expectedTimezone) {
       returnByValue: true,
     }, sessionId);
     if (response.exceptionDetails || !response.result?.value)
-      throw new Error("浏览器配置诊断未完成");
+      throw new Error("Диагностика конфигурации браузера не завершена");
     return response.result.value;
   } finally {
     if (targetId) {
@@ -66,7 +66,7 @@ export async function auditBrowser(
         sessionId,
         15000,
       );
-      if (navigation.errorText) throw new Error("诊断页面无法连接");
+      if (navigation.errorText) throw new Error("Диагностическая страница недоступна");
       let loaded = false;
       const deadline = Date.now() + 3000;
       while (Date.now() < deadline) {
@@ -90,7 +90,7 @@ export async function auditBrowser(
         }
         await new Promise((resolve) => setTimeout(resolve, 25));
       }
-      if (!loaded) throw new Error("诊断页面尚未就绪");
+      if (!loaded) throw new Error("Диагностическая страница ещё не готова");
     }
     const expression = `(async () => {
       const result = {};
@@ -110,7 +110,7 @@ export async function auditBrowser(
       16000,
     );
     if (response.exceptionDetails || !response.result?.value)
-      throw new Error("浏览器诊断未完成");
+      throw new Error("Диагностика браузера не завершена");
     return { ...settings, ...response.result.value };
   } finally {
     try {

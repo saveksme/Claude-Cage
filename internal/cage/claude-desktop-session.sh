@@ -47,7 +47,7 @@ for i in $(seq 1 50); do
   if keyring_unlocked; then break; fi
   sleep .1
 done
-keyring_unlocked || { echo '无法解锁已有密钥环，登录数据未修改。' >&2; exit 1; }
+keyring_unlocked || { echo 'Не удалось разблокировать существующую связку ключей; данные входа не изменены.' >&2; exit 1; }
 touch "$XDG_RUNTIME_DIR/keyring-ready"
 # Record the running application's density for clients that reconnect later.
 display_scale=2

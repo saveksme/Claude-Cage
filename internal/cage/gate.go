@@ -23,7 +23,7 @@ const (
 	DiagnosticAddress = "198.18.0.254:80"
 )
 
-var ErrGateClosed = errors.New("Cage 外网未放行，请在工作台完成关键检查")
+var ErrGateClosed = errors.New("Внешняя сеть Cage не открыта. Завершите ключевые проверки в рабочей среде")
 
 type GateCounters struct {
 	TCPDenied     uint64 `json:"tcp_denied"`
@@ -95,7 +95,7 @@ func NewEgressGate(cfg Config) (*EgressGate, error) {
 	}
 	g := &EgressGate{config: cfg, raw: raw, diagnostic: diagnostic, failedDiagnostic: failed,
 		epochContext: ctx, cancel: cancel, connections: make(map[*gateConn]struct{}),
-		state: GateStatus{Policy: SafetyPolicyVersion, RunID: hex.EncodeToString(id[:]), Configuration: cfg.Fingerprint(), Mode: GateClosed, Reason: "等待关键检查"}}
+		state: GateStatus{Policy: SafetyPolicyVersion, RunID: hex.EncodeToString(id[:]), Configuration: cfg.Fingerprint(), Mode: GateClosed, Reason: "Ожидание ключевых проверок"}}
 	// DoH pools must obey revocation too; only this private transport can dial
 	// the configured resolver hostname without accepting a guest-supplied host.
 	raw.client.Transport.(*http.Transport).DialContext = g.dialDNS
@@ -125,9 +125,9 @@ func (g *EgressGate) SyncProxyRevision(cfg Config) error {
 	before.ProxyRevision, after.ProxyRevision = "", ""
 	if before != after || cfg.ProxyRevision == "" {
 		g.mu.Unlock()
-		return errors.New("出口地址或环境设置变化需要重启环境")
+		return errors.New("Изменение адреса выхода или настроек среды требует перезапуска среды")
 	}
-	connections := g.transitionLocked(GateClosed, false, "代理节点已变更，等待重新检查")
+	connections := g.transitionLocked(GateClosed, false, "Прокси-узел изменён, ожидание повторной проверки")
 	g.config = cfg
 	g.state.Configuration = cfg.Fingerprint()
 	g.state.Report = nil
@@ -148,7 +148,7 @@ func (g *EgressGate) Status() GateStatus {
 		!g.raw.Allows("tcp", netip.MustParseAddrPort("127.0.0.1:17777"))
 	if s.Mode != GateClosed && !time.Now().Before(s.Until) {
 		s.Mode = GateClosed
-		s.Reason = "检查或监测授权已到期"
+		s.Reason = "Срок действия проверки или мониторинга истёк"
 	}
 	s.Connections = len(g.connections)
 	if s.Report != nil {
@@ -179,7 +179,7 @@ func (g *EgressGate) armUntilLocked(until time.Time) {
 			g.mu.Unlock()
 			return
 		}
-		connections := g.transitionLocked(GateClosed, false, "检查或监测授权已到期")
+		connections := g.transitionLocked(GateClosed, false, "Срок действия проверки или мониторинга истёк")
 		g.mu.Unlock()
 		closeGateConnections(connections)
 	})
@@ -226,7 +226,7 @@ func (g *EgressGate) BeginCheck() error {
 		return err
 	}
 	g.mu.Lock()
-	connections := g.transitionLocked(GateChecking, false, "关键检查进行中")
+	connections := g.transitionLocked(GateChecking, false, "Выполняется ключевая проверка")
 	g.state.CheckID = hex.EncodeToString(id[:])
 	g.state.IPv6LinkProbeCheck = ""
 	g.state.CheckStartedAt = time.Now()
@@ -244,7 +244,7 @@ func (g *EgressGate) SetFault(fault bool) error {
 		return ErrGateClosed
 	}
 	until := g.state.Until
-	connections := g.transitionLocked(GateChecking, fault, "关键检查进行中")
+	connections := g.transitionLocked(GateChecking, fault, "Выполняется ключевая проверка")
 	g.armUntilLocked(until)
 	g.mu.Unlock()
 	closeGateConnections(connections)
@@ -255,7 +255,7 @@ func (g *EgressGate) Grant(report SafetyReport) error {
 	g.mu.Lock()
 	if g.state.Mode != GateChecking || !g.validLocked(g.epoch) || report.CheckID != g.state.CheckID || report.CreatedAt.Before(g.state.CheckStartedAt) {
 		g.mu.Unlock()
-		return errors.New("检测会话已失效，请重新检测")
+		return errors.New("Сеанс проверки недействителен. Запустите проверку заново")
 	}
 	if err := report.Authorizes(g.state.RunID, g.state.Configuration, time.Now()); err != nil {
 		g.mu.Unlock()

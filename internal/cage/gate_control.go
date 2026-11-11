@@ -113,7 +113,7 @@ func StartGateControl(configPath, instanceDir string, gate *EgressGate) (func(),
 					e = cfg.RequireManagedProxy(filepath.Dir(configPath))
 				}
 				if e != nil {
-					gate.Close("代理节点未应用，外网保持关闭")
+					gate.Close("Прокси-узел не применён, внешняя сеть остаётся закрытой")
 					w.WriteHeader(409)
 					_ = json.NewEncoder(w).Encode(map[string]string{"error": e.Error()})
 					return
@@ -136,7 +136,7 @@ func StartGateControl(configPath, instanceDir string, gate *EgressGate) (func(),
 				operationError = gate.SetFault(command.Fault)
 			case "grant":
 				if command.Report == nil {
-					operationError = errors.New("检测报告缺失")
+					operationError = errors.New("Отчёт проверки отсутствует")
 				} else {
 					operationError = gate.Grant(*command.Report)
 				}
@@ -162,7 +162,12 @@ func StartGateControl(configPath, instanceDir string, gate *EgressGate) (func(),
 	ctx, cancel := context.WithCancel(context.Background())
 	var once sync.Once
 	stop := func() {
-		once.Do(func() { cancel(); gate.Close("网络控制服务已停止"); _ = server.Close(); _ = os.RemoveAll(dir) })
+		once.Do(func() {
+			cancel()
+			gate.Close("Служба сетевого контроля остановлена")
+			_ = server.Close()
+			_ = os.RemoveAll(dir)
+		})
 	}
 	go func() { _ = server.Serve(listener); stop() }()
 	go func() {
@@ -178,7 +183,7 @@ func StartGateControl(configPath, instanceDir string, gate *EgressGate) (func(),
 					err = cfg.RequireManagedProxy(filepath.Dir(configPath))
 				}
 				if err != nil || cfg.Fingerprint() != gate.Status().Configuration {
-					gate.Close("配置已变更或无法读取，请重启环境并重新检测")
+					gate.Close("Конфигурация изменена или недоступна для чтения. Перезапустите среду и выполните проверку заново")
 				}
 			}
 		}
@@ -191,15 +196,15 @@ type GateClient struct{ record gateRecord }
 func OpenGateClient(instanceDir string) (*GateClient, error) {
 	path := filepath.Join(instanceDir, gateRecordName)
 	if err := host.CheckPrivateFile(path); err != nil {
-		return nil, errors.New("网络门槛控制记录不可用，请停止并重启环境")
+		return nil, errors.New("Запись управления сетевым шлюзом недоступна. Остановите и перезапустите среду")
 	}
 	data, err := os.ReadFile(path)
 	if err != nil || len(data) > 4096 {
-		return nil, errors.New("网络门槛控制记录不可读")
+		return nil, errors.New("Запись управления сетевым шлюзом не читается")
 	}
 	var record gateRecord
 	if json.Unmarshal(data, &record) != nil || len(record.Token) != 64 || record.RunID == "" || !filepath.IsAbs(record.Socket) {
-		return nil, errors.New("网络门槛控制记录无效")
+		return nil, errors.New("Запись управления сетевым шлюзом недействительна")
 	}
 	return &GateClient{record: record}, nil
 }
@@ -228,7 +233,7 @@ func (c *GateClient) request(ctx context.Context, command *gateCommand) (GateSta
 	req.Header.Set("Authorization", "Bearer "+c.record.Token)
 	resp, err := client.Do(req)
 	if err != nil {
-		return state, errors.New("无法连接 VM 外网络门槛控制器")
+		return state, errors.New("Не удалось подключиться к контроллеру сетевого шлюза вне VM")
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
@@ -237,12 +242,12 @@ func (c *GateClient) request(ctx context.Context, command *gateCommand) (GateSta
 		}
 		_ = json.NewDecoder(io.LimitReader(resp.Body, 4096)).Decode(&message)
 		if message.Error == "" {
-			message.Error = "网络门槛操作被拒绝"
+			message.Error = "Операция сетевого шлюза отклонена"
 		}
 		return state, errors.New(message.Error)
 	}
 	if json.NewDecoder(io.LimitReader(resp.Body, 128<<10)).Decode(&state) != nil || state.RunID != c.record.RunID || state.Policy != SafetyPolicyVersion {
-		return GateStatus{}, errors.New("网络门槛状态不属于当前运行实例")
+		return GateStatus{}, errors.New("Состояние сетевого шлюза не относится к текущему запущенному экземпляру")
 	}
 	return state, nil
 }

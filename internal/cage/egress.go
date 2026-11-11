@@ -71,7 +71,7 @@ func proxyConnectionError(ctx context.Context, action string, err error) error {
 			err = errors.Join(context.DeadlineExceeded, err)
 		}
 	}
-	return usererror.Wrap(action, err, "请检查代理；请求不会改为直连。")
+	return usererror.Wrap(action, err, "Проверьте прокси; запрос не будет перенаправлен напрямую.")
 }
 
 // DialContext is used for all guest TCP connections and DoH. DNS names are
@@ -94,13 +94,13 @@ func (e *Egress) DialContext(ctx context.Context, network, addr string) (net.Con
 		}
 		c, err := d.(proxy.ContextDialer).DialContext(ctx, "tcp", addr)
 		if err != nil {
-			return nil, proxyConnectionError(ctx, "连接指定 SOCKS5 代理", err)
+			return nil, proxyConnectionError(ctx, "Подключение к указанному прокси SOCKS5", err)
 		}
 		return c, nil
 	}
 	conn, err := e.connect.DialContext(ctx, "tcp", e.upstream.Host)
 	if err != nil {
-		return nil, proxyConnectionError(ctx, "连接指定代理", err)
+		return nil, proxyConnectionError(ctx, "Подключение к указанному прокси", err)
 	}
 	// Cancellation must interrupt a stalled CONNECT response, not only the
 	// initial TCP connect. Stop the callback before returning a live tunnel.
@@ -119,7 +119,7 @@ func (e *Egress) DialContext(ctx context.Context, network, addr string) (net.Con
 	if e.upstream.Scheme == "https" {
 		t := tls.Client(conn, &tls.Config{ServerName: e.upstream.Hostname(), MinVersion: tls.VersionTLS12})
 		if err = t.HandshakeContext(ctx); err != nil {
-			return nil, proxyConnectionError(ctx, "验证 HTTPS 代理的加密连接", err)
+			return nil, proxyConnectionError(ctx, "Проверка защищённого соединения с HTTPS-прокси", err)
 		}
 		conn = t
 	}
@@ -129,15 +129,15 @@ func (e *Egress) DialContext(ctx context.Context, network, addr string) (net.Con
 		req.Header.Set("Proxy-Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(e.upstream.User.Username()+":"+p)))
 	}
 	if err = req.Write(conn); err != nil {
-		return nil, proxyConnectionError(ctx, "发送代理 CONNECT 请求", err)
+		return nil, proxyConnectionError(ctx, "Отправка запроса CONNECT прокси", err)
 	}
 	r := bufio.NewReader(conn)
 	resp, err := http.ReadResponse(r, req)
 	if err != nil {
-		return nil, proxyConnectionError(ctx, "读取代理 CONNECT 响应", err)
+		return nil, proxyConnectionError(ctx, "Чтение ответа CONNECT прокси", err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("代理拒绝 CONNECT 请求（HTTP %d）；请求不会改为直连", resp.StatusCode)
+		return nil, fmt.Errorf("Прокси отклонил запрос CONNECT (HTTP %d); запрос не будет перенаправлен напрямую", resp.StatusCode)
 	}
 	conn.SetDeadline(time.Time{})
 	ok = true

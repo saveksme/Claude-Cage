@@ -18,7 +18,7 @@ export async function phoneDesktop(op, input) {
       });
       child.stdin.on("error", () => {});
       child.once("close", code => {
-        if (code !== 0 || !size || size > 3600000) reject(new Error("手机 Desktop 服务不可用"));
+        if (code !== 0 || !size || size > 3600000) reject(new Error("Служба Desktop для телефона недоступна"));
         else resolve(Buffer.concat(chunks));
       });
       child.stdin.end(JSON.stringify({ ...input, op }) + "\n");
@@ -26,7 +26,7 @@ export async function phoneDesktop(op, input) {
     const result = JSON.parse(output);
     if (result.status) {
       const status = [400, 403, 409, 410, 412, 501, 503].includes(result.status) ? result.status : 503;
-      throw Object.assign(new Error("手机 Desktop 操作未完成"), { status });
+      throw Object.assign(new Error("Операция Desktop для телефона не завершена"), { status });
     }
     return result;
   } finally { clearTimeout(timeout); }

@@ -106,7 +106,7 @@ def paste_image(data):
             if not ready or os.read(read_fd, 2) != b'ok':
                 os.kill(pid, signal.SIGTERM)
                 os.waitpid(pid, 0)
-                raise RuntimeError('目标没有接收图片，请点击支持图片的输入框后重试；若环境组件过旧，请先更新环境')
+                raise RuntimeError('Цель не принимает изображение. Нажмите на поле ввода с поддержкой изображений и повторите; если компоненты среды устарели, сначала обновите среду')
         finally:
             os.close(read_fd)
     return {'ok': True}

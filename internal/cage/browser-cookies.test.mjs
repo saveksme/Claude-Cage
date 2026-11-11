@@ -23,15 +23,15 @@ test('opaque partitions refuse site-wide and individual deletion before any muta
   const calls = [];
   const cdp = async method => { calls.push(method); return { cookies: [cookie('sub.example.test'), cookie('sub.example.test', { partitionKeyOpaque: true })] }; };
   const data = await browserCookies(cdp, async () => 'sid', tab, { mode: 'list', scope: 'site' });
-  await assert.rejects(browserCookies(cdp, async () => 'sid', tab, { mode: 'delete', scope: 'site', cookieKey: data.cookies.find(cookie => cookie.partitionKeyOpaque).key }), /分区/);
-  await assert.rejects(browserCookies(cdp, async () => 'sid', tab, { mode: 'clear', scope: 'site' }), /分区/);
+  await assert.rejects(browserCookies(cdp, async () => 'sid', tab, { mode: 'delete', scope: 'site', cookieKey: data.cookies.find(cookie => cookie.partitionKeyOpaque).key }), /раздел/i);
+  await assert.rejects(browserCookies(cdp, async () => 'sid', tab, { mode: 'clear', scope: 'site' }), /раздел/i);
   assert.ok(calls.every(method => method === 'Storage.getCookies'));
 });
 
 test('stale page or authorization tabs cannot reach cookie storage', async () => {
   const cdp = () => { throw new Error('must not contact cookie storage'); };
-  await assert.rejects(browserCookies(cdp, null, tab, { mode: 'clear', scope: 'all', url: 'https://previous.test/' }), /网页已切换/);
-  await assert.rejects(browserCookies(cdp, null, { ...tab, login: true }, { mode: 'list', scope: 'all' }), /不可管理/);
+  await assert.rejects(browserCookies(cdp, null, tab, { mode: 'clear', scope: 'all', url: 'https://previous.test/' }), /страница изменилась/i);
+  await assert.rejects(browserCookies(cdp, null, { ...tab, login: true }, { mode: 'list', scope: 'all' }), /нельзя управлять/);
 });
 
 test('vault never attaches credential observers to private or authorization tabs', async () => {
@@ -40,6 +40,6 @@ test('vault never attaches credential observers to private or authorization tabs
     await vault.attach('tab', 'sid');
     assert.equal(vault.sessions.size, 0);
     await vault.request({ action: 'status', lease: 'f'.repeat(64), tab: 'tab' });
-    await assert.rejects(vault.request({ action: 'fill', lease: 'f'.repeat(64), tab: 'tab' }), /网页已切换/);
+    await assert.rejects(vault.request({ action: 'fill', lease: 'f'.repeat(64), tab: 'tab' }), /страница изменилась/i);
   }
 });

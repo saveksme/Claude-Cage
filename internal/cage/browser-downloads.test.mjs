@@ -28,7 +28,7 @@ function completed(manager, id) {
 test("failed saves persist and can be retried after controller restart", async t => {
   let attempts = 0;
   const f = fixture(t, async (id, name) => {
-    if (++attempts === 1) throw new Error("共享连接暂时不可用");
+    if (++attempts === 1) throw new Error("Общее подключение временно недоступно");
     unlinkSync(join(f.directory, "Downloads", id));
     return { ok: true, path: `/shared/Downloads/${name}`, name, bytes: 15 };
   });
@@ -62,7 +62,7 @@ test("interrupted copies are retryable only with a complete source, interrupted 
   assert.equal(records.find(r => r.id === downloading).retryable, false);
   assert.ok(records.every(r => r.state === "failed"));
   unlinkSync(join(f.directory, "Downloads", saving));
-  assert.throws(() => reopened.retry(saving), /源文件/);
+  assert.throws(() => reopened.retry(saving), /Исходный файл/);
   release({ ok: false, error: "interrupted" });
   await f.manager.queue;
 });

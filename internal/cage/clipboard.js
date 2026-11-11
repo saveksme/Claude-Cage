@@ -4,12 +4,12 @@ import { getKeycode, getKeysym } from './core/input/util.js';
 
 const bar = document.createElement('div');
 bar.id = 'cage-clipboard-bar';
-bar.innerHTML = `<strong>Cage 浏览器</strong><button id="cage-copy">复制到本机</button><button id="cage-paste">粘贴到 Cage</button><button id="cage-transfer">文本传递</button><span role="status" id="cage-clipboard-status">远程画面内 ⌘→Ctrl · 剪贴板仅传递文本</span>`;
+bar.innerHTML = `<strong>Браузер Cage</strong><button id="cage-copy">Копировать на компьютер</button><button id="cage-paste">Вставить в Cage</button><button id="cage-transfer">Передача текста</button><span role="status" id="cage-clipboard-status">В удалённом экране ⌘→Ctrl · буфер обмена передаёт только текст</span>`;
 document.body.append(bar);
 const panel = document.createElement('div');
 panel.id = 'cage-clipboard-panel';
 panel.hidden = true;
-panel.innerHTML = `<label for="cage-transfer-text">待传递文本（可在这里使用本机复制、粘贴）</label><textarea id="cage-transfer-text" rows="5"></textarea><button id="cage-send">粘贴到 Cage</button><button id="cage-close">关闭</button>`;
+panel.innerHTML = `<label for="cage-transfer-text">Текст для передачи (здесь можно использовать копирование и вставку компьютера)</label><textarea id="cage-transfer-text" rows="5"></textarea><button id="cage-send">Вставить в Cage</button><button id="cage-close">Закрыть</button>`;
 document.body.append(panel);
 const style = document.createElement('style');
 style.textContent = `#cage-clipboard-bar{position:fixed;z-index:10000;top:0;left:0;right:0;height:42px;display:flex;align-items:center;gap:10px;padding:0 14px;background:#20252b;color:#fff;font:13px system-ui}#cage-clipboard-bar button,#cage-clipboard-panel button{padding:5px 10px;border:1px solid #777;border-radius:5px;cursor:pointer}#cage-clipboard-status{color:#c7d2df}body{padding-top:42px;box-sizing:border-box}#cage-clipboard-panel{position:fixed;z-index:10001;top:50px;right:12px;width:min(440px,90vw);padding:16px;background:#fff;color:#222;font:14px system-ui;border:1px solid #aaa;border-radius:8px}#cage-transfer-text{display:block;box-sizing:border-box;width:100%;margin:10px 0;resize:vertical}`;
@@ -18,7 +18,7 @@ document.head.append(style);
 // alone is not a cross-browser clipboard target.
 const pasteTarget = document.createElement('textarea');
 pasteTarget.id = 'cage-native-paste';
-pasteTarget.setAttribute('aria-label', 'Cage 原生粘贴接收区');
+pasteTarget.setAttribute('aria-label', 'Приёмник вставки Cage');
 pasteTarget.style.cssText = 'position:fixed;left:-10000px;top:0;width:1px;height:1px';
 document.body.append(pasteTarget);
 const status = document.getElementById('cage-clipboard-status');
@@ -50,13 +50,13 @@ function bind() {
         clearTimeout(copyTimer);
         try {
             await navigator.clipboard.writeText(lastRemoteText);
-            say('已复制到本机');
+            say('Скопировано на компьютер');
         } catch {
             field.value = lastRemoteText;
             panel.hidden = false;
             field.focus();
             field.select();
-            say('浏览器未允许剪贴板写入，请在文本框中复制');
+            say('Браузер не разрешил запись в буфер обмена. Скопируйте текст из поля');
         }
     });
 }
@@ -64,21 +64,21 @@ new MutationObserver(bind).observe(document.documentElement, {attributes:true, a
 bind();
 function connected() {
     bind();
-    if (!UI.connected || !UI.rfb) { say('请先连接 Cage 浏览器'); return false; }
+    if (!UI.connected || !UI.rfb) { say('Сначала подключитесь к браузеру Cage'); return false; }
     return true;
 }
 function copy(key = 'c') {
     if (!connected()) return;
     copyRequested = true;
     shortcut(key);
-    say('正在复制 Cage 中选中的文本…');
+    say('Копирование выделенного текста в Cage…');
     clearTimeout(copyTimer);
     copyTimer = setTimeout(() => {
         copyRequested = false;
         // Do not copy an older value when the remote selection did not change.
         field.value = lastRemoteText;
         panel.hidden = false;
-        say('如未选中文本，请先选择；也可在文本框中复制现有 Cage 剪贴板');
+        say('Если текст не выделен, выделите его; также можно скопировать текущий буфер обмена Cage из поля');
     }, 1800);
 }
 function paste(text) {
@@ -88,8 +88,8 @@ function paste(text) {
     const done = UI.rfb.cagePasteText(text);
     UI.rfb.focus();
     panel.hidden = true;
-    say('正在粘贴…');
-    done.then(() => { pendingPastes--; say(pendingPastes ? '正在粘贴…' : '已粘贴到 Cage'); }, () => { pendingPastes--; say('剪贴板未就绪，请重新连接后重试'); });
+    say('Вставка…');
+    done.then(() => { pendingPastes--; say(pendingPastes ? 'Вставка…' : 'Вставлено в Cage'); }, () => { pendingPastes--; say('Буфер обмена не готов. Переподключитесь и повторите'); });
 }
 async function readAndPaste() {
     if (!connected()) return;
@@ -98,7 +98,7 @@ async function readAndPaste() {
         field.value = '';
         panel.hidden = false;
         field.focus();
-        say('请在文本框中粘贴，再点击“粘贴到 Cage”');
+        say('Вставьте текст в поле и нажмите «Вставить в Cage»');
     }
 }
 document.getElementById('cage-copy').onclick = () => copy();
@@ -169,7 +169,7 @@ document.addEventListener('keydown', event => {
         if (pasteClipboard) {
             pasteTarget.value = '';
             pasteTarget.focus({preventScroll:true});
-            say('等待本机粘贴事件…');
+            say('Ожидание события вставки на компьютере…');
             return; // Keep the native paste event and its clipboard payload.
         }
         event.preventDefault();
@@ -206,6 +206,6 @@ document.addEventListener('paste', event => {
     if ((!remoteFocused() && event.target !== pasteTarget) || !connected()) return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    if (!event.clipboardData.types.includes('text/plain')) { say('当前仅支持文本粘贴'); return; }
+    if (!event.clipboardData.types.includes('text/plain')) { say('Сейчас поддерживается только вставка текста'); return; }
     paste(event.clipboardData.getData('text/plain'));
 }, true);

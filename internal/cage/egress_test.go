@@ -41,7 +41,7 @@ func TestProxyHandshakeTimeoutPreservesDeadline(t *testing.T) {
 		conn.Close()
 		t.Fatal("stalled CONNECT succeeded")
 	}
-	if !errors.Is(err, context.DeadlineExceeded) || !strings.Contains(err.Error(), "CONNECT") || !strings.Contains(err.Error(), "超时") {
+	if !errors.Is(err, context.DeadlineExceeded) || !strings.Contains(err.Error(), "CONNECT") || !strings.Contains(err.Error(), "истекло время ожидания") {
 		t.Fatalf("CONNECT timeout lost its cause or stage: %v", err)
 	}
 }

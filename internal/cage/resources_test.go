@@ -59,7 +59,7 @@ func TestResourceFailuresKeepDiagnosticCausePrivate(t *testing.T) {
 		t.Fatalf("secret leaked or repeated failure flooded log: %s", log)
 	}
 	status, err := ReadResourceStatus(dir)
-	if err != nil || !strings.Contains(status.Error, "自动回收内存已暂停") || strings.Contains(status.Error, "Not a socket") || strings.Contains(status.Error, "private-probe-token") {
+	if err != nil || !strings.Contains(status.Error, "Автоматический возврат памяти приостановлен") || strings.Contains(status.Error, "Not a socket") || strings.Contains(status.Error, "private-probe-token") {
 		t.Fatalf("technical detail escaped to resource status: %+v %v", status, err)
 	}
 }

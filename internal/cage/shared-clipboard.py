@@ -403,7 +403,7 @@ def clipboard_worker(name, connection):
         def valid():
             return sequence == changes.get(name)
         def failure():
-            connection.send({'error': '剪贴板内容无法共享，请检查文件是否仍存在及大小限制。'})
+            connection.send({'error': 'Содержимое буфера обмена нельзя передать. Проверьте, существует ли файл, и ограничения размера.'})
         def text_ready(_clipboard, text, _data):
             if not valid() or text is None:
                 return
@@ -480,7 +480,7 @@ def clipboard_worker(name, connection):
                     write(clipboard, payload)
                 connection.send({'ack': serial})
             except (TypeError, ValueError, KeyError, OSError, GLib.Error):
-                connection.send({'error': '剪贴板内容无法共享。'})
+                connection.send({'error': 'Содержимое буфера обмена нельзя передать.'})
         return True
 
     def read():
@@ -625,7 +625,7 @@ def bridge():
                                 payload = {'files': materialize_guest_files(payload['files'], 'cage-browser' if name == ':77' else 'cage', session)}
                             message = {**payload, 'source': 'cage'}
                         except (ValueError, OSError, tarfile.TarError):
-                            print('{"error":"剪贴板文件无法共享，请检查文件是否仍存在及读取权限。"}', flush=True)
+                            print('{"error":"Файл буфера обмена нельзя передать. Проверьте, существует ли файл, и права на чтение."}', flush=True)
                             continue
                     last = payload
                     internal_serial -= 1

@@ -13,15 +13,15 @@ export class LoginBrowser {
       const url = new URL(raw.url);
       if (["https:", "http:"].includes(url.protocol)) origin = url.origin;
     } catch {}
-    return { ...raw, login: true, url: origin, title: "账号授权" };
+    return { ...raw, login: true, url: origin, title: "Авторизация аккаунта" };
   }
 
   async open(login, address, activate) {
-    if (typeof login !== "string" || !/^[a-f0-9-]{16,64}$/.test(login)) throw new Error("登录任务无效");
+    if (typeof login !== "string" || !/^[a-f0-9-]{16,64}$/.test(login)) throw new Error("Задача входа недействительна");
     const url = new URL(address);
     if (url.protocol !== "https:" || url.username || url.password ||
         !["claude.ai", "claude.com", "console.anthropic.com", "platform.claude.com", "platform.anthropic.com"].includes(url.hostname))
-      throw new Error("仅可打开官方登录地址");
+      throw new Error("Можно открыть только официальный адрес входа");
     await this.finish(login);
     const { browserContextId } = await this.cdp("Target.createBrowserContext", { disposeOnDetach: true });
     const expiry = setTimeout(() => this.close(browserContextId).catch(() => {}), 15 * 60_000);
@@ -34,7 +34,7 @@ export class LoginBrowser {
       return { id: targetId };
     } catch {
       await this.close(browserContextId);
-      throw new Error("临时登录页面未能打开");
+      throw new Error("Не удалось открыть временную страницу входа");
     }
   }
 

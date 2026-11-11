@@ -5,11 +5,11 @@ import { createTailnetClient } from "./tailnet-client.mjs";
 
 test("stdio requests are serialized, preserve component errors and reject wire commands", async () => {
   const seen = [];
-  const fixture = `let text=''; process.stdin.on('data',chunk=>{text+=chunk;let end;while((end=text.indexOf('\\n'))>=0){const input=JSON.parse(text.slice(0,end));text=text.slice(end+1);setTimeout(()=>console.log(JSON.stringify(input.action==='add-key'?{error:'请粘贴有效 SSH 公钥'}:{installed:true,action:input.action})),10)}});`;
+  const fixture = `let text=''; process.stdin.on('data',chunk=>{text+=chunk;let end;while((end=text.indexOf('\\n'))>=0){const input=JSON.parse(text.slice(0,end));text=text.slice(end+1);setTimeout(()=>console.log(JSON.stringify(input.action==='add-key'?{error:'Вставьте действительный открытый ключ SSH'}:{installed:true,action:input.action})),10)}});`;
   const client = createTailnetClient({ executable: process.execPath, start: (file,args,options) => { seen.push({file,args}); return spawn(process.execPath, ["-e", fixture], options); } });
   try {
     const values = await Promise.all([client.request({action:"status"}), client.request({action:"connect"}), client.request({action:"add-key",key:"invalid"})]);
-    assert.deepEqual(values.map(v=>v.action||v.tailnet_error), ["status","connect","请粘贴有效 SSH 公钥"]);
+    assert.deepEqual(values.map(v=>v.action||v.tailnet_error), ["status","connect","Вставьте действительный открытый ключ SSH"]);
     assert.equal(seen.length,1);
     await assert.rejects(client.request({action:"shell",command:"whoami"}));
     await assert.rejects(client.request({action:"add-key",key:"x".repeat(8193)}));

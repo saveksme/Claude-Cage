@@ -147,7 +147,7 @@ const downloads = new DownloadManager({
     try {
       output = (await runFile("/usr/bin/sudo", ["/usr/local/bin/cage-save-download", id, name], { maxBuffer: 16384 })).stdout;
     } catch (error) {
-      output = error.stdout || '{"ok":false,"error":"下载保存未完成，请检查共享目录后重试。"}';
+      output = error.stdout || '{"ok":false,"error":"Сохранение загрузки не завершено. Проверьте общий каталог и повторите."}';
     }
     return JSON.parse(output);
   },
@@ -382,7 +382,7 @@ async function splitController(repair = false) {
         const { sessionId } = await cdp("Target.attachToTarget", { targetId, flatten: true });
         await cdp("Runtime.evaluate", { expression: `new Promise(resolve => document.readyState === 'complete' ? resolve() : addEventListener('load', resolve, {once:true}))`, awaitPromise: true }, sessionId);
         const result = await cdp("Runtime.evaluate", { expression: `chrome.management.setEnabled(${JSON.stringify(extensionId)}, true).then(() => true)`, awaitPromise: true, returnByValue: true, userGesture: true }, sessionId);
-        if (result.exceptionDetails || result.result?.value !== true) throw new Error("浏览器组件未能恢复，请重启环境");
+        if (result.exceptionDetails || result.result?.value !== true) throw new Error("Компонент браузера не удалось восстановить. Перезапустите среду");
       } finally { await cdp("Target.closeTarget", { targetId }).catch(() => {}); }
     }
     return openSplitController();
@@ -438,11 +438,11 @@ async function setSplit({ left, right, id }) {
   if (left && (!targets.has(left) || !targets.has(right) || left === right ||
       ![left, right].includes(id))) throw new Error("Invalid split tabs");
   if (left && targets.get(left).browserContextId !== targets.get(right).browserContextId)
-    throw new Error("不同浏览会话不能分屏");
+    throw new Error("Нельзя разделить экран для разных сеансов браузера");
   if (left && (targets.get(left).incognito || targets.get(right).incognito))
-    throw new Error("无痕标签暂不支持双网页分屏");
+    throw new Error("Разделение экрана для вкладок инкогнито пока не поддерживается");
   if (left && [left, right].some(id => isSettingsTab(targets.get(id))))
-    throw new Error("设置页请在单个浏览器窗格内使用");
+    throw new Error("Страницу настроек используйте в одной панели браузера");
   const sid = await splitController();
   const result = await cdp("Runtime.evaluate", { awaitPromise: true, returnByValue: true,
     expression: `setCageSplit(${JSON.stringify(left || "")}, ${JSON.stringify(right || "")})`,
@@ -506,19 +506,19 @@ async function newTab(url = homeURL, incognito = false) {
   return { id: targetId };
 }
 async function browserSettings(section = "general") {
-  if (!["general", "appearance", "privacy", "extensions", "about"].includes(section)) throw new Error("设置分类无效");
+  if (!["general", "appearance", "privacy", "extensions", "about"].includes(section)) throw new Error("Недопустимая категория настроек");
   const url = settingsURL + "#" + section;
   const existing = [...targets.values()].find(isSettingsTab);
   if (existing) {
     await cdp("Page.navigate", { url }, await session(existing.targetId));
     existing.url = url;
     await activate(existing.targetId, true);
-    return { id: existing.targetId, kind: "browser-settings", title: "设置", url: publicURL(existing) };
+    return { id: existing.targetId, kind: "browser-settings", title: "Настройки", url: publicURL(existing) };
   }
   const result = await newTab(url);
   const created = targets.get(result.id);
   if (created) created.url = url;
-  return { ...result, kind: "browser-settings", title: "设置", url: "cage://settings#" + section };
+  return { ...result, kind: "browser-settings", title: "Настройки", url: "cage://settings#" + section };
 }
 async function editor(workspace = config.workspace, reload = false) {
   if (typeof workspace !== "string" || !workspace.startsWith("/")) throw new Error("Invalid workspace");
@@ -568,7 +568,7 @@ async function restartEditor(workspace) {
     } catch {}
     await new Promise(resolve => setTimeout(resolve, 200));
   }
-  throw new Error("编辑器尚未恢复，请稍后重试。");
+  throw new Error("Редактор ещё не восстановлен. Повторите попытку позже.");
 }
 async function tabState() {
   await Promise.allSettled([...auditCreations]);
@@ -597,9 +597,9 @@ async function refreshNavigation() {
   }
 }
 function displayTitle(tab) {
-  if (isSettingsTab(tab)) return "设置";
-  if (tab.login) return "账号授权";
-  if (tab.url === "about:blank") return "新标签页";
+  if (isSettingsTab(tab)) return "Настройки";
+  if (tab.login) return "Авторизация аккаунта";
+  if (tab.url === "about:blank") return "Новая вкладка";
   const title = tab.title;
   if (
     !title ||
@@ -609,7 +609,7 @@ function displayTitle(tab) {
     try {
       return new URL(tab.url).hostname;
     } catch {
-      return "新标签页";
+      return "Новая вкладка";
     }
   }
   return title.slice(0, 160);
@@ -740,12 +740,12 @@ const server = http.createServer(async (req, res) => {
     if (!ready) throw new Error("Browser is starting");
     const route = new URL(req.url, "http://localhost");
     if (req.method === "POST" && route.pathname === "/extensions-upload") {
-      if (Number(req.headers["content-length"]) > extensionUploadLimit) throw new Error("扩展 ZIP 不能超过 32 MB");
+      if (Number(req.headers["content-length"]) > extensionUploadLimit) throw new Error("ZIP расширения не может превышать 32 MB");
       res.end(JSON.stringify(await mutate(() => browserExtensions.upload(req))));
       return;
     }
     if (req.method === "POST" && route.pathname === "/upload-file") {
-      if (Number(req.headers["content-length"]) > uploadLimit) throw new Error("每个文件不能超过 2 GB");
+      if (Number(req.headers["content-length"]) > uploadLimit) throw new Error("Каждый файл не может превышать 2 GB");
       res.end(JSON.stringify(await uploads.receive(route.searchParams.get("id"), route.searchParams.get("name"), req)));
       return;
     }
@@ -753,7 +753,7 @@ const server = http.createServer(async (req, res) => {
       const source = downloads.sourceFile(route.searchParams.get("id"));
       const file = await open(source, constants.O_RDONLY | constants.O_NOFOLLOW);
       const stat = await file.stat();
-      if (!stat.isFile()) { await file.close(); throw new Error("下载文件不可用"); }
+      if (!stat.isFile()) { await file.close(); throw new Error("Файл загрузки недоступен"); }
       res.setHeader("Content-Type", "application/octet-stream");
       res.setHeader("Content-Length", stat.size);
       const stream = file.createReadStream();
@@ -817,7 +817,7 @@ const server = http.createServer(async (req, res) => {
     if (req.url === "/upload-start" || req.url === "/upload-finish") {
       const result = await mutate(async () => {
         const tabId = req.url === "/upload-start" ? input.id : uploads.request(input.id).tabId;
-        if (!targets.has(tabId) || activeId !== tabId) throw new Error("文件接收网页已切换，请返回原网页重试");
+        if (!targets.has(tabId) || activeId !== tabId) throw new Error("Страница приёма файла изменилась. Вернитесь на исходную страницу и повторите");
         return req.url === "/upload-start"
           ? uploads.start(tabId, await session(tabId), input)
           : uploads.finish(input.id);
@@ -830,7 +830,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     if (req.url === "/audit") {
-      if (typeof input.timezone !== "string" || input.timezone.length > 128) throw new Error("诊断时区无效");
+      if (typeof input.timezone !== "string" || input.timezone.length > 128) throw new Error("Недействительный часовой пояс диагностики");
       res.end(JSON.stringify(await auditBrowser(auditCDP, auditExclusions, input.network === true, input.timezone)));
       return;
     }
@@ -872,11 +872,11 @@ const server = http.createServer(async (req, res) => {
       if (req.url === "/extensions") {
         const result = await browserExtensions.request(input);
         if (input.mode === "options" && result.url) {
-          if (!result.url.startsWith(`chrome-extension://${input.id}/`)) throw new Error("扩展设置地址无效");
+          if (!result.url.startsWith(`chrome-extension://${input.id}/`)) throw new Error("Недействительный адрес настроек расширения");
           const { targetId } = await cdp("Target.createTarget", { url: result.url });
           if (!targets.has(targetId)) targets.set(targetId, { targetId, type: "page", url: result.url });
           await activate(targetId, true);
-          return { id: targetId, url: result.url, kind: "web", title: "扩展选项" };
+          return { id: targetId, url: result.url, kind: "web", title: "Параметры расширения" };
         }
         return result;
       }
@@ -884,11 +884,11 @@ const server = http.createServer(async (req, res) => {
         const destinations = { extensions: "chrome://extensions/", permissions: "chrome://settings/content", clear: "chrome://settings/clearBrowserData" };
         let url = destinations[input.mode];
         if (input.mode === "extensions" && input.id) {
-          if (!/^[a-p]{32}$/.test(input.id)) throw new Error("扩展标识无效");
+          if (!/^[a-p]{32}$/.test(input.id)) throw new Error("Недействительный идентификатор расширения");
           url += "?id=" + input.id;
         }
-        if (!url) throw new Error("内部页面无效");
-        return { ...await newTab(url), url, kind: "web", title: "浏览器设置" };
+        if (!url) throw new Error("Недействительная внутренняя страница");
+        return { ...await newTab(url), url, kind: "web", title: "Настройки браузера" };
       }
       if (req.url === "/visibility") {
         await visibility.set(input.visible);
@@ -945,7 +945,7 @@ const server = http.createServer(async (req, res) => {
           let timer;
           const closed = new Promise((resolve, reject) => {
             closingTargets.set(id, resolve);
-            timer = setTimeout(() => reject(new Error("标签尚未关闭，请重试")), 4500);
+            timer = setTimeout(() => reject(new Error("Вкладка ещё не закрыта. Повторите попытку")), 4500);
           });
           // Keep consecutive close/new commands ordered after target destruction.
           closed.catch(() => {});

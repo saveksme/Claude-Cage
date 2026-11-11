@@ -19,7 +19,7 @@ with zipfile.ZipFile(b,'w') as z:
   link=zipfile.ZipInfo('link');link.create_system=3;link.external_attr=(stat.S_IFLNK|0o777)<<16;z.writestr(link,'/etc/passwd')
 sys.stdout.buffer.write(b.getvalue())`, kind], { stdio: ['ignore', 'pipe', 'ignore'] });
     const manager = new BrowserExtensions({ directory: root, cdp: () => { throw new Error('must not install rejected ZIP'); }, control: null, protectedID: 'a'.repeat(32) });
-    await assert.rejects(manager.upload(Readable.from([bytes])), /路径|符号链接|Manifest V3/);
+    await assert.rejects(manager.upload(Readable.from([bytes])), /пути|символические ссылки|Manifest V3/);
     assert.equal(manager.pending.size, 0);
     await assert.rejects(access(join(root, 'extensions/staging/outside')));
   } finally { await rm(root, { recursive: true, force: true }); }

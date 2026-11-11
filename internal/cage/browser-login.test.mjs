@@ -24,7 +24,7 @@ test("login redirects and popups stay private, closing one login leaves the othe
   }
   const popup = { ...page, targetId: "popup", browserContextId: "1", url: "http://localhost:9123/callback?code=secret" };
   const privateTab = browser.tab(popup);
-  assert.equal(privateTab.title, "账号授权");
+  assert.equal(privateTab.title, "Авторизация аккаунта");
   assert.equal(privateTab.url, "http://localhost:9123");
   await browser.finish("a".repeat(24));
   assert.deepEqual(closed, ["1"]);

@@ -174,7 +174,7 @@ printf '%s\\n' "$@"
             self.assertFalse((config/"commands").is_symlink())
             self.assertEqual((config/"commands/keep.md").read_text(),"retain the original layout on conflict")
             failure=self.run_helper("run",FIRST,check=False)
-            self.assertIn("同名冲突",failure.stderr)
+            self.assertIn("конфликтуют по имени",failure.stderr)
 
     def test_existing_project_memory_is_backed_up_and_remains_shared(self):
         with patch.dict(os.environ,self.env,clear=True),patch.object(helper.Path,"cwd",return_value=self.home):

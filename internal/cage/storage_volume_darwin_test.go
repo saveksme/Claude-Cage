@@ -12,7 +12,7 @@ func TestStorageRefusesVolumeWithIgnoredOwnership(t *testing.T) {
 		t.Skip("set CAGE_TEST_NOOWNERS_VOLUME to a test volume mounted noowners")
 	}
 	err := localStorageVolume(path)
-	if err == nil || !strings.Contains(err.Error(), "所有权") {
+	if err == nil || !strings.Contains(err.Error(), "владельцев") {
 		t.Fatalf("noowners volume check: %v", err)
 	}
 }

@@ -25,7 +25,7 @@ func lockStorageFile(f *os.File, exclusive bool) (bool, error) {
 func localStorageVolume(path string) error {
 	volume := filepath.VolumeName(path)
 	if len(volume) != 2 || strings.HasPrefix(path, `\\`) {
-		return errors.New("请使用本地磁盘上的文件夹")
+		return errors.New("Используйте папку на локальном диске")
 	}
 	name, err := windows.UTF16PtrFromString(path)
 	if err != nil {
@@ -39,7 +39,7 @@ func localStorageVolume(path string) error {
 	switch windows.GetDriveType(root) {
 	case windows.DRIVE_FIXED, windows.DRIVE_REMOVABLE:
 	default:
-		return errors.New("请选择已连接的本地磁盘")
+		return errors.New("Выберите подключённый локальный диск")
 	}
 	var flags uint32
 	if err = windows.GetVolumeInformation(root, nil, 0, nil, nil, &flags, nil, 0); err != nil {
@@ -47,7 +47,7 @@ func localStorageVolume(path string) error {
 	}
 	const required = windows.FILE_PERSISTENT_ACLS | windows.FILE_SUPPORTS_SPARSE_FILES
 	if flags&required != required {
-		return errors.New("请使用支持私有文件权限和稀疏磁盘的本地卷，例如 NTFS")
+		return errors.New("Используйте локальный том с поддержкой частных прав доступа к файлам и разрежённых дисков, например NTFS")
 	}
 	return nil
 }
@@ -65,7 +65,7 @@ func linkStorage(link, target string) (err error) {
 	}
 	data := make([]byte, 16+2*(len(sub)+len(label)))
 	if len(data) > 16*1024 {
-		return errors.New("存储路径过长")
+		return errors.New("Слишком длинный путь хранилища")
 	}
 	binary.LittleEndian.PutUint32(data, windows.IO_REPARSE_TAG_MOUNT_POINT)
 	binary.LittleEndian.PutUint16(data[4:], uint16(len(data)-8))

@@ -31,23 +31,23 @@ export function phoneError(status, message) {
 }
 
 export function webAddress(value) {
-  if (typeof value !== "string" || value.length > 16384) throw new Error("请输入有效的网址");
+  if (typeof value !== "string" || value.length > 16384) throw new Error("Введите действительный URL");
   let url;
-  try { url = new URL(value); } catch { throw new Error("请输入有效的网址"); }
+  try { url = new URL(value); } catch { throw new Error("Введите действительный URL"); }
   if (!["http:", "https:"].includes(url.protocol) || url.username || url.password ||
       !publicName(url.hostname.toLowerCase().replace(/\.$/, ""))) {
-    throw phoneError(403, "手机浏览器仅支持公网 HTTP 或 HTTPS 网址");
+    throw phoneError(403, "Браузер телефона поддерживает только публичные адреса HTTP или HTTPS");
   }
   return url.href;
 }
 
 async function internetSocket(name, port) {
-  if (!publicName(name)) throw new Error("非公网地址");
+  if (!publicName(name)) throw new Error("Адрес не является публичным");
   const ips = net.isIPv4(name) ? [name] : await resolve4(name);
   const local = new Set(Object.values(networkInterfaces()).flat().map(info => info.address));
-  if (!ips.length || !ips.every(ip => publicIPv4(ip) && !local.has(ip))) throw new Error("非公网地址");
+  if (!ips.length || !ips.every(ip => publicIPv4(ip) && !local.has(ip))) throw new Error("Адрес не является публичным");
   const socket = net.createConnection({ host: ips[0], port, family: 4 });
-  socket.setTimeout(12000, () => socket.destroy(new Error("连接超时")));
+  socket.setTimeout(12000, () => socket.destroy(new Error("Истекло время ожидания соединения")));
   await once(socket, "connect");
   socket.setTimeout(0);
   socket.removeAllListeners("timeout");
@@ -68,7 +68,7 @@ export async function startPhoneProxy(connect = internetSocket) {
       async function take(length) {
         while (buffer.length < length) {
           const next = await reader.next();
-          if (next.done) throw new Error("连接中断");
+          if (next.done) throw new Error("Соединение прервано");
           buffer = Buffer.concat([buffer, next.value]);
         }
         const head = buffer.subarray(0, length);
@@ -78,17 +78,17 @@ export async function startPhoneProxy(connect = internetSocket) {
       let remote;
       try {
         const [version, methodCount] = await take(2);
-        if (version !== 5 || !(await take(methodCount)).includes(0)) throw new Error("协议不支持");
+        if (version !== 5 || !(await take(methodCount)).includes(0)) throw new Error("Протокол не поддерживается");
         client.write(Buffer.from([5, 0]));
         const [nextVersion, command, zero, family] = await take(4);
-        if (nextVersion !== 5 || command !== 1 || zero !== 0 || ![1, 3].includes(family)) throw new Error("协议不支持");
+        if (nextVersion !== 5 || command !== 1 || zero !== 0 || ![1, 3].includes(family)) throw new Error("Протокол не поддерживается");
         const name = family === 1 ? [...await take(4)].join(".") :
           (await take((await take(1))[0])).toString("latin1").toLowerCase().replace(/\.$/, "");
         const port = (await take(2)).readUInt16BE();
-        if (!port || !publicName(name)) throw new Error("目标不可用");
+        if (!port || !publicName(name)) throw new Error("Цель недоступна");
         remote = await connect(name, port);
         remote.on("error", () => client.destroy());
-        if (client.destroyed) throw new Error("连接已关闭");
+        if (client.destroyed) throw new Error("Соединение закрыто");
         sockets.add(remote);
         remote.once("close", () => { sockets.delete(remote); client.destroy(); });
         client.once("close", () => remote.destroy());

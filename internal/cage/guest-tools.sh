@@ -162,7 +162,7 @@ cage_install_tool() (
       ;;
     claude)
       if [ "$arch" = amd64 ] && [ -r /proc/cpuinfo ] && ! grep -Eq '^flags[[:space:]]*:.*[[:space:]]sse4_2([[:space:]]|$)' /proc/cpuinfo; then
-        echo 'Claude Code 需要 SSE4.2 指令。当前 x86_64 客机未提供该指令，请检查宿主 CPU、虚拟化平台和虚拟 CPU 配置后重启环境。' >&2
+        echo 'Claude Code требует инструкцию SSE4.2. Текущая гостевая система x86_64 не предоставляет её. Проверьте CPU хоста, платформу виртуализации и конфигурацию виртуального CPU, затем перезапустите среду.' >&2
         exit 1
       fi
       # Resolve at installation/update time, then keep that exact version for

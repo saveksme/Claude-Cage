@@ -238,9 +238,9 @@ func StartResourceManager(parent context.Context, dir string, maximum uint64, cp
 				p.idleSince = time.Time{}
 				cause := usererror.Reason(err)
 				if cause == "" {
-					cause = "环境未能返回完整有效的内存与 CPU 数据"
+					cause = "Среда не вернула полные и корректные данные о памяти и CPU"
 				}
-				status.Error = "读取资源用量失败：" + cause + "。自动回收内存已暂停；若持续出现，请在设置中导出诊断包。"
+				status.Error = "Не удалось прочитать использование ресурсов: " + cause + ". Автоматический возврат памяти приостановлен; если это повторяется, экспортируйте диагностический пакет в настройках."
 				detail = fmt.Sprintf("%s: %v", status.Error, err)
 				// A stalled guest may itself be out of memory. Restore its budget
 				// without relying on a command that needs guest RAM to execute.
@@ -272,7 +272,7 @@ func StartResourceManager(parent context.Context, dir string, maximum uint64, cp
 				e := set(changeCtx, target)
 				finish()
 				if e != nil {
-					status.Error = "调整环境内存失败：虚拟机没有接受新的内存目标，当前分配保持不变。请在设置中导出诊断包。"
+					status.Error = "Не удалось изменить память среды: виртуальная машина не приняла новый целевой объём памяти, текущее выделение не изменено. Экспортируйте диагностический пакет в настройках."
 					detail = fmt.Sprintf("%s: %v", status.Error, e)
 				} else {
 					p.target, status.Target = target, target

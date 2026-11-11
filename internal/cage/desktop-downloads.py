@@ -28,14 +28,14 @@ class Downloads:
         self.records = {}
         try:
             if self.manifest.stat().st_size > 1024 * 1024:
-                raise ValueError('下载记录过大')
+                raise ValueError('Запись загрузки слишком велика')
             records = json.loads(self.manifest.read_text())
             for item in records[-100:]:
                 if (not re.fullmatch(r'[a-f0-9-]{36}', item['id']) or not valid_name(item['name'])
                         or not valid_name(item['sourceName'])):
                     continue
                 if item['state'] in ('downloading', 'saving'):
-                    item.update(state='failed', error='下载或保存被中断；已完整写入的文件可重试保存。')
+                    item.update(state='failed', error='Загрузка или сохранение прерваны; полностью записанный файл можно сохранить повторно.')
                 item['retryable'] = bool(item.get('complete') and self.source(item).is_file()
                                          and item['state'] == 'failed')
                 self.records[item['id']] = item
@@ -69,16 +69,16 @@ class Downloads:
                 source = self.source(item)
                 if path in (str(source), str(source.parent)):
                     if item['state'] != 'saved':
-                        raise ValueError('文件尚未保存完成，请稍后重试')
+                        raise ValueError('Файл ещё не сохранён полностью. Повторите попытку позже')
                     return item['path'] if path == str(source) else str(Path(item['path']).parent)
         return path
 
     def begin(self, name):
         if not valid_name(name):
-            raise ValueError('下载文件名无效')
+            raise ValueError('Недействительное имя загружаемого файла')
         with self.lock:
             if sum(item['state'] in ('downloading', 'saving') for item in self.records.values()) >= 50:
-                raise ValueError('同时下载的文件过多，请等待下载完成')
+                raise ValueError('Слишком много одновременных загрузок. Дождитесь их завершения')
             key = str(uuid.uuid4())
             folder = self.directory / key
             folder.mkdir(mode=0o700)
@@ -86,11 +86,11 @@ class Downloads:
             libc = C.CDLL(None, use_errno=True)
             fd = libc.inotify_init1(os.O_CLOEXEC | os.O_NONBLOCK)
             if fd < 0:
-                raise OSError(C.get_errno(), '无法监听下载完成')
+                raise OSError(C.get_errno(), 'Не удалось отследить завершение загрузки')
             watch = libc.inotify_add_watch(fd, os.fsencode(folder), 0x2 | 0x8 | 0x80 | 0x200)
             if watch < 0:
                 os.close(fd)
-                raise OSError(C.get_errno(), '无法监听下载目录')
+                raise OSError(C.get_errno(), 'Не удалось отследить каталог загрузок')
             item = dict(id=key, name=name, sourceName=name, state='downloading', target='desktop',
                         startedAt=datetime.now(timezone.utc).isoformat(), complete=False, retryable=False)
             self.records[key] = item
@@ -108,7 +108,7 @@ class Downloads:
         try:
             while True:
                 if not select.select([fd], [], [], 1800)[0]:
-                    raise ValueError('长时间未收到完整文件，请从原应用重新下载')
+                    raise ValueError('Полный файл долго не поступал. Загрузите его заново из исходного приложения')
                 data = os.read(fd, 65536)
                 offset = 0
                 while offset + 16 <= len(data):
@@ -116,7 +116,7 @@ class Downloads:
                     name = os.fsdecode(data[offset + 16:offset + 16 + length].split(b'\0')[0])
                     offset += 16 + length
                     if mask & 0x4000:  # IN_Q_OVERFLOW: never infer completion from size stability.
-                        raise ValueError('下载完成通知丢失，请重新下载')
+                        raise ValueError('Уведомление о завершении загрузки потеряно. Загрузите файл заново')
                     if name == item['sourceName'] + '.crdownload' and mask & 0x200:
                         with self.lock:
                             item.update(state='canceled', retryable=False)
@@ -145,7 +145,7 @@ class Downloads:
             try:
                 self.persist()
             except OSError:
-                item['error'] = '无法保存下载记录，请检查客机可用空间'
+                item['error'] = 'Не удалось сохранить запись загрузки. Проверьте свободное место в гостевой системе'
 
     def save(self, item):
         try:
@@ -154,7 +154,7 @@ class Downloads:
                 try:
                     info = os.fstat(source)
                     if not stat.S_ISREG(info.st_mode):
-                        raise ValueError('下载源文件无效')
+                        raise ValueError('Недействительный исходный файл загрузки')
                     result = self.copier(source, info.st_size, self.workspace, item['sourceName'])
                 finally:
                     os.close(source)
@@ -171,7 +171,7 @@ class Downloads:
         with self.lock:
             item = self.records.get(key)
             if not item or item['state'] != 'failed' or not item['retryable']:
-                raise ValueError('完整下载源文件不可用，请重新下载')
+                raise ValueError('Полный исходный файл загрузки недоступен. Загрузите его заново')
             item.update(state='saving', retryable=False)
             self.persist()
             threading.Thread(target=self.save, args=(item,), daemon=True).start()

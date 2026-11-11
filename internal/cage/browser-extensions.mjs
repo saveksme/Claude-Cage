@@ -46,7 +46,7 @@ export class BrowserExtensions {
     try { response = await evaluate(false); }
     catch { response = await evaluate(true); }
     if (response.exceptionDetails && /not defined|context|session/i.test(response.exceptionDetails.exception?.description || response.exceptionDetails.text || '')) response = await evaluate(true);
-    if (response.exceptionDetails || !response.result?.value) throw new Error('扩展操作未完成，请重试或打开 Chromium 扩展管理');
+    if (response.exceptionDetails || !response.result?.value) throw new Error('Операция с расширением не завершена. Повторите или откройте управление расширениями Chromium');
     return response.result.value;
   }
   async restore() {
@@ -54,19 +54,19 @@ export class BrowserExtensions {
       if (!entry.enabled) continue;
       try {
         const { id } = await this.cdp('Extensions.loadUnpacked', { path: this.path(entry) });
-        if (id !== entry.id) throw new Error('扩展标识已变化');
+        if (id !== entry.id) throw new Error('Идентификатор расширения изменился');
         entry.error = '';
-      } catch { entry.error = '扩展未能加载，请检查扩展文件或重新安装'; }
+      } catch { entry.error = 'Расширение не удалось загрузить. Проверьте файлы расширения или переустановите его'; }
     }
   }
   async upload(stream) {
-    if (this.pending.size >= 4) throw new Error('请先安装或取消之前选择的扩展');
+    if (this.pending.size >= 4) throw new Error('Сначала установите или отмените ранее выбранные расширения');
     const token = randomUUID(), directory = join(this.root, 'staging', token), archive = directory + '.zip';
     const chunks = []; let size = 0;
     try {
       for await (const chunk of stream) {
         size += chunk.length;
-        if (size > extensionUploadLimit) throw new Error('扩展 ZIP 不能超过 32 MB');
+        if (size > extensionUploadLimit) throw new Error('ZIP расширения не может превышать 32 MB');
         chunks.push(chunk);
       }
       writeFileSync(archive, Buffer.concat(chunks), { mode: 0o600 });
@@ -84,21 +84,21 @@ export class BrowserExtensions {
     const mode = input.mode || 'list';
     if (mode === 'cancel' || mode === 'install') {
       const entry = this.pending.get(input.session);
-      if (!entry) throw new Error('扩展选择已过期，请重新选择 ZIP');
+      if (!entry) throw new Error('Выбор расширения устарел. Выберите ZIP заново');
       if (mode === 'cancel') {
         rmSync(entry.directory, { recursive: true, force: true }); this.pending.delete(input.session);
         return { ok: true };
       }
       const packageID = input.session, directory = join(this.root, 'packages', packageID);
-      if (input.target && this.records.size && [...this.records.values()].some(item => item.source === input.target)) throw new Error('此本机扩展已经导入');
+      if (input.target && this.records.size && [...this.records.values()].some(item => item.source === input.target)) throw new Error('Это локальное расширение уже импортировано');
       const expectedID = entry.key ? idFor(Buffer.from(entry.key, 'base64')) : this.idForPath(join(directory, entry.relative));
-      if (expectedID === this.protectedID || this.records.has(expectedID)) throw new Error('此扩展已经安装，请先移除原有版本');
+      if (expectedID === this.protectedID || this.records.has(expectedID)) throw new Error('Это расширение уже установлено. Сначала удалите прежнюю версию');
       renameSync(entry.directory, directory); this.pending.delete(input.session);
       let id, inserted = false;
       try {
         if (input.enabled === false) id = expectedID;
         else ({ id } = await this.cdp('Extensions.loadUnpacked', { path: join(directory, entry.relative) }));
-        if (id === this.protectedID || this.records.has(id)) throw new Error('此扩展标识已存在');
+        if (id === this.protectedID || this.records.has(id)) throw new Error('Идентификатор расширения уже существует');
         const { directory: unused, key: publicKey, ...metadata } = entry;
         this.records.set(id, { ...metadata, id, package: packageID, enabled: input.enabled !== false,
           ...(typeof input.target === 'string' && /^[a-f0-9]{32}:[a-p]{32}$/.test(input.target) ? { source: input.target } : {}),
@@ -112,14 +112,14 @@ export class BrowserExtensions {
       }
       return this.request({ mode: 'list' });
     }
-    if (!['list', 'enable', 'disable', 'remove', 'options'].includes(mode)) throw new Error('扩展操作无效');
-    if (mode !== 'list' && (!extensionID.test(input.id || '') || input.id === this.protectedID)) throw new Error('扩展标识无效');
+    if (!['list', 'enable', 'disable', 'remove', 'options'].includes(mode)) throw new Error('Недопустимая операция с расширением');
+    if (mode !== 'list' && (!extensionID.test(input.id || '') || input.id === this.protectedID)) throw new Error('Недействительный идентификатор расширения');
     const record = this.records.get(input.id);
     if (mode === 'enable' && record) {
       const loaded = await this.cdp('Extensions.loadUnpacked', { path: this.path(record) });
       if (loaded.id !== input.id) {
         await this.cdp('Extensions.uninstall', { id: loaded.id }).catch(() => {});
-        throw new Error('扩展标识已变化，请重新安装');
+        throw new Error('Идентификатор расширения изменился. Переустановите расширение');
       }
     }
     if (mode === 'remove') {

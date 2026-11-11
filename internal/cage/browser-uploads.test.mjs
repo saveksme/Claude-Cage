@@ -49,8 +49,8 @@ test("cancel during a stream refuses the rest and never assigns partial files", 
     f.manager.cancel(f.id);
     yield Buffer.from("discarded");
   }
-  await assert.rejects(f.manager.receive(f.id, "video.mp4", chunks()), /取消/);
-  await assert.rejects(f.manager.finish(f.id), /关闭/);
+  await assert.rejects(f.manager.receive(f.id, "video.mp4", chunks()), /отменена/);
+  await assert.rejects(f.manager.finish(f.id), /закрыто/);
   assert.deepEqual(f.calls, []);
 });
 
@@ -59,16 +59,16 @@ test("a stale chooser and traversal names cannot select arbitrary files", async 
   for (const name of ["../secret", "a/b", "a\\b", "..", "a\u0000b"]) {
     await assert.rejects(
       f.manager.receive(f.id, name, Readable.from([Buffer.from("data")])),
-      /文件名/,
+      /имя файла/i,
     );
   }
   await f.manager.receive(f.id, "one.txt", Readable.from([Buffer.from("one")]));
   await assert.rejects(
     f.manager.receive(f.id, "two.txt", Readable.from([])),
-    /数量/,
+    /количество/,
   );
   f.manager.cancelTab("tab-1");
-  await assert.rejects(f.manager.finish(f.id), /关闭/);
+  await assert.rejects(f.manager.finish(f.id), /закрыто/);
   assert.deepEqual(f.calls, []);
 });
 

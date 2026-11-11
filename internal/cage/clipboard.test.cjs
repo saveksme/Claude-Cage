@@ -20,7 +20,7 @@ function page() {
   const UI = {connected:true, rfb:{addEventListener:(name,fn)=>remoteEvents.set(name,fn),
     sendKey:(...args)=>calls.push(['key',...args]),
     cagePasteText:text=>{calls.push(['paste',text]);return Promise.resolve();},focus(){document.activeElement=canvas;}}};
-  const clipboard = {writeText:async text=>calls.push(['write-host',text]),readText:async()=>{calls.push(['read-host']);return '本机文本';}};
+  const clipboard = {writeText:async text=>calls.push(['write-host',text]),readText:async()=>{calls.push(['read-host']);return 'Локальный текст';}};
   const source = readFileSync(__dirname+'/clipboard.js','utf8').replace(/^import .*;$/gm,'');
   vm.runInNewContext(source,{getKeycode:e=>e.code || ('Key'+e.key.toUpperCase()),getKeysym:e=>e.key.length===1 ? e.key.codePointAt(0) : ({Shift:0xffe1,Control:0xffe3,Alt:0xffe9}[e.key] ?? null),window:{addEventListener:(name,fn)=>handlers.set('window:'+name,fn)},UI,document,navigator:{clipboard},MutationObserver:class{observe(){}},setTimeout:()=>1,clearTimeout(){}});
   const event = values => ({key:'',metaKey:false,ctrlKey:false,preventDefault(){this.prevented=true;},stopImmediatePropagation(){this.stopped=true;},...values});

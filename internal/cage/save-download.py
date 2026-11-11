@@ -12,9 +12,9 @@ import sys
 
 def checked_download(source_name, name):
     if not re.fullmatch(r'[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}', source_name):
-        raise ValueError('下载标识无效')
+        raise ValueError('Недействительный идентификатор загрузки')
     if not name or name != os.path.basename(name) or name in ('.', '..') or '\0' in name:
-        raise ValueError('下载文件名无效')
+        raise ValueError('Недействительное имя загружаемого файла')
 
 
 def copy_to_workspace(source, size, workspace, name):
@@ -35,7 +35,7 @@ def copy_to_workspace(source, size, workspace, name):
             while remaining:
                 chunk = os.read(source, min(remaining, 1024 * 1024))
                 if not chunk:
-                    raise OSError(errno.EIO, '下载源文件在保存过程中发生变化')
+                    raise OSError(errno.EIO, 'Исходный файл загрузки изменился во время сохранения')
                 dst.write(chunk)
                 remaining -= len(chunk)
             dst.flush()
@@ -51,7 +51,7 @@ def copy_to_workspace(source, size, workspace, name):
                     return published
                 except FileExistsError:
                     continue
-            raise OSError(errno.EEXIST, '同名文件过多，请整理 Downloads 后重试')
+            raise OSError(errno.EEXIST, 'Слишком много файлов с одинаковым именем. Приведите в порядок Downloads и повторите')
     finally:
         if destination is not None:
             try:
@@ -61,7 +61,7 @@ def copy_to_workspace(source, size, workspace, name):
             except OSError:
                 if published is None:
                     raise
-                published['warning'] = '文件已保存到本机；共享目录中的临时文件暂时无法清理。'
+                published['warning'] = 'Файл сохранён на компьютер; временный файл в общем каталоге пока не удалось удалить.'
             finally:
                 os.close(destination)
         os.close(parent)
@@ -85,14 +85,14 @@ def error_message(error):
         return str(error)
     if isinstance(error, OSError):
         if error.errno == errno.ENOSPC:
-            return '空间不足，文件尚未保存到本机。清理空间后可重试。'
+            return 'Недостаточно места, файл ещё не сохранён на компьютер. Освободите место и повторите.'
         if error.errno in (errno.EACCES, errno.EPERM, errno.EROFS):
-            return '无法写入共享下载目录。检查目录权限和共享连接后可重试。'
+            return 'Не удалось записать в общий каталог загрузок. Проверьте права на каталог и общее подключение, затем повторите.'
         if error.errno in (errno.ELOOP, errno.ENOTDIR):
-            return '下载目录包含符号链接或已不再是目录，请修复后重试。'
+            return 'Каталог загрузок содержит символическую ссылку или больше не является каталогом. Исправьте и повторите.'
         if error.errno == errno.ENOENT:
-            return '下载源文件或共享目录不可用，请检查后重试。'
-    return '文件尚未保存到本机。检查共享连接和可用空间后可重试。'
+            return 'Исходный файл загрузки или общий каталог недоступны. Проверьте и повторите.'
+    return 'Файл ещё не сохранён на компьютер. Проверьте общее подключение и свободное место, затем повторите.'
 
 
 def main():
@@ -105,11 +105,11 @@ def main():
     try:
         browser_uid = pwd.getpwnam('cage-browser').pw_uid
         if os.fstat(directory).st_uid != browser_uid:
-            raise ValueError('下载目录所有者无效')
+            raise ValueError('Недействительный владелец каталога загрузок')
         source = os.open(source_name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=directory)
         source_stat = os.fstat(source)
         if not stat.S_ISREG(source_stat.st_mode) or source_stat.st_uid != browser_uid:
-            raise ValueError('下载源文件不是普通文件')
+            raise ValueError('Исходный файл загрузки не является обычным файлом')
         user = pwd.getpwnam('cage')
         receive, send = os.pipe()
         child = os.fork()
@@ -131,17 +131,17 @@ def main():
             data = pipe.read(16385)
         _, status = os.waitpid(child, 0)
         if len(data) > 16384:
-            raise ValueError('下载保存结果无效')
+            raise ValueError('Недействительный результат сохранения загрузки')
         result = json.loads(data)
         if os.waitstatus_to_exitcode(status) != 0 or not result.get('ok'):
-            print(json.dumps({'ok': False, 'error': result.get('error', '下载保存未完成')}, ensure_ascii=False))
+            print(json.dumps({'ok': False, 'error': result.get('error', 'Сохранение загрузки не завершено')}, ensure_ascii=False))
             return 1
         try:
             cleaned = remove_source_if_unchanged(directory, source_name, source_stat)
         except OSError:
             cleaned = False
         if not cleaned:
-            result['warning'] = '文件已保存到本机；客机中的下载源文件发生变化或暂时无法清理。'
+            result['warning'] = 'Файл сохранён на компьютер; исходный файл загрузки в гостевой системе изменился или пока не удаляется.'
         print(json.dumps(result, ensure_ascii=False))
         return 0
     finally:

@@ -106,11 +106,11 @@ func copyStorageExcluding(ctx context.Context, source, target string, excluded [
 				return err
 			}
 			if filepath.IsAbs(link) || !filepath.IsLocal(filepath.Clean(filepath.Join(filepath.Dir(rel), link))) {
-				return fmt.Errorf("环境包含指向外部的链接，未切换存储：%s", rel)
+				return fmt.Errorf("Среда содержит ссылку за свои пределы; хранилище не переключено: %s", rel)
 			}
 			return os.Symlink(link, out)
 		default:
-			return fmt.Errorf("环境含有无法复制的特殊文件，未切换存储：%s", rel)
+			return fmt.Errorf("Среда содержит особый файл, который нельзя скопировать; хранилище не переключено: %s", rel)
 		}
 	})
 	if err == nil {
@@ -143,7 +143,7 @@ func copyStorageFile(ctx context.Context, source, target string, info fs.FileInf
 	defer out.Close()
 	if info.Size() >= 1<<20 {
 		if err = sparseStorageFile(out); err != nil {
-			return fmt.Errorf("目标磁盘不支持稀疏文件：%w", err)
+			return fmt.Errorf("Целевой диск не поддерживает разрежённые файлы: %w", err)
 		}
 	}
 	hash := sha256.New()
@@ -175,7 +175,7 @@ func copyStorageFile(ctx context.Context, source, target string, info fs.FileInf
 		}
 	}
 	if size != info.Size() {
-		return errors.New("复制期间源文件大小发生变化，已取消迁移")
+		return errors.New("Размер исходного файла изменился во время копирования; перенос отменён")
 	}
 	if err = out.Truncate(size); err != nil {
 		return err
@@ -203,7 +203,7 @@ func copyStorageFile(ctx context.Context, source, target string, info fs.FileInf
 		}
 	}
 	if !bytes.Equal(hash.Sum(nil), verify.Sum(nil)) {
-		return fmt.Errorf("文件校验失败：%s", filepath.Base(source))
+		return fmt.Errorf("Проверка файла не пройдена: %s", filepath.Base(source))
 	}
 	if err = os.Chtimes(target, info.ModTime(), info.ModTime()); err != nil {
 		return err
