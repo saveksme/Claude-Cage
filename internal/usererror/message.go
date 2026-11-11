@@ -13,6 +13,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"regexp"
 	"runtime"
 	"strings"
 	"syscall"
@@ -42,6 +43,8 @@ func Wrap(action string, cause error, next string) error {
 	return New(action, reason, next, cause)
 }
 
+var localizedSecretPattern = regexp.MustCompile(`(?i)(?:парол[\p{L}\p{N}_]*|токен[\p{L}\p{N}_]*|секрет[\p{L}\p{N}_]*)\s*[:=]`)
+
 func safeLocalizedMessage(message string) bool {
 	if message == "" || len(message) > 4096 || strings.ContainsAny(message, "/\\\x00") {
 		return false
@@ -51,6 +54,9 @@ func safeLocalizedMessage(message string) bool {
 		if strings.Contains(lower, marker) {
 			return false
 		}
+	}
+	if localizedSecretPattern.MatchString(message) {
+		return false
 	}
 	return strings.IndexFunc(message, func(r rune) bool {
 		return unicode.Is(unicode.Han, r) || unicode.Is(unicode.Cyrillic, r)

@@ -33,9 +33,12 @@ test("HTTP failures name the operation and avoid upstream HTML or opaque runtime
   for (const sensitive of [
     "Не удалось открыть C:\\Users\\Иван\\private-secret",
     "Ошибка авторизации: token=private-secret",
+    "Неверный пароль: hunter2",
+    "Токен: private-secret",
   ]) {
     const message = httpErrorMessage("/input/files", 409, sensitive, "text/plain; charset=utf-8");
     assert.ok(!message.includes("private-secret"));
+    assert.ok(!message.includes("hunter2"));
     assert.ok(!message.includes("Иван"));
   }
   assert.doesNotMatch(
@@ -81,9 +84,12 @@ test("native errors retain precise rules and explain opaque failures in context"
   for (const sensitive of [
     "Не удалось открыть C:\\Users\\Иван\\private-secret",
     "Ошибка авторизации: token=private-secret",
+    "Неверный пароль: hunter2",
+    "Токен: private-secret",
   ]) {
     const message = nativeFailureMessage("uploadHostFiles", sensitive);
     assert.ok(!message.includes("private-secret"));
+    assert.ok(!message.includes("hunter2"));
     assert.ok(!message.includes("Иван"));
   }
 });

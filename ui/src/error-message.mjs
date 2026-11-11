@@ -3,7 +3,8 @@ function safeLocalizedMessage(message) {
     /\p{Script=Cyrillic}/u.test(message) &&
     !/\p{Script=Han}/u.test(message) &&
     !/[/\\\0]/.test(message) &&
-    !/(?:token|secret|password|passwd|authorization|bearer\s|api[_-]key|private[_-]key|credential)/i.test(message);
+    !/(?:token|secret|password|passwd|authorization|bearer\s|api[_-]key|private[_-]key|credential)/i.test(message) &&
+    !/(?:парол[\p{L}\p{N}_]*|токен[\p{L}\p{N}_]*|секрет[\p{L}\p{N}_]*)\s*[:=]/iu.test(message);
 }
 
 export function operationName(path = "", method = "GET") {

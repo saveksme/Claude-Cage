@@ -80,6 +80,10 @@ Check(UpdatePolicy.DownloadPath(good, root) == good, "private download rejected"
 foreach (var path in new[] { Path.Combine(root + "-other", "download-abc", "Cage-setup.exe"), Path.Combine(root, "verified-abc", "Cage-setup.exe"), Path.Combine(root, "download-abc", "nested", "Cage-setup.exe"), Path.Combine(root, "download-abc", "Cage.exe") })
     Reject(() => UpdatePolicy.DownloadPath(path, root), "untrusted download path accepted: " + path);
 Console.WriteLine($"Windows update/bridge policy: {assertions} assertions passed.");
+Check(Backend.SafeLocalizedMessage("Окно отправки закрыто, выберите файл ещё раз"), "safe Russian application message rejected");
+Check(!Backend.SafeLocalizedMessage("Неверный пароль: hunter2"), "Russian password leaked through the native startup dialog");
+Check(!Backend.SafeLocalizedMessage("Токен: private-secret"), "Russian token leaked through the native startup dialog");
+Check(!Backend.SafeLocalizedMessage("Не удалось открыть C:\\Users\\Иван\\private-secret"), "Russian path leaked through the native startup dialog");
 
 var integration = Path.Combine(OperatingSystem.IsMacOS() ? "/private/tmp" : Path.GetTempPath(), "cage-recovery-" + Guid.NewGuid());
 Directory.CreateDirectory(integration);

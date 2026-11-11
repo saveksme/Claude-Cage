@@ -48,9 +48,11 @@ func TestDisplayDoesNotTrustSensitiveThirdPartyMessages(t *testing.T) {
 		"Не удалось прочитать /home/ivan/private-secret",
 		"Ошибка авторизации: token=private-secret",
 		"Подробности https://user:private-secret@example.com/token",
+		"Неверный пароль: hunter2",
+		"Токен: private-secret",
 	} {
 		message := Display("Чтение файла", errors.New(text), "Повторите попытку.").Error()
-		if strings.Contains(message, "private-secret") || strings.Contains(message, "Иван") || strings.Contains(message, "/home/") {
+		if strings.Contains(message, "private-secret") || strings.Contains(message, "Иван") || strings.Contains(message, "hunter2") || strings.Contains(message, "/home/") {
 			t.Fatalf("untyped Russian error leaked private data: %s", message)
 		}
 	}

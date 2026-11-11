@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace Cage.Windows;
 
@@ -12,6 +13,16 @@ internal static class Backend
             ? configured : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude-cage", ClientOnly ? "client" : "", "config.json"));
     public static string Root => Path.GetDirectoryName(ConfigPath)!;
     public static string Executable => Path.Combine(AppContext.BaseDirectory, "resources", "cage.exe");
+    private static readonly Regex LocalizedSecret = new(@"(?:парол\w*|токен\w*|секрет\w*)\s*[:=]", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    public static bool SafeLocalizedMessage(string message)
+    {
+        if (string.IsNullOrWhiteSpace(message) || message.Length > 4096 || message.Any(c => c is '/' or '\\' or '\0')) return false;
+        foreach (var marker in new[] { "token", "secret", "password", "passwd", "authorization", "bearer ", "api_key", "api-key", "private_key", "private-key", "credential" })
+            if (message.Contains(marker, StringComparison.OrdinalIgnoreCase)) return false;
+        if (LocalizedSecret.IsMatch(message)) return false;
+        return message.Any(c => c is >= 'а' and <= 'я' or >= 'А' and <= 'Я' or 'ё' or 'Ё');
+    }
 
     public static List<Process> CaptureSmokeControllers()
     {

@@ -9,7 +9,7 @@ import (
 
 func TestRunCagePreservesOriginalVMError(t *testing.T) {
 	if os.Getenv("CAGE_TEST_START_FAILURE_HELPER") == "1" {
-		fmt.Fprintln(os.Stderr, "Error: QEMU 启动失败：WHPX: Failed to enable nested virtualization, hr=80370302 token=private-test-token")
+		fmt.Fprintln(os.Stderr, "Error: Запуск QEMU не удался: WHPX: Failed to enable nested virtualization, hr=80370302 token=private-test-token")
 		fmt.Fprintln(os.Stderr, "Error: Failed to start base VM. Full log: local diagnostic logs")
 		os.Exit(7)
 	}

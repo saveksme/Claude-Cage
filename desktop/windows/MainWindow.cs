@@ -342,7 +342,7 @@ internal sealed class MainWindow : Form
         catch (OperationCanceledException) { if (!lifetime.IsCancellationRequested) Error("Не удалось запустить рабочую среду: локальная фоновая служба не ответила за отведённое время. Нажмите «Повторить подключение»; если ошибка повторится, сохраните это сообщение и сообщите о ней сопровождающему."); }
         catch (Exception error) {
             _ = Backend.Report("Workbench startup failed: " + error);
-            Error(error.Message.Any(c => c is >= '\u0400' and <= '\u04FF') ? error.Message : "Не удалось запустить рабочую среду: локальная фоновая служба не вернула распознаваемую причину (тип ошибки " + error.GetType().Name + "). Нажмите «Повторить подключение»; если ошибка повторится, сохраните это сообщение и сообщите о ней сопровождающему.");
+            Error(Backend.SafeLocalizedMessage(error.Message) && error.Message.Any(c => c is >= '\u0400' and <= '\u04FF') ? error.Message : "Не удалось запустить рабочую среду: локальная фоновая служба не вернула распознаваемую причину (тип ошибки " + error.GetType().Name + "). Нажмите «Повторить подключение»; если ошибка повторится, сохраните это сообщение и сообщите о ней сопровождающему.");
         }
         finally { bootstrapping = false; }
     }
