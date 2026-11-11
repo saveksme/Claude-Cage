@@ -15,10 +15,6 @@ test("check failures and incomplete evidence link to the checklist without taggi
     "Cage не открыл доступ во внешнюю сеть. Завершите ключевые проверки в рабочей среде",
     "Узел прокси ещё не применён или конфигурация не совпадает. Примените узел заново; внешняя сеть остаётся закрытой",
     "Проверка конфигурации браузера не пройдена: язык не совпадает",
-    // Older backend builds may still send the original messages.
-    "关键检查尚未通过，外网保持关闭",
-    "关键检测证据不完整，外网保持关闭",
-    "Cage 外网未放行，请在工作台完成关键检查",
   ]) assert.equal(isSafetyCheckMessage(message), true, message);
   for (const message of [
     undefined,

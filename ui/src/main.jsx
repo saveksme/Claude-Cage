@@ -837,7 +837,7 @@ function App() {
     if (current && current.kind !== "terminal")
       lastBrowserTab.current = current.id;
     document.title =
-      (current?.title && current.title !== "Новая вкладка" && current.title !== "新标签页"
+      (current?.title && current.title !== "Новая вкладка"
         ? current.title + " · "
         : "") + "Cage";
     if (active && !current?.incognito) localStorage.setItem(clientStorageKey("cage-active"), active);
