@@ -60,6 +60,6 @@ test('ordinary native commands retain their bounded timeout', async () => {
   const timer = [...fixture.timers.values()][0];
   assert.equal(timer.delay, 240_000);
   timer.callback();
-  await assert.rejects(pending, /原生操作超时/);
+  await assert.rejects(pending, /Нативная операция не завершилась вовремя/);
   fixture.reply({ result: true });
 });

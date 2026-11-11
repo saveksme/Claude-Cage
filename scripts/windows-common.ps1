@@ -131,9 +131,13 @@ function Assert-WindowsWorkbench {
                 } finally { $controller.Dispose() }
             } catch { Write-Warning "Isolated smoke cleanup failed: $($_.Exception.Message)" }
         }
-        # A successful smoke report is written only after the isolated backend
-        # confirms shutdown. Failed profiles remain available for diagnosis.
-        if ($passed) { Remove-Item -LiteralPath $testRoot -Recurse -Force -ErrorAction SilentlyContinue }
+        # Keep only public CI evidence after the isolated backend confirms
+        # shutdown. The private test profile must not enter the artifact.
+        if ($passed) {
+            Remove-Item -LiteralPath (Join-Path $testRoot 'profile') -Recurse -Force -ErrorAction SilentlyContinue
+            Get-ChildItem -LiteralPath $testRoot -Force | Where-Object { $_.Name -notin @('smoke.json', 'smoke.png') } |
+                Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+        }
     }
 }
 
