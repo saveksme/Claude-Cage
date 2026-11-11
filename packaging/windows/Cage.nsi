@@ -589,7 +589,7 @@ Function un.onInit
   !insertmacro CheckStopped "resources\runtime\qemu\qemu-system-x86_64.exe"
 FunctionEnd
 
-Section "Удаление Cage"
+Section "un.Cage"
   !insertmacro UninstallPhase "acquiring_installation_lock"
   !insertmacro AcquireInstallationMutex
   !insertmacro UninstallPhase "checking_pending_transaction"
