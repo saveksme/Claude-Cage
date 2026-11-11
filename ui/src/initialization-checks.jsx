@@ -16,22 +16,22 @@ export function InitializationChecks({ status, busy, onWorkspace, onCheck, onSta
   const recovery = initializationRecovery(status);
   const code = recovery?.recovery;
   const workspaceChecked = !code && status.safety?.report?.checks?.some(check => check.id === "filesystem_boundary" && check.state === "passed");
-  return <section className="initialization-notice" aria-label="完成安装检查">
-    <h2>{code === "project-approval" ? "允许虚拟 Mac 访问工作区" : code === "guest-login" ? "先登录虚拟 Mac" : code === "filesystem-permission" ? "先启用文件共享权限" : "完成工作区与联网检查"}</h2>
-    <p>{recovery?.message || status.job?.error || status.safety?.error || "系统已经安装。接下来确认共享工作区可访问，再检查代理出口和环境隔离。"}</p>
+  return <section className="initialization-notice" aria-label="Завершение проверок установки">
+    <h2>{code === "project-approval" ? "Разрешить виртуальному Mac доступ к рабочей области" : code === "guest-login" ? "Сначала войдите в виртуальный Mac" : code === "filesystem-permission" ? "Сначала включите разрешение общего доступа к файлам" : "Завершите проверку рабочей области и сети"}</h2>
+    <p>{recovery?.message || status.job?.error || status.safety?.error || "Система установлена. Теперь убедитесь, что общая рабочая область доступна, затем проверьте выход прокси и изоляцию среды."}</p>
     {recovery?.workspace && <p className="macos-approval-path">{recovery.workspace}</p>}
-    {code === "project-approval" && <p>点击下方按钮即可在 Cage 中打开授权窗口。在窗口中点击 Use Project（使用项目），验证通过后会继续联网检查。</p>}
-    {code === "filesystem-permission" && <p>在虚拟 Mac 中打开 macFUSE 和 macFUSE (local) 两个开关，完成后返回这里继续。</p>}
+    {code === "project-approval" && <p>Нажмите кнопку ниже, чтобы открыть окно авторизации в Cage. В окне нажмите Use Project (использовать проект); после проверки продолжится проверка сети.</p>}
+    {code === "filesystem-permission" && <p>В виртуальном Mac включите оба переключателя macFUSE и macFUSE (local), затем вернитесь сюда и продолжите.</p>}
     {code === "guest-login" && <MacOSLogin disabled={busy} onSessionClosed={onCheck} />}
     {code === "filesystem-permission" && <MacOSLogin maintenance="projects" disabled={busy} onSessionClosed={onCheck} />}
     <div className="initialization-recovery">
       {["environment-update", "environment-restart"].includes(code) ? <>
-        {code === "environment-update" && <button className="primary" disabled={busy} onClick={onUpdate}>同步环境组件</button>}
-        <button disabled={busy} onClick={code === "environment-restart" ? onRestart : onStart}>{code === "environment-restart" ? "保存后重启并检查" : "重新连接并检查"}</button>
-      </> : <button className="primary" disabled={busy || !status.ready} onClick={() => workspaceChecked ? onCheck() : onWorkspace(recovery?.workspace)}>{code === "project-approval" ? "打开工作区授权" : workspaceChecked ? "重试网络与隔离检查" : "连接工作区并继续检查"}</button>}
-      {code === "project-directory" && <button disabled={busy} onClick={onDiagnostics}>查看诊断记录</button>}
+        {code === "environment-update" && <button className="primary" disabled={busy} onClick={onUpdate}>Синхронизировать компоненты среды</button>}
+        <button disabled={busy} onClick={code === "environment-restart" ? onRestart : onStart}>{code === "environment-restart" ? "Сохранить, перезапустить и проверить" : "Переподключиться и проверить"}</button>
+      </> : <button className="primary" disabled={busy || !status.ready} onClick={() => workspaceChecked ? onCheck() : onWorkspace(recovery?.workspace)}>{code === "project-approval" ? "Открыть авторизацию рабочей области" : workspaceChecked ? "Повторить проверку сети и изоляции" : "Подключить рабочую область и продолжить проверку"}</button>}
+      {code === "project-directory" && <button disabled={busy} onClick={onDiagnostics}>Посмотреть диагностику</button>}
     </div>
-    <p className="mac-setup-retention">检查通过前，客机外网保持关闭。授权与检查可以重试，已有安装和个人文件会保留。</p>
+    <p className="mac-setup-retention">До успешной проверки внешний доступ гостевой системы остаётся закрытым. Авторизацию и проверки можно повторить; установка и личные файлы сохранятся.</p>
   </section>;
 }
 
@@ -39,14 +39,14 @@ export function InitializationDetails({ status }) {
   const job = status?.job || {};
   const reasons = [...new Set([job.error, status?.safety?.error, status?.network_error].filter(Boolean))];
   const checks = status?.safety?.report?.checks || [];
-  const labels = { passed: "已通过", failed: "未通过", unknown: "尚未完成" };
+  const labels = { passed: "Пройдено", failed: "Не пройдено", unknown: "Ещё не завершено" };
   return <div className="modal-body">
-    <p>{job.running ? "当前操作" : "最近一次操作"}：{job.message || "尚未开始"}</p>
+    <p>{job.running ? "Текущая операция" : "Последняя операция"}: {job.message || "Ещё не начата"}</p>
     {reasons.map(reason => <p key={reason} role="alert">{reason}</p>)}
-    {checks.length > 0 && <><h3>最近一次检查结果</h3><ol className="initialization-checks">{checks.map(check => <li key={check.id}>
-      <strong>{check.title} · {labels[check.state] || "尚未完成"}</strong>
+    {checks.length > 0 && <><h3>Результаты последней проверки</h3><ol className="initialization-checks">{checks.map(check => <li key={check.id}>
+      <strong>{check.title} · {labels[check.state] || "Ещё не завершено"}</strong>
       <p>{check.evidence}</p>{check.state !== "passed" && check.remedy && <p>{check.remedy}</p>}
     </li>)}</ol></>}
-    <h3>操作记录</h3><pre className="job-log">{job.log || "当前操作没有额外日志。失败原因显示在上方，完整记录可在「日志与诊断」中导出。"}</pre>
+    <h3>Журнал операций</h3><pre className="job-log">{job.log || "Для текущей операции нет дополнительных записей. Причина сбоя показана выше; полный журнал можно экспортировать в разделе «Журналы и диагностика»."}</pre>
   </div>;
 }

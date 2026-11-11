@@ -22,37 +22,37 @@ export function EnvironmentVersions({ status, onConfirm }) {
   const busy = Boolean(status.job?.running) || starting;
   const update = async (tools) => {
     if (!(await onConfirm({
-      title: tools ? "更新环境工具？" : "更新环境组件？",
+      title: tools ? "Обновить инструменты среды?" : "Обновить компоненты среды?",
       body: data?.maintenance?.native
-        ? "请先保存内容并结束正在运行的终端和 Claude Code 轮次。更新会重启浏览器、编辑器和文件共享连接，聊天历史、项目文件与登录资料会保留。" + (data.maintenance.guest_system === "windows-11" ? "请在系统提示中确认主机管理授权，并验证已绑定客机的管理员账户。" : "")
-        : "请先保存浏览器和编辑器中的内容。浏览器、编辑器会短暂重启，编辑器内的终端可能结束；工作台终端、项目文件和登录状态会保留。",
-      confirm: tools ? "更新工具" : "更新组件",
+        ? "Сначала сохраните данные и завершите работающие терминалы и сеансы Claude Code. Обновление перезапустит браузер, редактор и подключение к общим файлам; история чатов, файлы проектов и данные входа сохранятся." + (data.maintenance.guest_system === "windows-11" ? "Подтвердите в системном запросе разрешение на управление хостом и проверьте учётную запись администратора, привязанную к гостевой системе." : "")
+        : "Сначала сохраните данные в браузере и редакторе. Браузер и редактор ненадолго перезапустятся, терминалы внутри редактора могут завершиться; терминалы рабочей среды, файлы проектов и состояние входа сохранятся.",
+      confirm: tools ? "Обновить инструменты" : "Обновить компоненты",
     }))) return;
     setStarting(true); setError("");
     try { await api(tools ? "/environment/tools" : "/environment/update", {}); }
     catch (e) { setError(e.message); }
     finally { setStarting(false); }
   };
-  const componentLabels = { current: "已同步", update_required: "需要更新", stopped: "环境已停止", unknown: "暂时无法确认" };
-  const toolNames = { chromium: "浏览器", code_server: "文件编辑器", claude: "Claude Code", mise: "工具版本管理器", node: "Node.js", python: "Python", git: "Git", gh: "GitHub CLI", proxy: "代理核心" };
+  const componentLabels = { current: "Синхронизировано", update_required: "Требуется обновление", stopped: "Среда остановлена", unknown: "Пока не удаётся определить" };
+  const toolNames = { chromium: "Браузер", code_server: "Редактор файлов", claude: "Claude Code", mise: "Менеджер версий инструментов", node: "Node.js", python: "Python", git: "Git", gh: "GitHub CLI", proxy: "Ядро прокси" };
   return (
-    <section className="environment-versions" aria-label="环境版本">
-      <h4>版本与组件</h4>
-      <div className="setting-summary-row"><span>控制服务</span><strong>{data?.controller?.version || "—"}</strong></div>
-      <div className="setting-summary-row"><span>环境组件</span><strong>{componentLabels[data?.components?.status] || (loading ? "正在读取…" : "暂时无法确认")}</strong></div>
+    <section className="environment-versions" aria-label="Версии среды">
+      <h4>Версии и компоненты</h4>
+      <div className="setting-summary-row"><span>Служба управления</span><strong>{data?.controller?.version || "—"}</strong></div>
+      <div className="setting-summary-row"><span>Компоненты среды</span><strong>{componentLabels[data?.components?.status] || (loading ? "Чтение…" : "Пока не удаётся определить")}</strong></div>
       {data?.tools && <table className="environment-tool-table">
-        <thead><tr><th>工具</th><th>当前版本</th><th>受管版本</th></tr></thead>
+        <thead><tr><th>Инструмент</th><th>Текущая версия</th><th>Управляемая версия</th></tr></thead>
         <tbody>{Object.entries(toolNames).filter(([key]) => data.tools[key]).map(([key, name]) => <tr key={key}><td>{name}</td><td>{data.tools[key]?.current || "—"}</td><td>{data.tools[key]?.required || "—"}</td></tr>)}</tbody>
       </table>}
       {(error || data?.error) && <p role="alert" className="error-message"><SafetyMessage message={error || data.error} /></p>}
       <div className="environment-version-actions">
-        <button disabled={loading || busy} onClick={refresh}>{loading ? "正在读取…" : "刷新版本"}</button>
-        {data?.components?.update_required && <button className="primary" disabled={busy || !status.vm_running} onClick={() => update(false)}>更新环境组件</button>}
-        <button disabled={busy || !data?.tools_update_allowed} onClick={() => update(true)}>更新环境工具</button>
+        <button disabled={loading || busy} onClick={refresh}>{loading ? "Чтение…" : "Обновить версии"}</button>
+        {data?.components?.update_required && <button className="primary" disabled={busy || !status.vm_running} onClick={() => update(false)}>Обновить компоненты среды</button>}
+        <button disabled={busy || !data?.tools_update_allowed} onClick={() => update(true)}>Обновить инструменты среды</button>
       </div>
       <p className="field-help">{data?.maintenance?.native
-        ? "原生组件更新前需结束运行中的终端与 Claude Code 轮次。系统磁盘、项目和账户资料保留，已暂停的外网继续保持暂停。工具包由主机准备并校验后传入客机。"
-        : "组件更新保留虚拟磁盘与终端。工具更新需先启动环境并同步组件，依赖通过已选代理下载；无需放行业务网络，也不会自动恢复已暂停的外网。"}</p>
+        ? "Перед обновлением нативных компонентов завершите работающие терминалы и сеансы Claude Code. Системный диск, проекты и данные аккаунта сохранятся; приостановленный внешний доступ останется приостановленным. Пакеты инструментов подготавливаются и проверяются на хосте, затем передаются в гостевую систему."
+        : "При обновлении компонентов виртуальный диск и терминалы сохраняются. Для обновления инструментов сначала запустите среду и синхронизируйте компоненты; зависимости загружаются через выбранный прокси. Открывать рабочую сеть не требуется, а приостановленный внешний доступ не восстановится автоматически."}</p>
     </section>
   );
 }

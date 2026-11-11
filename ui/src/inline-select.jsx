@@ -160,7 +160,7 @@ export function InlineSelect({
           ref={list}
           id={id}
           role="listbox"
-          aria-label={(props["aria-label"] || "") + "选项"}
+          aria-label={(props["aria-label"] || "") + " — варианты"}
           className="inline-select-list"
           style={position}
           onMouseDown={(event) => event.preventDefault()}

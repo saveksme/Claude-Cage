@@ -21,10 +21,10 @@ import { useSSHNavigation } from "./remote-hosts";
 import logo from "./logo.png";
 import "./initialization.css";
 
-const steps = [["system", "系统与存储"], ["proxy", "网络代理"], ["install", "安装与检查"]];
+const steps = [["system", "Система и хранение"], ["proxy", "Сетевой прокси"], ["install", "Установка и проверка"]];
 
 function InitializationFrame({ children }) {
-  return <main className="initialization"><header className="initialization-brand"><img src={logo} alt="" /><strong>Cage</strong><span>首次设置</span></header>{children}</main>;
+  return <main className="initialization"><header className="initialization-brand"><img src={logo} alt="" /><strong>Cage</strong><span>Первая настройка</span></header>{children}</main>;
 }
 
 export function InitializationGate({ children }) {
@@ -46,8 +46,8 @@ export function InitializationGate({ children }) {
   }, [remote, attempt, account?.initial_mac_setup]);
   if (remote) return children;
   if (account?.initial_mac_setup) return <MacOSAccountGate><MacOSFirstSetup /></MacOSAccountGate>;
-  if (error) return <InitializationFrame><section className="initialization-content"><h1>继续准备 Cage</h1><p role="alert"><SafetyMessage message={error} /></p><button className="primary" onClick={() => retry(value => value + 1)}>重新连接</button><DiagnosticSettings /></section></InitializationFrame>;
-  if (!state) return <InitializationFrame><section className="initialization-content"><h1>正在读取环境状态</h1><p role="status"><LoaderCircle size={18} className="spin" />正在检查已有配置和安装进度…</p></section></InitializationFrame>;
+  if (error) return <InitializationFrame><section className="initialization-content"><h1>Продолжить подготовку Cage</h1><p role="alert"><SafetyMessage message={error} /></p><button className="primary" onClick={() => retry(value => value + 1)}>Переподключиться</button><DiagnosticSettings /></section></InitializationFrame>;
+  if (!state) return <InitializationFrame><section className="initialization-content"><h1>Чтение состояния среды</h1><p role="status"><LoaderCircle size={18} className="spin" />Проверка существующей конфигурации и хода установки…</p></section></InitializationFrame>;
   return state.required ? <MacOSAccountGate><Initialization initial={state} onComplete={() => setState({ required: false })} /></MacOSAccountGate> : children;
 }
 
@@ -150,7 +150,7 @@ function Initialization({ initial, onComplete }) {
     return { guest_system: choice.guest_system, media: choice.media, sha256: choice.sha256, clone_key: choice.clone_key, editor_terms: choice.editor_terms };
   }
   async function install() {
-    if (needsProxySetup(null, status, proxy)) { setError("请先选择并应用代理节点。"); setStep("proxy"); return; }
+    if (needsProxySetup(null, status, proxy)) { setError("Сначала выберите и примените узел прокси."); setStep("proxy"); return; }
     await run(async () => {
       const check = await api("/host/git");
       if (!check.ready) { setGit(check); return; }
@@ -158,32 +158,32 @@ function Initialization({ initial, onComplete }) {
       const accepted = await api("/start", startOptions());
       if (!alive.current) return;
       setGit(null); setStep("install");
-      setStatus(current => ({ ...current, job: { ...accepted, running: true, kind: accepted.kind || "start", message: accepted.message || "正在准备客机环境…" } }));
+      setStatus(current => ({ ...current, job: { ...accepted, running: true, kind: accepted.kind || "start", message: accepted.message || "Подготовка среды гостевой системы…" } }));
     });
   }
   async function enableGit() {
     await run(async () => { const next = await api("/host/git", { confirm: true }); setGit(next.ready ? null : next); });
   }
   async function stop() {
-    if (!await confirm({ title: "停止当前安装？", body: "安装进度、已下载文件和虚拟磁盘会保留。你可以在此界面继续安装。", confirm: "停止安装" })) return;
+    if (!await confirm({ title: "Остановить текущую установку?", body: "Ход установки, загруженные файлы и виртуальный диск сохранятся. Установку можно продолжить на этом экране.", confirm: "Остановить установку" })) return;
     await run(async () => { const accepted = await api("/stop", {}); setStatus(current => ({ ...current, job: { ...accepted, running: true } })); });
   }
   async function enter() {
     await run(async () => { await api("/environment/initialization", { action: "complete" }); await refresh(); if (alive.current) onComplete(); });
   }
   async function waitForJob(accepted, kind) {
-    if (!accepted.id) throw new Error("操作未返回任务编号，请核对状态后重试。");
+    if (!accepted.id) throw new Error("Операция не вернула номер задачи. Проверьте состояние и повторите.");
     while (alive.current) {
       const next = await api("/status");
       if (!alive.current) break;
       setStatus(next);
       const current = next.job;
-      if (current?.id !== accepted.id || current.kind !== kind) throw new Error("操作状态已变化，请核对状态后重试。");
-      if (current.error || current.canceled) throw new Error(current.error || "操作已取消，请核对状态后重试。");
+      if (current?.id !== accepted.id || current.kind !== kind) throw new Error("Состояние операции изменилось. Проверьте его и повторите.");
+      if (current.error || current.canceled) throw new Error(current.error || "Операция отменена. Проверьте состояние и повторите.");
       if (!current.running) return next;
       await new Promise(resolve => setTimeout(resolve, 300));
     }
-    throw new Error("初始化页面已关闭，操作未继续。");
+    throw new Error("Страница инициализации закрыта, операция не продолжилась.");
   }
   async function bindExit() {
     await run(async () => {
@@ -195,28 +195,28 @@ function Initialization({ initial, onComplete }) {
   async function restart() {
     await run(async () => {
       const running = status.vm_running;
-      if (!await confirm({ title: running ? "重启虚拟 Mac 并检查？" : "启动客机并重新检测？", body: "请先保存文件。当前终端会话会结束，浏览器登录和项目文件会保留。重新检测通过前，外网保持关闭。", confirm: running ? "重启并检查" : "启动并检测" })) return;
+      if (!await confirm({ title: running ? "Перезапустить виртуальный Mac и проверить?" : "Запустить гостевую систему и проверить снова?", body: "Сначала сохраните файлы. Текущие сеансы терминалов завершатся; вход в браузере и файлы проектов сохранятся. До успешной повторной проверки внешний доступ остаётся закрытым.", confirm: running ? "Перезапустить и проверить" : "Запустить и проверить" })) return;
       const current = await api("/status");
       if (!alive.current) return;
-      if (current.job?.running) throw new Error("其他操作仍在进行，请等待完成后重试。");
+      if (current.job?.running) throw new Error("Другая операция ещё выполняется. Дождитесь её завершения и повторите.");
       if (current.vm_running) {
         const stopped = await waitForJob(await api("/stop", {}), "stop");
-        if (stopped.vm_running) throw new Error("客机尚未停止，请核对状态后重试。");
+        if (stopped.vm_running) throw new Error("Гостевая система ещё не остановлена. Проверьте состояние и повторите.");
       }
       if (!alive.current) return;
       const accepted = await api("/start", {});
-      if (!accepted.id) throw new Error("启动请求未返回任务编号，请核对状态后重试。");
-      setStatus(current => ({ ...current, job: { ...accepted, running: true, kind: "start", message: accepted.message || "正在启动并检查客机…" } }));
+      if (!accepted.id) throw new Error("Запрос запуска не вернул номер задачи. Проверьте состояние и повторите.");
+      setStatus(current => ({ ...current, job: { ...accepted, running: true, kind: "start", message: accepted.message || "Запуск и проверка гостевой системы…" } }));
     });
   }
   async function checkNetwork() {
     await run(async () => {
       const accepted = await api("/safety/check", {});
-      setStatus(current => ({ ...current, job: { ...accepted, running: true, kind: "safety", message: "正在检查代理出口和环境隔离…" } }));
+      setStatus(current => ({ ...current, job: { ...accepted, running: true, kind: "safety", message: "Проверка выхода прокси и изоляции среды…" } }));
     });
   }
   async function back() {
-    if (step === "proxy" && proxyDirty && !await confirm({ title: "放弃尚未应用的代理修改？", body: "已经保存并应用的代理会保留，当前未应用的表单修改会丢弃。", confirm: "放弃修改" })) return;
+    if (step === "proxy" && proxyDirty && !await confirm({ title: "Отменить неприменённые изменения прокси?", body: "Сохранённый и применённый прокси сохранится; неприменённые изменения формы будут потеряны.", confirm: "Отменить изменения" })) return;
     setProxyDirty(false);
     setStep(step === "install" ? "proxy" : pending || account?.guest_system ? "install" : "system");
   }
@@ -231,11 +231,11 @@ function Initialization({ initial, onComplete }) {
           if (!alive.current) return;
           const next = await api("/status");
           setStatus(next); job = next.job;
-          if (job.id !== accepted.id) throw new Error("存储操作状态已变化，请核对目录后重试。");
+          if (job.id !== accepted.id) throw new Error("Состояние операции хранения изменилось. Проверьте каталог и повторите.");
         } while (job.running);
         if (job.error) throw new Error(job.error);
         const location = await api("/environment/storage");
-        if (location.directory !== directory) throw new Error("存储目录尚未保存，请重新选择后重试。");
+        if (location.directory !== directory) throw new Error("Каталог хранения не сохранён. Выберите его снова и повторите.");
         setStorage({ location, directory: location.directory });
       }
       setStep("proxy");
@@ -244,48 +244,48 @@ function Initialization({ initial, onComplete }) {
   const failed = Boolean(job.error || error);
   const networkPending = Boolean(status?.ready && status.vm_running && network.mode !== "open");
   const progress = !status?.ready && job.setup_progress ? { ...job, setup_progress: job.setup_progress } : null;
-  const title = step === "system" ? "为 Cage 准备独立环境" : step === "proxy" ? "连接你的网络代理" : ready ? "Cage 已准备就绪" : !busy && networkPending ? "环境已启动，等待联网检查" : failed ? "继续完成环境安装" : busy ? "正在准备你的环境" : "安装并检查客机环境";
+  const title = step === "system" ? "Подготовьте отдельную среду для Cage" : step === "proxy" ? "Подключите сетевой прокси" : ready ? "Cage готов" : !busy && networkPending ? "Среда запущена, ожидается проверка сети" : failed ? "Завершите установку среды" : busy ? "Подготовка вашей среды" : "Установите и проверьте среду гостевой системы";
   const index = steps.findIndex(([key]) => key === step);
   return <InitializationFrame>
     <section className="initialization-content">
-      <ol className="initialization-steps" aria-label="初始化步骤">{steps.map(([key, label], position) => <li key={key} aria-current={step === key ? "step" : undefined}><span>{position < index ? <Check size={14} /> : position + 1}</span>{label}</li>)}</ol>
-      <div className="initialization-title"><h1>{title}</h1><p>{step === "system" ? "选择客机系统和存储位置。初始化完成后，再进入工作台。" : step === "proxy" ? "这里的代理供客机内的进程和开发工具使用。系统镜像通过主机代理下载，遵循 Clash 等软件的系统代理或 TUN 设置。" : ready ? "系统、开发组件和网络检查均已完成，可以进入工作台开始使用。" : "下载、安装、必要授权和检查都在这里完成。中断后可以继续原任务。"}</p></div>
-      {connectionError && <div className="initialization-notice" role="alert"><SafetyMessage message={connectionError} /><button onClick={() => pollNow.current?.()}>重新连接</button></div>}
-      {!status ? <p role="status"><LoaderCircle size={18} className="spin" />正在读取安装状态…</p> : <>
+      <ol className="initialization-steps" aria-label="Шаги инициализации">{steps.map(([key, label], position) => <li key={key} aria-current={step === key ? "step" : undefined}><span>{position < index ? <Check size={14} /> : position + 1}</span>{label}</li>)}</ol>
+      <div className="initialization-title"><h1>{title}</h1><p>{step === "system" ? "Выберите гостевую систему и место хранения. После инициализации можно войти в рабочую среду." : step === "proxy" ? "Этот прокси используется процессами и инструментами разработки внутри гостевой системы. Системные образы загружаются через прокси хоста и подчиняются системному прокси или настройкам TUN таких программ, как Clash." : ready ? "Система, компоненты разработки и проверка сети готовы. Можно войти в рабочую среду и начать работу." : "Загрузка, установка, необходимые авторизации и проверки выполняются здесь. После прерывания задачу можно продолжить."}</p></div>
+      {connectionError && <div className="initialization-notice" role="alert"><SafetyMessage message={connectionError} /><button onClick={() => pollNow.current?.()}>Переподключиться</button></div>}
+      {!status ? <p role="status"><LoaderCircle size={18} className="spin" />Чтение состояния установки…</p> : <>
         <div className="initialization-stage" key={step}>
           {step === "system" && <>
             <GuestSystemPicker system={choice} onChange={setChoice} preserveOnUnmount deferMatch />
             <InitializationStorage value={storage} onChange={setStorage} disabled={busy} />
           </>}
           {step === "proxy" && <><ProxySettings initializing status={status} onConfirm={confirm} onDirty={setProxyDirty} onApplied={async () => { setProxy(await api("/proxy")); pollNow.current?.(); }} />{choice?.clone && !needsProxySetup(null, status, proxy) && <HostCloneSummary pending={choice.pending} onChange={setChoice} />}</>}
-          {step === "install" && (ready ? <div className="initialization-ready"><ShieldCheck size={36} /><h2>环境已就绪</h2><p>独立客机已安装，工具、文件和登录状态会持续保存。以后打开 Cage 可直接进入工作台。</p></div> : <>
-            {exitCandidate && <section className="initialization-notice" aria-label="确认固定出口"><p>客机终端、浏览器和代理已测得一致出口。请确认是否将它绑定为固定出口。</p><button disabled={busy || Boolean(connectionError)} onClick={bindExit}>绑定检测到的固定出口 {exitCandidate}</button></section>}
-            {needsExitRestart && <section className="initialization-notice" aria-label="固定出口已保存"><p>固定出口已保存。重启客机并重新检测后才能进入工作台。</p><button className="primary" disabled={busy || Boolean(connectionError)} onClick={restart}>{status.vm_running ? "重启客机并重新检测" : "启动客机并重新检测"}</button></section>}
-            {progress ? <SetupProgress job={progress} onDetails={() => setDetails(true)} onStop={stop} onRetry={needsExitRestart ? restart : install} disconnected={Boolean(connectionError) || submitting} /> : (busy || status.guest_system !== "macos" || !networkPending) && <div className="initialization-operation" role="status">{busy && <LoaderCircle size={22} className="spin" />}<p>{job.message || (status.vm_running ? "请完成客机连接和网络检查。" : "准备继续原安装，已有文件和磁盘会保留。")}</p>{!busy && !job.error && !needsExitRestart && <button className="primary" disabled={Boolean(connectionError)} onClick={install}>{status.ready ? "重新启动并检查" : "继续安装"}</button>}{busy && <button onClick={stop} disabled={submitting}>停止安装</button>}</div>}
-            {job.error && !progress && !(status.guest_system === "macos" && networkPending) && <div className="initialization-notice" role="alert"><SafetyMessage message={job.error} />{!networkPending && !needsExitRestart && <button className="primary" disabled={busy || Boolean(connectionError)} onClick={install}>继续安装</button>}</div>}
-            {status.guest_system === "macos" && status.vm_running && !status.ready && !busy && <section className="initialization-notice"><h2>连接虚拟 Mac</h2><p>{status.environment_update_error || "客机已经启动，尚未建立工作台连接。请先检查客机是否停在登录画面。"}</p><MacOSLogin onSessionClosed={() => pollNow.current?.()} /><button disabled={Boolean(connectionError)} onClick={install}>重新连接并检查</button></section>}
+          {step === "install" && (ready ? <div className="initialization-ready"><ShieldCheck size={36} /><h2>Среда готова</h2><p>Отдельная гостевая система установлена; инструменты, файлы и состояние входа сохраняются. В дальнейшем Cage будет сразу открывать рабочую среду.</p></div> : <>
+            {exitCandidate && <section className="initialization-notice" aria-label="Подтверждение фиксированного выхода"><p>Терминал гостевой системы, браузер и прокси показали одинаковый выход. Привязать его как фиксированный выход?</p><button disabled={busy || Boolean(connectionError)} onClick={bindExit}>Привязать обнаруженный фиксированный выход {exitCandidate}</button></section>}
+            {needsExitRestart && <section className="initialization-notice" aria-label="Фиксированный выход сохранён"><p>Фиксированный выход сохранён. Чтобы войти в рабочую среду, перезапустите гостевую систему и выполните проверку снова.</p><button className="primary" disabled={busy || Boolean(connectionError)} onClick={restart}>{status.vm_running ? "Перезапустить гостевую систему и проверить снова" : "Запустить гостевую систему и проверить снова"}</button></section>}
+            {progress ? <SetupProgress job={progress} onDetails={() => setDetails(true)} onStop={stop} onRetry={needsExitRestart ? restart : install} disconnected={Boolean(connectionError) || submitting} /> : (busy || status.guest_system !== "macos" || !networkPending) && <div className="initialization-operation" role="status">{busy && <LoaderCircle size={22} className="spin" />}<p>{job.message || (status.vm_running ? "Завершите подключение гостевой системы и проверку сети." : "Готово к продолжению установки; существующие файлы и диск сохранятся.")}</p>{!busy && !job.error && !needsExitRestart && <button className="primary" disabled={Boolean(connectionError)} onClick={install}>{status.ready ? "Перезапустить и проверить" : "Продолжить установку"}</button>}{busy && <button onClick={stop} disabled={submitting}>Остановить установку</button>}</div>}
+            {job.error && !progress && !(status.guest_system === "macos" && networkPending) && <div className="initialization-notice" role="alert"><SafetyMessage message={job.error} />{!networkPending && !needsExitRestart && <button className="primary" disabled={busy || Boolean(connectionError)} onClick={install}>Продолжить установку</button>}</div>}
+            {status.guest_system === "macos" && status.vm_running && !status.ready && !busy && <section className="initialization-notice"><h2>Подключение виртуального Mac</h2><p>{status.environment_update_error || "Гостевая система запущена, но подключение к рабочей среде ещё не установлено. Проверьте, не осталась ли гостевая система на экране входа."}</p><MacOSLogin onSessionClosed={() => pollNow.current?.()} /><button disabled={Boolean(connectionError)} onClick={install}>Переподключиться и проверить</button></section>}
             {status.ready && network.mode !== "open" && !busy && !needsExitRestart && <>
               {status.guest_system === "macos" && <InitializationChecks status={status} busy={Boolean(connectionError)} onWorkspace={setApprovalWorkspace} onCheck={checkNetwork} onStart={install} onRestart={restart} onUpdate={() => run(() => api("/environment/update", {}))} onDiagnostics={() => setHelp(true)} />}
-              <div className="initialization-network"><p>{status.safety?.error || job.error || status.network_error || "客机已经连接，请完成网络和隔离检查后进入工作台。"}</p><button disabled={Boolean(connectionError)} onClick={checkNetwork}>运行网络与隔离检查</button></div>
+              <div className="initialization-network"><p>{status.safety?.error || job.error || status.network_error || "Гостевая система подключена. Завершите проверку сети и изоляции, затем войдите в рабочую среду."}</p><button disabled={Boolean(connectionError)} onClick={checkNetwork}>Выполнить проверку сети и изоляции</button></div>
             </>}
-            {(progress?.setup_progress.phase === "image" || (failed && !networkPending)) && <p>系统镜像和在主机上准备的 macOS 安装组件遵循主机代理设置。下载失败时，可在操作详情中查看当前文件和重试记录。客机内的联网请求使用 Cage 代理。</p>}
-            <div className="initialization-recovery"><button onClick={() => setStep("proxy")} disabled={busy}>检查 Cage 代理配置</button>{!progress && <button onClick={() => setDetails(true)}>查看操作详情</button>}</div>
+            {(progress?.setup_progress.phase === "image" || (failed && !networkPending)) && <p>Системные образы и компоненты установки macOS, подготовленные на хосте, подчиняются настройкам прокси хоста. При сбое загрузки текущие файлы и попытки можно посмотреть в подробностях операции. Сетевые запросы внутри гостевой системы используют прокси Cage.</p>}
+            <div className="initialization-recovery"><button onClick={() => setStep("proxy")} disabled={busy}>Проверить настройки прокси Cage</button>{!progress && <button onClick={() => setDetails(true)}>Посмотреть подробности операции</button>}</div>
           </>)}
         </div>
-        {git && <section className="initialization-notice" aria-label="Git 安全保护"><h2>安装前，保护本机 Git</h2><p>{git.message}</p>{git.can_enable && <><p>启用后，Git 会忽略未经你明确指定的裸仓库。该操作会修改当前用户的全局设置，影响本机其他 Git 工具，普通项目保持原有操作。</p><pre>git config --global safe.bareRepository explicit</pre><button className="primary" disabled={busy} onClick={enableGit}>启用 Git 保护</button></>}<button disabled={busy} onClick={install}>重新检查并安装</button></section>}
+        {git && <section className="initialization-notice" aria-label="Защита Git"><h2>Защитите Git на этом компьютере перед установкой</h2><p>{git.message}</p>{git.can_enable && <><p>После включения Git будет игнорировать bare-репозитории, которые вы явно не указали. Операция изменит глобальные настройки текущего пользователя и повлияет на другие инструменты Git на этом компьютере; обычные проекты продолжат работать как прежде.</p><pre>git config --global safe.bareRepository explicit</pre><button className="primary" disabled={busy} onClick={enableGit}>Включить защиту Git</button></>}<button disabled={busy} onClick={install}>Проверить снова и установить</button></section>}
         {error && <p className="initialization-notice" role="alert"><SafetyMessage message={error} /></p>}
         <footer className="initialization-actions">
-          {step === "system" ? <span /> : <button className="text-button" disabled={busy} onClick={back}><ChevronLeft size={16} />上一步</button>}
-          {step === "system" && <button className="primary" disabled={busy || !storage?.directory.trim() || choice === undefined || (!choice?.clone && !validGuestChoice(choice)) || choice?.clone && choice.guest_system === "windows-11" && !choice.editor_terms || Boolean(connectionError)} onClick={nextFromSystem}>{submitting && <LoaderCircle size={16} className="spin" />}下一步：配置代理</button>}
-          {step === "proxy" && <button className="primary" disabled={busy || proxyDirty || !account?.guest_system && !pending && !validGuestChoice(choice) || needsProxySetup(null, status, proxy) || Boolean(connectionError)} onClick={install}>{submitting ? <LoaderCircle size={16} className="spin" /> : null}开始安装</button>}
-          {step === "install" && ready && <button className="primary" disabled={submitting || Boolean(connectionError)} onClick={enter}>进入工作台</button>}
+          {step === "system" ? <span /> : <button className="text-button" disabled={busy} onClick={back}><ChevronLeft size={16} />Назад</button>}
+          {step === "system" && <button className="primary" disabled={busy || !storage?.directory.trim() || choice === undefined || (!choice?.clone && !validGuestChoice(choice)) || choice?.clone && choice.guest_system === "windows-11" && !choice.editor_terms || Boolean(connectionError)} onClick={nextFromSystem}>{submitting && <LoaderCircle size={16} className="spin" />}Далее: настройка прокси</button>}
+          {step === "proxy" && <button className="primary" disabled={busy || proxyDirty || !account?.guest_system && !pending && !validGuestChoice(choice) || needsProxySetup(null, status, proxy) || Boolean(connectionError)} onClick={install}>{submitting ? <LoaderCircle size={16} className="spin" /> : null}Начать установку</button>}
+          {step === "install" && ready && <button className="primary" disabled={submitting || Boolean(connectionError)} onClick={enter}>Войти в рабочую среду</button>}
         </footer>
       </>}
-      <div className="initialization-support"><button className="text-button" aria-expanded={help} onClick={() => setHelp(!help)}>日志与诊断</button>{navigation && !busy && <button className="text-button" onClick={() => navigation.open()}>只连接 SSH 主机</button>}</div>
+      <div className="initialization-support"><button className="text-button" aria-expanded={help} onClick={() => setHelp(!help)}>Журналы и диагностика</button>{navigation && !busy && <button className="text-button" onClick={() => navigation.open()}>Подключиться только к SSH-хосту</button>}</div>
       {help && <DiagnosticSettings />}
     </section>
     {approvalWorkspace && <InitializationProjectApproval workspace={approvalWorkspace} jobRunning={Boolean(job.running)} onClose={() => { setApprovalWorkspace(""); pollNow.current?.(); }} onApproved={() => { setApprovalWorkspace(""); void checkNetwork(); }} />}
-    {details && <Modal title="初始化操作详情" onClose={() => setDetails(false)}><InitializationDetails status={status} /></Modal>}
-    {dialog && <Modal title={dialog.title} onClose={() => settleDialog(false)} footer={<><button onClick={() => settleDialog(false)}>取消</button><button className="primary" onClick={() => settleDialog(true)}>{dialog.confirm}</button></>}><div className="modal-body"><p>{dialog.body}</p></div></Modal>}
+    {details && <Modal title="Подробности инициализации" onClose={() => setDetails(false)}><InitializationDetails status={status} /></Modal>}
+    {dialog && <Modal title={dialog.title} onClose={() => settleDialog(false)} footer={<><button onClick={() => settleDialog(false)}>Отмена</button><button className="primary" onClick={() => settleDialog(true)}>{dialog.confirm}</button></>}><div className="modal-body"><p>{dialog.body}</p></div></Modal>}
   </InitializationFrame>;
 }

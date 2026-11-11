@@ -35,7 +35,7 @@ export function reportDiagnostic(source, error) {
   let message;
   if (error instanceof Error) message = `${error.name}: ${error.message}\n${error.stack || ""}`;
   else if (typeof error === "string") message = error;
-  else message = "异步操作发生异常，未收集原始对象";
+  else message = "Исключение в асинхронной операции; исходный объект не собран";
   // The backend redacts before persisting. Never report the report's own failure.
   pending.push({ source, level: "error", message: message.slice(0, 4096) });
   void flush();
@@ -43,7 +43,7 @@ export function reportDiagnostic(source, error) {
 export function installDiagnostics(target = window) {
   target.addEventListener("error", event => {
     if (event.error) reportDiagnostic("frontend", event.error);
-    else reportDiagnostic("frontend", event.message || "界面资源加载失败");
+    else reportDiagnostic("frontend", event.message || "Не удалось загрузить ресурсы интерфейса");
   });
   target.addEventListener("unhandledrejection", event => reportDiagnostic("frontend", event.reason));
 }

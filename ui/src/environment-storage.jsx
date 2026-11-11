@@ -24,7 +24,7 @@ export function EnvironmentStorage({ status, onConfirm }) {
         setPending(null);
         if (job?.id === pending.id && job.error) setError(job.error);
         else if (job?.id === pending.id || next.directory && next.directory === pending.path) { setDirectory(""); setError(""); }
-        else setError("操作已结束，请核对当前环境目录后重试。");
+        else setError("Операция завершена. Проверьте текущий каталог среды и повторите.");
       }
     }).catch((e) => {
       if (live) { setError(e.message); setPending(null); }
@@ -37,15 +37,15 @@ export function EnvironmentStorage({ status, onConfirm }) {
     try {
       const selected = await native("chooseFolder", { purpose: "environmentStorage" });
       if (selected) setDirectory(selected);
-    } catch { setError("未能选择文件夹，请直接填写绝对路径。"); }
+    } catch { setError("Не удалось выбрать папку. Введите абсолютный путь вручную."); }
   };
   const apply = async () => {
     if (!location?.directory || busy || recovery?.required) return;
     const path = directory.trim();
     if (location.has_environment && !(await onConfirm({
-      title: "迁移本机环境？",
-      body: `请先保存文件。Cage 会停止环境和终端，将虚拟磁盘复制到 ${path}，校验后再切换位置。原数据保留为备份，迁移完成后可手动启动环境。`,
-      confirm: "迁移环境",
+      title: "Перенести локальную среду?",
+      body: `Сначала сохраните файлы. Cage остановит среду и терминалы, скопирует виртуальный диск в ${path}, проверит его и переключит расположение. Исходные данные останутся как резервная копия; после переноса среду можно запустить вручную.`,
+      confirm: "Перенести среду",
     }))) return;
     setSubmitting(true);
     setError("");
@@ -67,30 +67,30 @@ export function EnvironmentStorage({ status, onConfirm }) {
     } catch (e) { setError(e.message); }
     finally { setSubmitting(false); }
   };
-  return <section className="environment-versions environment-storage" aria-label="本机环境存储">
-    <h4>本机环境存储</h4>
+  return <section className="environment-versions environment-storage" aria-label="Хранилище локальной среды">
+    <h4>Хранилище локальной среды</h4>
     {recovery?.required ? <>
-      <p className="field-help">环境存储需要恢复。请连接迁移使用的磁盘后重试。恢复完成后可以启动环境。</p>
+      <p className="field-help">Хранилище среды требует восстановления. Подключите диск, использовавшийся для переноса, и повторите. После восстановления среду можно запустить.</p>
       <p role="alert" className="error-message"><SafetyMessage message={recovery.error} /></p>
       <div className="storage-actions">
-        <button type="button" disabled={busy} onClick={() => recover(false)}>重试恢复</button>
-        {recovery.repair_allowed && <button type="button" disabled={busy} onClick={() => recover(true)}>修复系统助手并恢复</button>}
+        <button type="button" disabled={busy} onClick={() => recover(false)}>Повторить восстановление</button>
+        {recovery.repair_allowed && <button type="button" disabled={busy} onClick={() => recover(true)}>Исправить системный помощник и восстановить</button>}
       </div>
-      {recovery.repair_allowed && <p className="field-help storage-repair-help">修复系统助手需要 Windows 系统授权。完成后会继续恢复原环境。</p>}
+      {recovery.repair_allowed && <p className="field-help storage-repair-help">Для исправления системного помощника требуется авторизация Windows. После этого восстановление прежней среды продолжится.</p>}
     </> : <>
-    <p className="field-help">系统镜像、下载缓存和虚拟磁盘可以放在另一块本地磁盘。项目文件保存在各自的项目文件夹。</p>
-    <div className="setting-summary-row"><span>当前环境目录</span><strong>{location?.directory || "正在读取…"}</strong></div>
+    <p className="field-help">Системные образы, кэш загрузок и виртуальные диски можно разместить на другом локальном диске. Файлы проектов хранятся в папках соответствующих проектов.</p>
+    <div className="setting-summary-row"><span>Текущий каталог среды</span><strong>{location?.directory || "Чтение…"}</strong></div>
     {status.environment_identity_directory && status.environment_identity_directory !== status.environment_directory &&
-      <p className="field-help">升级前的默认项目文件位于 <code>{status.environment_identity_directory}</code>，当前默认项目位于 <code>{status.environment_directory}</code>。如需使用旧目录中的项目，请在主机文件管理器中将项目移到 Cage 配置目录之外，再从工作台打开。</p>}
-    {location?.backup && <p className="field-help">迁移前的备份保存在 <code>{location.backup}</code>。确认新环境能正常启动、文件和登录状态齐全后，可自行清理备份。</p>}
-    <label>新存储位置
+      <p className="field-help">Файлы проекта по умолчанию до обновления находятся в <code>{status.environment_identity_directory}</code>, текущий проект по умолчанию — в <code>{status.environment_directory}</code>. Чтобы использовать проекты из старого каталога, переместите их за пределы каталога конфигурации Cage в файловом менеджере хоста, затем откройте из рабочей среды.</p>}
+    {location?.backup && <p className="field-help">Резервная копия до переноса сохранена в <code>{location.backup}</code>. Убедившись, что новая среда запускается, а файлы и состояние входа на месте, резервную копию можно удалить.</p>}
+    <label>Новое место хранения
       <input value={directory} onChange={(e) => { setDirectory(e.target.value); setError(""); }} spellCheck="false"
-        disabled={busy || !location?.directory} placeholder="本地磁盘上专用空文件夹的完整路径" />
+        disabled={busy || !location?.directory} placeholder="Полный путь к отдельной пустой папке на локальном диске" />
     </label>
     <div className="storage-actions">
-      {nativeAvailable() && <button type="button" disabled={busy || !location?.directory} onClick={choose}><FolderOpen size={15} />选择文件夹</button>}
+      {nativeAvailable() && <button type="button" disabled={busy || !location?.directory} onClick={choose}><FolderOpen size={15} />Выбрать папку</button>}
       <button type="button" disabled={busy || !location?.directory || !directory.trim() || directory.trim() === location.directory} onClick={apply}>
-        {location?.has_environment ? "迁移到此位置" : "使用此位置"}
+        {location?.has_environment ? "Перенести сюда" : "Использовать это место"}
       </button>
     </div>
     </>}

@@ -68,7 +68,7 @@ export function AccountProvider({ children }) {
     return () => { live = false; };
   }, [Boolean(account), deviceKey, deviceSupport]);
   const deviceAction = async (operation, kind) => {
-    if (!deviceSupport?.device_status) throw new Error("当前应用启动器需要更新，请重新安装完整的 Cage 应用后再设置快捷登录。");
+    if (!deviceSupport?.device_status) throw new Error("Средство запуска приложения устарело. Переустановите полное приложение Cage, затем настройте быстрый вход.");
     try {
       await native("accountDevice", { operation, kind });
     } finally {
@@ -151,22 +151,22 @@ export function MacOSAccountGate({ children }) {
   async function submit(event) {
     event.preventDefault();
     if (busy) return;
-    if (password !== confirmation) { setError("两次密码不一致"); return; }
+    if (password !== confirmation) { setError("Пароли не совпадают"); return; }
     setBusy(true); setError("");
     try { await act("prepare-macos", { username:name, password, confirm_password:confirmation }); setPassword(""); setConfirmation(""); }
     catch (e) { setError(e.message); }
     finally { setBusy(false); }
   }
   return <main className="account-gate"><div className="account-brand"><img src={logo} alt="" />Cage</div><section className="account-entry">
-    <h1>设置 Cage 与 macOS 共用账密</h1>
-    <p className="account-entry-intro">{account.trusted_local ? "先设置 Cage 用户名和密码，再继续客机安装。已有账户、文件和登录状态会保留。" : "输入当前 Cage 密码，确认用于 macOS 客机。已有客机保留用户名和用户目录。"}</p>
+    <h1>Настройте общие учётные данные Cage и macOS</h1>
+    <p className="account-entry-intro">{account.trusted_local ? "Сначала задайте имя пользователя и пароль Cage, затем продолжите установку гостевой системы. Существующий аккаунт, файлы и состояние входа сохранятся." : "Введите текущий пароль Cage, чтобы использовать его для гостевой macOS. У существующей гостевой системы сохранятся имя пользователя и домашний каталог."}</p>
     <form onSubmit={submit}><fieldset disabled={busy}>
-      <label className="account-field">用户名<input required value={name} onChange={event => setName(event.target.value)} maxLength={31} pattern="[a-z][a-z0-9_]{0,30}" readOnly={Boolean(account.macos_guest_user)} autoComplete="username" /></label>
-      <p className="field-help">小写字母开头，1–31 个小写字母、数字或下划线。密码使用 8–256 个英文键盘可输入的字符。</p>
-      <PasswordField label={account.trusted_local ? "设置密码" : "当前 Cage 密码"} value={password} onChange={setPassword} autoComplete={account.trusted_local ? "new-password" : "current-password"} />
-      <PasswordField label="确认密码" value={confirmation} onChange={setConfirmation} autoComplete={account.trusted_local ? "new-password" : "current-password"} />
+      <label className="account-field">Имя пользователя<input required value={name} onChange={event => setName(event.target.value)} maxLength={31} pattern="[a-z][a-z0-9_]{0,30}" readOnly={Boolean(account.macos_guest_user)} autoComplete="username" /></label>
+      <p className="field-help">Начинается со строчной буквы; 1–31 строчная буква, цифра или подчёркивание. Пароль — 8–256 символов, которые можно ввести с английской клавиатуры.</p>
+      <PasswordField label={account.trusted_local ? "Задать пароль" : "Текущий пароль Cage"} value={password} onChange={setPassword} autoComplete={account.trusted_local ? "new-password" : "current-password"} />
+      <PasswordField label="Подтвердите пароль" value={confirmation} onChange={setConfirmation} autoComplete={account.trusted_local ? "new-password" : "current-password"} />
       {error && <p role="alert" className="account-error">{error}</p>}
-      <button className="primary account-submit" disabled={busy}>{busy ? "正在保存…" : "保存账密并继续"}</button>
+      <button className="primary account-submit" disabled={busy}>{busy ? "Сохранение…" : "Сохранить учётные данные и продолжить"}</button>
     </fieldset></form>
   </section></main>;
 }
@@ -195,7 +195,7 @@ function PasswordField({
         <button
           type="button"
           className="icon-button"
-          aria-label={`${visible ? "隐藏" : "显示"}${label}`}
+          aria-label={`${visible ? "Скрыть" : "Показать"}: ${label}`}
           onClick={() => setVisible(!visible)}
         >
           {visible ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -251,7 +251,7 @@ export function AccountGate({ children }) {
     event.preventDefault();
     if (busy) return;
     if (creating && password !== confirmation) {
-      setError("两次密码不一致");
+      setError("Пароли не совпадают");
       return;
     }
     setBusy(true);
@@ -268,11 +268,11 @@ export function AccountGate({ children }) {
           await trustedLogin(rememberThisDevice ? "enable" : "disable", password);
           await refresh();
         } catch (e) {
-          setDeviceNotice(`已登录，${rememberThisDevice ? "记住我未能开启" : "记住我未能关闭"}：${e.message}。可在「设置 → 账户」中重试。`);
+          setDeviceNotice(`Вход выполнен, но ${rememberThisDevice ? "не удалось включить «Запомнить меня»" : "не удалось отключить «Запомнить меня»"}: ${e.message}. Повторите в разделе «Настройки → Аккаунт».`);
         }
       } else if (creating && rememberThisDevice && deviceSupport?.supported && deviceSupport.device_status) {
         try { await deviceAction("enable", "automatic"); }
-        catch (e) { setDeviceNotice(`账户已创建，记住登录未能开启：${e.message}。可在「设置 → 账户」中重试。`); }
+        catch (e) { setDeviceNotice(`Аккаунт создан, но включить запоминание входа не удалось: ${e.message}. Повторите в разделе «Настройки → Аккаунт».`); }
       }
       setPassword("");
       setConfirmation("");
@@ -290,7 +290,7 @@ export function AccountGate({ children }) {
       </div>
       <section
         className="account-entry"
-        aria-label={creating ? isRemoteClient() ? "创建云端账户" : "创建本地账户" : "解锁 Cage"}
+        aria-label={creating ? isRemoteClient() ? "Создать облачный аккаунт" : "Создать локальный аккаунт" : "Разблокировать Cage"}
       >
         {creating ? (
           <img className="account-welcome-logo" src={logo} alt="" />
@@ -299,27 +299,27 @@ export function AccountGate({ children }) {
         )}
         <h1>
           {creating
-            ? "注册 Cage 账户"
+            ? "Регистрация аккаунта Cage"
             : account
-              ? `欢迎回来，${account.username}`
-              : "正在连接 Cage"}
+              ? `С возвращением, ${account.username}`
+              : "Подключение к Cage"}
         </h1>
         <p className="account-entry-intro">
           {creating
-            ? isRemoteClient() ? "在云端创建账户，保护这台主机上的工作与登录状态。" : "先注册用户名和密码，再选择客机系统并安装环境。macOS 客机会使用同一套账密。"
+            ? isRemoteClient() ? "Создайте аккаунт в облаке, чтобы защитить работу и состояние входа на этом хосте." : "Сначала зарегистрируйте имя пользователя и пароль, затем выберите гостевую систему и установите среду. Гостевая macOS будет использовать те же учётные данные."
             : account
-              ? account.trusted_local ? "本机工作区" : "输入密码，继续你的工作。"
-              : isRemoteClient() ? "正在读取云端账户…" : "正在读取本机账户…"}
+              ? account.trusted_local ? "Локальная рабочая область" : "Введите пароль, чтобы продолжить работу."
+              : isRemoteClient() ? "Чтение облачного аккаунта…" : "Чтение локального аккаунта…"}
         </p>
         {account?.background_running && (
           <div className="account-background">
             <i />
-            后台环境仍在运行，任务没有停止
+            Фоновая среда продолжает работать, задачи не остановлены
           </div>
         )}
         {account?.trusted_local && <div className="account-trust-choice">
-          <p>{localDesktop() ? "使用当前系统用户的本机信任凭据进入工作区。" : "请回到受信任的桌面设置账户密码，再从此处登录。"}</p>
-          {localDesktop() && <button className="quiet-button" disabled={busy} onClick={() => enterTrusted("resume")}>{busy ? "正在进入…" : "重新进入本机工作区"}</button>}
+          <p>{localDesktop() ? "Войти в рабочую область с локальными доверенными учётными данными текущего пользователя системы." : "Вернитесь на доверенный рабочий стол, задайте пароль аккаунта и войдите здесь."}</p>
+          {localDesktop() && <button className="quiet-button" disabled={busy} onClick={() => enterTrusted("resume")}>{busy ? "Вход…" : "Снова войти в локальную рабочую область"}</button>}
         </div>}
         {account?.trusted_local && error && <p className="account-error" role="alert">{error}</p>}
         {account && !account.trusted_local && (
@@ -327,7 +327,7 @@ export function AccountGate({ children }) {
             <fieldset disabled={busy}>
               {creating && (
                 <><label className="account-field">
-                  用户名
+                  Имя пользователя
                   <input
                     autoFocus
                     autoComplete="username"
@@ -336,44 +336,44 @@ export function AccountGate({ children }) {
                     required
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    placeholder={account.macos_account_host ? "例如：shihao" : "你希望怎样被称呼"}
+                    placeholder={account.macos_account_host ? "например: ivan" : "Как к вам обращаться"}
                   />
                 </label>
-                {account.macos_account_host && <p className="field-help">与 macOS 客机共用：小写字母开头，1–31 个小写字母、数字或下划线。</p>}</>
+                {account.macos_account_host && <p className="field-help">Общие с гостевой macOS: начинается со строчной буквы; 1–31 строчная буква, цифра или подчёркивание.</p>}</>
               )}
               <PasswordField
-                label={creating ? "设置密码" : "账户密码"}
+                label={creating ? "Задать пароль" : "Пароль аккаунта"}
                 value={password}
                 onChange={setPassword}
                 autoComplete={creating ? "new-password" : "current-password"}
               />
               {creating && (
                 <PasswordField
-                  label="确认密码"
+                  label="Подтвердите пароль"
                   value={confirmation}
                   onChange={setConfirmation}
                   autoComplete="new-password"
                 />
               )}
-              {creating && account.macos_account_host && <p className="field-help">密码使用 8–256 个英文键盘可输入的字母、数字、空格或符号。安装中断后继续使用这套账密。</p>}
+              {creating && account.macos_account_host && <p className="field-help">Пароль — 8–256 букв, цифр, пробелов или символов, доступных на английской клавиатуре. После прерывания установки используются те же учётные данные.</p>}
               {(error || connectionError) && (
                 <p className="account-error" role="alert">
                   {error || connectionError}
                 </p>
               )}
               {!creating && Object.values(deviceSupport?.device_status || {}).includes("missing") && (
-                <p className="field-help" role="status">当前目录的快捷登录凭据缺失或已失效。请用密码解锁，再到「设置 → 账户 → 登录与解锁」重新开启。</p>
+                <p className="field-help" role="status">Учётные данные быстрого входа для текущего каталога отсутствуют или устарели. Разблокируйте паролем, затем снова включите быстрый вход в разделе «Настройки → Аккаунт → Вход и разблокировка».</p>
               )}
               {!creating && Object.values(deviceSupport?.device_status || {}).includes("unavailable") && (
-                <p className="field-help" role="status">暂时无法检查系统钥匙串，请先用密码解锁。快捷登录授权记录已保留。</p>
+                <p className="field-help" role="status">Не удаётся проверить системную связку ключей. Сначала разблокируйте паролем. Запись авторизации быстрого входа сохранена.</p>
               )}
               {deviceSupport?.supported && !deviceSupport.device_status && (
-                <p className="field-help" role="status">当前应用启动器需要更新，暂时无法检查快捷登录状态。请先用密码进入，并重新安装完整的 Cage 应用。</p>
+                <p className="field-help" role="status">Средство запуска приложения устарело, поэтому состояние быстрого входа проверить нельзя. Войдите с паролем и переустановите полное приложение Cage.</p>
               )}
               {(localDesktop() || (creating && deviceSupport?.supported && deviceSupport.device_status)) && (
                 <label className="account-device-option check-line">
                   <input type="checkbox" checked={rememberThisDevice} onChange={(e) => setRememberLogin(e.target.checked)} />
-                  <span><strong>{localDesktop() ? "记住我" : "记住登录"}</strong><small>{localDesktop() ? "信任此电脑，下次用当前系统用户打开时直接进入。手动锁定仍需验证。" : "下次打开直接进入。手动锁定后仍需验证。"}</small></span>
+                  <span><strong>{localDesktop() ? "Запомнить меня" : "Запомнить вход"}</strong><small>{localDesktop() ? "Доверять этому компьютеру: при следующем открытии от текущего пользователя системы вход выполнится сразу. После ручной блокировки потребуется проверка." : "При следующем открытии вход выполнится сразу. После ручной блокировки потребуется проверка."}</small></span>
                 </label>
               )}
               {!creating && deviceSupport?.supported && credentialPresent(deviceSupport.device_status?.biometric) && account.devices?.biometric && (
@@ -384,14 +384,14 @@ export function AccountGate({ children }) {
                     catch (e) { setError(e.message); }
                     finally { setBusy(false); }
                   }}>
-                  <Fingerprint size={18} />使用 Touch ID 解锁
+                  <Fingerprint size={18} />Разблокировать с помощью Touch ID
                 </button>
               )}
               <button
                 className="primary account-submit"
                 disabled={busy || !password || (creating && (!username.trim() || (!localDesktop() && nativeAvailable() && deviceSupport === null)))}
               >
-                {busy ? "正在解锁…" : creating ? isRemoteClient() ? "创建云端账户" : "创建本地账户" : "解锁 Cage"}
+                {busy ? "Разблокировка…" : creating ? isRemoteClient() ? "Создать облачный аккаунт" : "Создать локальный аккаунт" : "Разблокировать Cage"}
               </button>
             </fieldset>
           </form>
@@ -401,17 +401,17 @@ export function AccountGate({ children }) {
             <p role="alert" className="account-error">
               {connectionError}
             </p>
-            <button onClick={() => refresh().catch(() => {})}>重新连接</button>
+            <button onClick={() => refresh().catch(() => {})}>Переподключиться</button>
           </>
         )}
         <p className="account-local-note">
           <LockKeyhole size={14} />
-          {isRemoteClient() ? "账户资料保存在当前云端主机" : "账户资料仅保存在这台设备上"}
+          {isRemoteClient() ? "Данные аккаунта хранятся на текущем облачном хосте" : "Данные аккаунта хранятся только на этом устройстве"}
         </p>
         {!account?.trusted_local && <p className="account-recovery-note">
           {creating
-            ? "密码至少 8 个字符，用于保护应用登录凭据。请妥善保存，当前不支持在线找回。"
-            : isRemoteClient() ? "请输入云端 Cage 账户密码；当前不支持在线找回。" : "请输入本地账户密码；当前不支持在线找回。"}
+            ? "Пароль должен содержать не менее 8 символов и защищает учётные данные для входа. Сохраните его: восстановление онлайн не поддерживается."
+            : isRemoteClient() ? "Введите пароль облачного аккаунта Cage; восстановление онлайн не поддерживается." : "Введите пароль локального аккаунта; восстановление онлайн не поддерживается."}
         </p>}
       </section>
       {nativeAvailable() && (
@@ -419,7 +419,7 @@ export function AccountGate({ children }) {
           className="text-button account-exit-app"
           onClick={() => native("quitNow").catch((e) => setError(e.message))}
         >
-          {account?.background_running ? "退出应用，后台继续运行" : "退出 Cage"}
+          {account?.background_running ? "Выйти из приложения, оставив фон" : "Выйти из Cage"}
         </button>
       )}
     </main>
@@ -457,9 +457,9 @@ export function AccountMenu({ onSettings, onConfirm, onStatus, busy }) {
     if (
       action === "logout" &&
       !(await onConfirm({
-        title: isRemoteClient() ? "退出云端账户？" : "退出本地账户？",
-        body: "这会停止 Cage 环境与后台任务，并锁定登录凭据。请先保存文件。",
-        confirm: "停止环境并退出账户",
+        title: isRemoteClient() ? "Выйти из облачного аккаунта?" : "Выйти из локального аккаунта?",
+        body: "Это остановит среду Cage и фоновые задачи, а также заблокирует учётные данные. Сначала сохраните файлы.",
+        confirm: "Остановить среду и выйти из аккаунта",
       }))
     )
       return;
@@ -473,7 +473,7 @@ export function AccountMenu({ onSettings, onConfirm, onStatus, busy }) {
     <div className="account-menu-root" ref={root}>
       <button
         className="account-trigger"
-        aria-label={`账户菜单，${account.username}`}
+        aria-label={`Меню аккаунта, ${account.username}`}
         aria-expanded={open}
         aria-haspopup="menu"
         onClick={() => setOpen(!open)}
@@ -481,12 +481,12 @@ export function AccountMenu({ onSettings, onConfirm, onStatus, busy }) {
         <AccountAvatar account={account} />
         <span className="account-trigger-name">
           <strong>{account.username}</strong>
-          <small>{account.trusted_local ? "受信任的本机" : isRemoteClient() ? "云端账户" : "本地账户"}</small>
+          <small>{account.trusted_local ? "Доверенный локальный" : isRemoteClient() ? "Облачный аккаунт" : "Локальный аккаунт"}</small>
         </span>
         <ChevronDown size={15} />
       </button>
       {open && (
-        <div className="account-menu" role="menu" aria-label={isRemoteClient() ? "云端账户菜单" : "本地账户菜单"}
+        <div className="account-menu" role="menu" aria-label={isRemoteClient() ? "Меню облачного аккаунта" : "Меню локального аккаунта"}
           onKeyDown={(event) => {
             if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
             event.preventDefault();
@@ -495,7 +495,7 @@ export function AccountMenu({ onSettings, onConfirm, onStatus, busy }) {
             items[(items.indexOf(event.target) + step + items.length) % items.length].focus();
           }}
         >
-          <div className="account-menu-label">你的 Cage</div>
+          <div className="account-menu-label">Ваш Cage</div>
           <button
             role="menuitem"
             onClick={() => {
@@ -504,15 +504,15 @@ export function AccountMenu({ onSettings, onConfirm, onStatus, busy }) {
             }}
           >
             <Settings size={16} />
-            设置
+            Настройки
           </button>
           {account.trusted_local ? <button role="menuitem" onClick={() => { setOpen(false); onSettings("account"); }}>
-            <LockKeyhole size={16} /> 设置账户密码
+            <LockKeyhole size={16} /> Задать пароль аккаунта
           </button> : <>
           <div className="account-menu-divider" />
           <button role="menuitem" onClick={() => perform("lock")}>
             <LockKeyhole size={16} />
-            锁定 Cage<small>任务继续运行</small>
+            Заблокировать Cage<small>Задачи продолжают работать</small>
           </button>
           <button
             role="menuitem"
@@ -520,7 +520,7 @@ export function AccountMenu({ onSettings, onConfirm, onStatus, busy }) {
             onClick={() => perform("logout")}
           >
             <LogOut size={16} />
-            退出账户
+            Выйти из аккаунта
           </button></>}
         </div>
       )}
@@ -555,7 +555,7 @@ export function AccountSettings({ busy: environmentBusy, onDirty }) {
       selected.size > 2 * 1024 * 1024 ||
       !["image/png", "image/jpeg"].includes(selected.type)
     ) {
-      setError("请选择不超过 2 MB 的 PNG 或 JPEG 图片");
+      setError("Выберите изображение PNG или JPEG размером не более 2 MB");
       return;
     }
     const reader = new FileReader();
@@ -571,7 +571,7 @@ export function AccountSettings({ busy: environmentBusy, onDirty }) {
     if (busy) return;
     setFeedbackTarget(changingPassword ? "password" : "profile");
     if (changingPassword && password !== confirmation) {
-      setError("两次密码不一致");
+      setError("Пароли не совпадают");
       return;
     }
     setBusy(true);
@@ -582,7 +582,7 @@ export function AccountSettings({ busy: environmentBusy, onDirty }) {
         await trustedLogin("protect", password);
         await refresh();
         setPassword(""); setConfirmation("");
-        setMessage("已设置密码，下次打开 Cage 时使用密码登录。");
+        setMessage("Пароль задан; при следующем открытии Cage потребуется вход по паролю.");
         return;
       }
       const value = await act(
@@ -599,11 +599,11 @@ export function AccountSettings({ busy: environmentBusy, onDirty }) {
         setOldPassword("");
         setPassword("");
         setConfirmation("");
-        setMessage(value.macos_password_pending ? "Cage 密码已修改。客机密码待同步，下次启动时自动重试；同步完成前客机可能仍需原密码。" : "密码已修改，应用登录状态保持不变");
+        setMessage(value.macos_password_pending ? "Пароль Cage изменён. Пароль гостевой системы ещё не синхронизирован; попытка повторится при следующем запуске. До синхронизации гостевая система может по-прежнему требовать старый пароль." : "Пароль изменён; состояние входа в приложение не изменилось");
       } else {
         setName(value.username);
         setAvatar(value.avatar || "");
-        setMessage("账户资料已保存");
+        setMessage("Данные аккаунта сохранены");
       }
     } catch (e) {
       setError(e.message);
@@ -630,8 +630,8 @@ export function AccountSettings({ busy: environmentBusy, onDirty }) {
   return (
     <div className="account-settings">
       <div className="section-title">
-        <h3>账户</h3>
-        <p>给工作空间一点你的样子。</p>
+        <h3>Аккаунт</h3>
+        <p>Придайте рабочему пространству свой вид.</p>
       </div>
       <form onSubmit={(event) => save(event)}>
         <fieldset disabled={busy || environmentBusy}>
@@ -644,7 +644,7 @@ export function AccountSettings({ busy: environmentBusy, onDirty }) {
                 onClick={() => file.current.click()}
               >
                 <Camera size={16} />
-                更换头像
+                Сменить аватар
               </button>
               {avatar && (
                 <button
@@ -652,11 +652,11 @@ export function AccountSettings({ busy: environmentBusy, onDirty }) {
                   className="text-button"
                   onClick={() => setAvatar("")}
                 >
-                  恢复默认
+                  Вернуть по умолчанию
                 </button>
               )}
               <p className="field-help">
-                PNG 或 JPEG，最多 2 MB，自动居中裁切。
+                PNG или JPEG, не более 2 MB, автоматическая обрезка по центру.
               </p>
             </div>
           </div>
@@ -666,10 +666,10 @@ export function AccountSettings({ busy: environmentBusy, onDirty }) {
             accept="image/png,image/jpeg"
             hidden
             onChange={upload}
-            aria-label="选择头像图片"
+            aria-label="Выбрать изображение аватара"
           />
           <label className="account-field">
-            用户名
+            Имя пользователя
             <input
               value={name}
               maxLength={40}
@@ -679,13 +679,13 @@ export function AccountSettings({ busy: environmentBusy, onDirty }) {
               readOnly={account.macos_username_bound}
             />
           </label>
-          {account.macos_username_bound && <p className="field-help">用户名已用于 macOS 客机，保留该名称以继续使用原账户和文件。</p>}
+          {account.macos_username_bound && <p className="field-help">Имя пользователя уже используется гостевой macOS. Оставьте его, чтобы сохранить доступ к прежнему аккаунту и файлам.</p>}
           <button
             className="primary"
             disabled={!changed || !name.trim() || busy}
           >
             <Check size={16} />
-            保存资料
+            Сохранить данные
           </button>
         </fieldset>
       </form>
@@ -693,23 +693,23 @@ export function AccountSettings({ busy: environmentBusy, onDirty }) {
       <div className="account-section-divider" />
       <form onSubmit={(event) => save(event, true)}>
         <fieldset disabled={busy || environmentBusy}>
-          <h4>账户密码</h4>
+          <h4>Пароль аккаунта</h4>
           <p className="field-help">
-            修改密码不会清除 Claude 的登录状态。{account.macos_credentials_ready ? "Cage 与 macOS 客机共用密码；客机关闭时会在下次启动后同步。" : isRemoteClient() ? "密码用于解锁当前云端 Cage，没有在线找回。" : "密码用于本机解锁，没有在线找回。"}
+            Смена пароля не сбрасывает вход в Claude. {account.macos_credentials_ready ? "Cage и гостевая macOS используют общий пароль; если гостевая система выключена, пароль синхронизируется при следующем запуске." : isRemoteClient() ? "Пароль разблокирует текущий облачный Cage; восстановление онлайн недоступно." : "Пароль разблокирует локальный Cage; восстановление онлайн недоступно."}
           </p>
           {!account.trusted_local && <PasswordField
-            label="当前密码"
+            label="Текущий пароль"
             value={oldPassword}
             onChange={setOldPassword}
           />}
           <PasswordField
-            label="新密码"
+            label="Новый пароль"
             value={password}
             onChange={setPassword}
             autoComplete="new-password"
           />
           <PasswordField
-            label="确认新密码"
+            label="Подтвердите новый пароль"
             value={confirmation}
             onChange={setConfirmation}
             autoComplete="new-password"
@@ -718,7 +718,7 @@ export function AccountSettings({ busy: environmentBusy, onDirty }) {
             className="quiet-button"
             disabled={busy || (!account.trusted_local && !oldPassword) || !password || !confirmation}
           >
-            {account.trusted_local ? "设置密码并关闭免账号登录" : "修改密码"}
+            {account.trusted_local ? "Задать пароль и отключить вход без аккаунта" : "Изменить пароль"}
           </button>
         </fieldset>
       </form>
@@ -728,7 +728,7 @@ export function AccountSettings({ busy: environmentBusy, onDirty }) {
       {!account.trusted_local && <AccountDeviceSettings />}
       <p className="account-settings-note">
         <LockKeyhole size={15} />
-        {isRemoteClient() ? "账户、应用资料与登录凭据保存在当前云端主机。" : "一个本地账户，一个持久工作环境。资料与凭据不上传到 Cage 服务器。"}
+        {isRemoteClient() ? "Аккаунт, данные приложения и учётные данные входа хранятся на текущем облачном хосте." : "Один локальный аккаунт — одна постоянная рабочая среда. Данные и учётные данные не передаются на серверы Cage."}
       </p>
     </div>
   );
@@ -752,10 +752,10 @@ function TrustedDeviceSettings() {
   };
   return <form onSubmit={update}>
     <fieldset disabled={busy}>
-      <h4>记住我</h4>
-      <p className="field-help">{enabled ? "已信任此电脑，下次用当前系统用户打开时自动进入。手动锁定仍需验证，退出账户会撤销信任。" : "验证一次账户密码，信任此电脑，下次用当前系统用户打开时自动进入。"}</p>
-      {!enabled && <PasswordField label="验证账户密码" value={password} onChange={setPassword} autoComplete="current-password" />}
-      <button className="quiet-button" disabled={!enabled && !password}>{enabled ? "关闭记住我" : "信任此电脑"}</button>
+      <h4>Запомнить меня</h4>
+      <p className="field-help">{enabled ? "Этот компьютер доверенный: при следующем открытии от текущего пользователя системы вход выполнится автоматически. После ручной блокировки потребуется проверка; выход из аккаунта отзывает доверие." : "Подтвердите пароль аккаунта один раз, чтобы доверять этому компьютеру и входить автоматически при следующем открытии от текущего пользователя системы."}</p>
+      {!enabled && <PasswordField label="Подтвердите пароль аккаунта" value={password} onChange={setPassword} autoComplete="current-password" />}
+      <button className="quiet-button" disabled={!enabled && !password}>{enabled ? "Отключить «Запомнить меня»" : "Доверять этому компьютеру"}</button>
       {message && <p className="account-error" role="alert">{message}</p>}
     </fieldset>
   </form>;
@@ -767,40 +767,40 @@ function AccountDeviceSettings() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   if (!deviceSupport?.supported) return null;
-  if (!deviceSupport.device_status) return <section className="account-device-settings" aria-label="登录与解锁">
-    <h4>登录与解锁</h4>
-    <p className="field-help" role="status">当前应用启动器需要更新，无法检查快捷登录状态。请重新安装完整的 Cage 应用后再设置；现有授权已保留。</p>
+  if (!deviceSupport.device_status) return <section className="account-device-settings" aria-label="Вход и разблокировка">
+    <h4>Вход и разблокировка</h4>
+    <p className="field-help" role="status">Средство запуска приложения устарело, поэтому состояние быстрого входа проверить нельзя. Переустановите полное приложение Cage и настройте заново; существующая авторизация сохранена.</p>
   </section>;
   const states = deviceSupport.device_status || {};
   const description = (kind, fallback) => states[kind] === "missing"
-    ? "当前目录的凭据缺失或已失效，请重新开启。"
+    ? "Учётные данные текущего каталога отсутствуют или устарели. Включите снова."
     : states[kind] === "unavailable"
-      ? "暂时无法检查系统钥匙串，授权记录已保留。请稍后重新检查。"
+      ? "Не удаётся проверить системную связку ключей; запись авторизации сохранена. Повторите проверку позже."
       : states[kind] === "authentication_required"
-        ? "凭据需要通过 Touch ID 验证，解锁时会请求指纹。"
+        ? "Для учётных данных требуется проверка Touch ID; при разблокировке будет запрошен отпечаток пальца."
         : fallback;
   const change = async (kind, enabled) => {
     setBusy(true); setError(""); setMessage("");
     try {
       await deviceAction(enabled ? "enable" : "disable", kind);
-      setMessage(enabled ? "已开启，解锁凭据保存在这台 Mac 的系统钥匙串中" : "已关闭快捷登录授权");
+      setMessage(enabled ? "Включено; учётные данные для разблокировки сохранены в системной связке ключей этого Mac" : "Авторизация быстрого входа отключена");
     } catch (e) { setError(e.message); }
     finally { setBusy(false); }
   };
-  return <section className="account-device-settings" aria-label="登录与解锁">
-    <h4>登录与解锁</h4>
+  return <section className="account-device-settings" aria-label="Вход и разблокировка">
+    <h4>Вход и разблокировка</h4>
     {!localDesktop() && <label className="account-device-option check-line">
       <input type="checkbox" checked={Boolean(account.devices?.automatic) && states.automatic === "available"} disabled={busy || states.automatic === "unavailable"}
         onChange={(event) => change("automatic", event.target.checked)} />
-      <span><strong>记住登录</strong><small>{description("automatic", "重新打开直接进入。手动锁定后仍需指纹或密码。")}</small></span>
+      <span><strong>Запомнить вход</strong><small>{description("automatic", "При повторном открытии вход выполнится сразу. После ручной блокировки потребуется отпечаток пальца или пароль.")}</small></span>
     </label>}
     <label className="account-device-option check-line">
       <input type="checkbox" checked={Boolean(account.devices?.biometric) && credentialPresent(states.biometric)} disabled={busy || states.biometric === "unavailable" || (!deviceSupport.biometric_available && !credentialPresent(states.biometric))}
         onChange={(event) => change("biometric", event.target.checked)} />
-      <span><strong>使用 Touch ID 解锁</strong><small>{description("biometric", deviceSupport.biometric_available ? "手动锁定后，通过系统指纹验证进入。" : "请先在 macOS 系统设置中设置 Touch ID。")}</small></span>
+      <span><strong>Разблокировка с помощью Touch ID</strong><small>{description("biometric", deviceSupport.biometric_available ? "После ручной блокировки вход выполняется по системному отпечатку пальца." : "Сначала настройте Touch ID в системных настройках macOS.")}</small></span>
     </label>
-    {Object.values(states).includes("unavailable") && <button type="button" className="quiet-button" disabled={busy} onClick={recheckDevices}>重新检查快捷登录</button>}
-    <p className="field-help">退出账户会撤销本机快捷登录授权。密码始终可以用于解锁。</p>
+    {Object.values(states).includes("unavailable") && <button type="button" className="quiet-button" disabled={busy} onClick={recheckDevices}>Проверить быстрый вход снова</button>}
+    <p className="field-help">Выход из аккаунта отзывает локальную авторизацию быстрого входа. Пароль всегда можно использовать для разблокировки.</p>
     {error && <p className="account-error" role="alert">{error}</p>}
     {message && <p className="account-saved" role="status">{message}</p>}
   </section>;

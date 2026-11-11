@@ -104,7 +104,7 @@ export function Modal({ title, children, onClose, wide = false, footer, anchor }
           {onClose && (
             <button
               className="icon-button close-modal"
-              aria-label="关闭面板"
+              aria-label="Закрыть панель"
               onClick={onClose}
             >
               ×
