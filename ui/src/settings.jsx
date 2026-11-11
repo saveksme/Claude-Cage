@@ -306,7 +306,7 @@ export function SettingsPanel({
                       <small>
                         {currentLoc.timezone} ·{" "}
                         {new Date(currentLoc.checked_at).toLocaleTimeString(
-                          "zh-CN",
+                          "ru-RU",
                           { hour: "2-digit", minute: "2-digit" },
                         )}{" "}
                         {probe ? "Проверка пройдена" : "Текущая среда · последняя проверка"}
