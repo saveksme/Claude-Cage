@@ -38,50 +38,50 @@ export function BrowserCookies({ tab, onClose }) {
       if (version === generation.current) setError(error.message);
     } finally { operation.current = false; setBusy(false); }
   };
-  return <section className="browser-cookies" aria-label="Cookie 管理" onKeyDown={event => {
+  return <section className="browser-cookies" aria-label="Управление Cookie" onKeyDown={event => {
     if (event.key === "Escape") { event.stopPropagation(); onClose(); }
   }}>
     <div className="cookie-heading">
-      <button className="icon-button" aria-label="关闭 Cookie 管理" onClick={onClose}><ArrowLeft size={15} /></button>
-      <strong>Cookie 管理</strong><span>{tab.incognito ? "无痕会话" : "普通会话"}</span>
-      <button className="icon-button" aria-label="刷新 Cookie" disabled={busy || loading}
+      <button className="icon-button" aria-label="Закрыть управление Cookie" onClick={onClose}><ArrowLeft size={15} /></button>
+      <strong>Управление Cookie</strong><span>{tab.incognito ? "Приватный сеанс" : "Обычный сеанс"}</span>
+      <button className="icon-button" aria-label="Обновить Cookie" disabled={busy || loading}
         onClick={() => setRevision(revision + 1)}><RefreshCw size={15} /></button>
     </div>
     <div className="cookie-toolbar">
-      <InlineSelect aria-label="Cookie 网站范围" value={scope} disabled={busy} onValueChange={next => { setScope(next); setPage(0); }}>
-        <option value="site" disabled={!/^https?:/.test(tab.url)}>当前网站</option><option value="all">所有网站</option>
+      <InlineSelect aria-label="Область сайтов для Cookie" value={scope} disabled={busy} onValueChange={next => { setScope(next); setPage(0); }}>
+        <option value="site" disabled={!/^https?:/.test(tab.url)}>Текущий сайт</option><option value="all">Все сайты</option>
       </InlineSelect>
-      <input ref={search} aria-label="搜索 Cookie" placeholder="搜索网站或 Cookie 名称" maxLength={200}
+      <input ref={search} aria-label="Поиск Cookie" placeholder="Поиск сайта или имени Cookie" maxLength={200}
         value={query} disabled={busy} onChange={event => { setQuery(event.target.value); setPage(0); }} />
       <button disabled={busy || loading || !data} onClick={() => setConfirmClear(!confirmClear)}>
-        <Trash2 size={14} />清空{scope === "site" ? "当前网站" : "所有网站"}
+        <Trash2 size={14} />Очистить {scope === "site" ? "текущий сайт" : "все сайты"}
       </button>
     </div>
     {confirmClear && <div className="cookie-confirm" role="alert">
-      <span>清空{scope === "site" ? data?.hostname : "此" + (tab.incognito ? "无痕" : "普通") + "会话所有网站"}的 Cookie？搜索条件不限制清空范围，网站可能需要重新登录。</span>
-      <button disabled={busy} onClick={() => run("clear")}>确认清空</button>
-      <button disabled={busy} onClick={() => setConfirmClear(false)}>取消</button>
+      <span>Очистить Cookie {scope === "site" ? data?.hostname : "всех сайтов этого " + (tab.incognito ? "приватного" : "обычного") + " сеанса"}? Условия поиска не ограничивают область очистки; может потребоваться повторный вход на сайты.</span>
+      <button disabled={busy} onClick={() => run("clear")}>Очистить</button>
+      <button disabled={busy} onClick={() => setConfirmClear(false)}>Отмена</button>
     </div>}
     {error && <p className="cookie-error" role="alert">{error}</p>}
     <div className="cookie-list" aria-busy={busy || loading}>
-      {loading ? <p>正在读取 Cookie…</p> : data?.cookies.length === 0 ? <p>没有匹配的 Cookie。</p> : data?.cookies.map(cookie =>
+      {loading ? <p>Чтение Cookie…</p> : data?.cookies.length === 0 ? <p>Подходящих Cookie нет.</p> : data?.cookies.map(cookie =>
         <article className="cookie-record" key={cookie.key}>
-          <div className="cookie-record-heading"><strong>{cookie.name || "（空名称）"}</strong>
+          <div className="cookie-record-heading"><strong>{cookie.name || "(без имени)"}</strong>
             <button disabled={busy} onClick={() => value?.key === cookie.key ? setValue(null) : run("details", cookie.key)}>
-              {value?.key === cookie.key ? "隐藏值" : "查看值"}</button>
-            <button disabled={busy || cookie.partitionKeyOpaque} aria-label={`删除 Cookie ${cookie.name}`}
-              title={cookie.partitionKeyOpaque ? "此分区 Cookie 需要清空所有网站" : "删除此 Cookie"}
+              {value?.key === cookie.key ? "Скрыть значение" : "Показать значение"}</button>
+            <button disabled={busy || cookie.partitionKeyOpaque} aria-label={`Удалить Cookie ${cookie.name}`}
+              title={cookie.partitionKeyOpaque ? "Cookie этого раздела можно удалить только очисткой всех сайтов" : "Удалить этот Cookie"}
               onClick={() => run("delete", cookie.key)}><Trash2 size={14} /></button></div>
-          <div className="cookie-metadata">{cookie.domain} · 路径 {cookie.path} · {cookie.size} B</div>
-          <div className="cookie-metadata">{cookie.session ? "会话结束时过期" : `过期：${new Date(cookie.expires * 1000).toLocaleString()}`}
+          <div className="cookie-metadata">{cookie.domain} · Путь {cookie.path} · {cookie.size} B</div>
+          <div className="cookie-metadata">{cookie.session ? "Истекает при завершении сеанса" : `Истекает: ${new Date(cookie.expires * 1000).toLocaleString()}`}
             {cookie.secure && " · Secure"}{cookie.httpOnly && " · HttpOnly"}{cookie.sameSite && ` · SameSite=${cookie.sameSite}`}
-            {(cookie.partitionKey || cookie.partitionKeyOpaque) && ` · 分区：${cookie.partitionKey?.topLevelSite || "不透明"}`}</div>
-          {value?.key === cookie.key && <pre className="cookie-value">{value.value || "（空值）"}</pre>}
+            {(cookie.partitionKey || cookie.partitionKeyOpaque) && ` · Раздел: ${cookie.partitionKey?.topLevelSite || "непрозрачный"}`}</div>
+          {value?.key === cookie.key && <pre className="cookie-value">{value.value || "(пустое значение)"}</pre>}
         </article>)}
     </div>
-    {data && <div className="cookie-pagination"><span>共 {data.total} 条 · 第 {data.page + 1} 页</span>
-      <button disabled={busy || loading || data.page === 0} onClick={() => setPage(data.page - 1)}>上一页</button>
-      <button disabled={busy || loading || (data.page + 1) * 50 >= data.total} onClick={() => setPage(data.page + 1)}>下一页</button>
+    {data && <div className="cookie-pagination"><span>Всего: {data.total} · Страница {data.page + 1}</span>
+      <button disabled={busy || loading || data.page === 0} onClick={() => setPage(data.page - 1)}>Назад</button>
+      <button disabled={busy || loading || (data.page + 1) * 50 >= data.total} onClick={() => setPage(data.page + 1)}>Вперёд</button>
     </div>}
   </section>;
 }

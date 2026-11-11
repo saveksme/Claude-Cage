@@ -11,13 +11,13 @@ import { shortcut } from "./platform.mjs";
 import logo from "./logo.png";
 
 export const ExpandSidebar = ({ onClick }) => <button className="icon-button sidebar-expand"
-  aria-label="展开侧栏" onClick={onClick}>
+  aria-label="Развернуть боковую панель" onClick={onClick}>
   <img className="sidebar-expand-logo" src={logo} alt="" />
   <PanelLeftOpen className="sidebar-expand-icon" size={18} />
 </button>;
 
 export const ExpandPane = ({ onClick }) => <button className="icon-button expand-pane"
-  aria-label="退出分屏" title="在整个工作区显示此页" onClick={onClick}><Maximize2 size={14} /></button>;
+  aria-label="Выйти из разделённого экрана" title="Показать эту страницу на всей рабочей среде" onClick={onClick}><Maximize2 size={14} /></button>;
 
 export function TerminalHeader({ tab, contentWorkspace, project, metadata, terminalDetail, terminalDetailHint,
   onHome, busy, onClose, sidebarButton, exitButton, location, triggerRef, menu }) {
@@ -48,8 +48,8 @@ export function TerminalHeader({ tab, contentWorkspace, project, metadata, termi
         {tab && (
           <button
             className="icon-button"
-            aria-label={tab.cli_session_id ? "归档当前会话" : "关闭当前标签"}
-            title={shortcut(tab.cli_session_id ? "归档当前会话 ⌘W" : "关闭当前标签 ⌘W")}
+            aria-label={tab.cli_session_id ? "Архивировать текущий сеанс" : "Закрыть текущую вкладку"}
+            title={shortcut(tab.cli_session_id ? "Архивировать текущий сеанс ⌘W" : "Закрыть текущую вкладку ⌘W")}
             onClick={onClose}
             disabled={busy}
           >
@@ -68,13 +68,13 @@ export function TerminalHeader({ tab, contentWorkspace, project, metadata, termi
 // muted/hover tokens, 8px spacing and browser-tab typography in either layout.
 export function BrowserTabRail({ tabs, metadata, active, ready, busy, splitDrag, sidebarButton,
   onSelect, onClose, onRename, onPin, onReorder, onNew }) {
-  return <aside className="chrome browser-tab-rail" aria-label="竖排标签栏">
+  return <aside className="chrome browser-tab-rail" aria-label="Вертикальная панель вкладок">
     <div className="browser-tab-rail-heading">
-      {sidebarButton}<strong>标签页</strong>
-      <button className="icon-button browser-new-tab" aria-label="新建网页" title={shortcut("新建网页 ⌘T")}
+      {sidebarButton}<strong>Вкладки</strong>
+      <button className="icon-button browser-new-tab" aria-label="Новая страница" title={shortcut("Новая страница ⌘T")}
         disabled={!ready || busy} onClick={onNew}><Plus size={17} /></button>
     </div>
-    <WorkspaceTabs tabs={tabs} saved={metadata} active={active} label="浏览器标签页" vertical
+    <WorkspaceTabs tabs={tabs} saved={metadata} active={active} label="Вкладки браузера" vertical
       ready={ready} busy={busy} splitDrag={splitDrag} onSelect={onSelect} onClose={onClose}
       onRename={onRename} onPin={onPin} onReorder={onReorder} />
   </aside>;
@@ -118,8 +118,8 @@ export function BrowserHeader({ vault, onManageVault, tab, tabs, metadata, ready
       event.key === "Home" ? 0 : event.key === "End" ? items.length - 1 : -1;
     if (next >= 0) { event.preventDefault(); items[next].focus(); }
   };
-  const closeButton = onCloseBrowser && <button className="icon-button browser-close" aria-label="关闭浏览器"
-    title="关闭浏览器并返回之前的页面" onClick={onCloseBrowser}><X size={16} /></button>;
+  const closeButton = onCloseBrowser && <button className="icon-button browser-close" aria-label="Закрыть браузер"
+    title="Закрыть браузер и вернуться на предыдущую страницу" onClick={onCloseBrowser}><X size={16} /></button>;
   return <header className={`chrome browser-chrome ${compact ? "split-chrome" : ""}`} data-browser-tab={tab.id}>
     {!vertical && <div className="browser-tab-bar">
       {sidebarButton}
@@ -127,7 +127,7 @@ export function BrowserHeader({ vault, onManageVault, tab, tabs, metadata, ready
         tabs={tabs}
         saved={metadata}
         active={tab.id}
-        label="浏览器标签页"
+        label="Вкладки браузера"
         horizontal
         busy={busy}
         ready={ready}
@@ -142,8 +142,8 @@ export function BrowserHeader({ vault, onManageVault, tab, tabs, metadata, ready
         className="icon-button browser-new-tab"
         ref={triggerRef}
         data-terminal-location={location}
-        aria-label="新建网页"
-        title={shortcut("新建网页 ⌘T")}
+        aria-label="Новая страница"
+        title={shortcut("Новая страница ⌘T")}
         disabled={!ready || busy}
         onClick={onNew}
       >
@@ -155,7 +155,7 @@ export function BrowserHeader({ vault, onManageVault, tab, tabs, metadata, ready
       <div className="nav-actions">
         <button
           className="icon-button"
-          aria-label="后退"
+          aria-label="Назад"
           disabled={!ready || !back}
           onClick={() =>
             action("/browser/back", { id: tab.id })
@@ -165,7 +165,7 @@ export function BrowserHeader({ vault, onManageVault, tab, tabs, metadata, ready
         </button>
         <button
           className="icon-button"
-          aria-label="前进"
+          aria-label="Вперёд"
           disabled={!ready || !forward}
           onClick={() =>
             action("/browser/forward", { id: tab.id })
@@ -175,7 +175,7 @@ export function BrowserHeader({ vault, onManageVault, tab, tabs, metadata, ready
         </button>
         <button
           className="icon-button"
-          aria-label="重新加载网页"
+          aria-label="Перезагрузить страницу"
           disabled={!ready}
           onClick={onReload || (() => action("/browser/reload", { id: tab.id }))}
         >
@@ -183,16 +183,16 @@ export function BrowserHeader({ vault, onManageVault, tab, tabs, metadata, ready
         </button>
       </div>
       <form className="address-bar" onSubmit={event => { event.preventDefault(); onNavigate(address); }}>
-        {tab.incognito ? <span className="browser-private-badge" title="关闭全部无痕标签后清理此会话"><ScanEye size={13} />无痕</span> : <Globe2 size={13} />}
+        {tab.incognito ? <span className="browser-private-badge" title="Данные этого сеанса очищаются после закрытия всех приватных вкладок"><ScanEye size={13} />Приватный</span> : <Globe2 size={13} />}
         <input
-          aria-label="网页地址或搜索"
+          aria-label="Адрес страницы или поисковый запрос"
           value={address}
           onChange={(e) => setAddress(e.target.value)}
           onFocus={(e) => e.target.select()}
           placeholder={
             ready
-              ? "输入网址或搜索，在 Cage 内打开"
-              : "启动环境后浏览网页"
+              ? "Введите адрес или поисковый запрос, чтобы открыть в Cage"
+              : "Запустите среду, чтобы просматривать страницы"
           }
           disabled={!ready}
           spellCheck="false"
@@ -200,7 +200,7 @@ export function BrowserHeader({ vault, onManageVault, tab, tabs, metadata, ready
         <button
           className="address-go"
           type="submit"
-          aria-label="打开地址"
+          aria-label="Открыть адрес"
           disabled={!ready}
         >
           <ArrowUpRight size={15} />
@@ -208,7 +208,7 @@ export function BrowserHeader({ vault, onManageVault, tab, tabs, metadata, ready
       </form>
       <BrowserFavorites current={tab} shortcuts={focused} ready={ready && !busy} onOpen={onOpen} />
       <BrowserDownloads downloads={downloads} ready={ready && !busy} onStatus={onStatus} />
-      <button className="icon-button browser-more-trigger" aria-label="浏览器菜单" title="浏览器菜单"
+      <button className="icon-button browser-more-trigger" aria-label="Меню браузера" title="Меню браузера"
         ref={toolsTrigger} aria-haspopup="menu"
         aria-expanded={toolsOpen} aria-controls={`browser-menu-${tab.id}`}
         onKeyDown={event => {
@@ -221,28 +221,28 @@ export function BrowserHeader({ vault, onManageVault, tab, tabs, metadata, ready
       {vertical && exitButton}
       {vertical && closeButton}
     <div className="browser-more-menu" hidden={!toolsOpen} ref={toolsMenu}
-      id={`browser-menu-${tab.id}`} role="menu" aria-label="浏览器菜单" onKeyDown={menuKey}
+      id={`browser-menu-${tab.id}`} role="menu" aria-label="Меню браузера" onKeyDown={menuKey}
       onClick={event => {
         const item = event.target.closest('[role="menuitem"]');
         if (item && !item.closest(".vault-browser")) { setToolsOpen(false); toolsTrigger.current?.focus(); }
       }}>
       <div className="browser-more-actions">
-        <button className="browser-menu-item" role="menuitem" disabled={!ready || busy} onClick={onNewPrivate}><ScanEye size={16} />新建无痕标签</button>
-        {tab.incognito && <button className="browser-menu-item" role="menuitem" disabled={!ready || busy} onClick={onNewRegular}><Globe2 size={16} />新建普通标签</button>}
-        {!tab.login && tab.kind !== "browser-settings" && <button className="browser-menu-item" role="menuitem" disabled={!ready || busy} onClick={() => setCookiesOpen(true)}><Cookie size={16} />管理 Cookie</button>}
-        <button className="browser-menu-item" role="menuitem" disabled={!ready || busy} onClick={() => onSettings('extensions')}><Puzzle size={16} />扩展</button>
+        <button className="browser-menu-item" role="menuitem" disabled={!ready || busy} onClick={onNewPrivate}><ScanEye size={16} />Новая приватная вкладка</button>
+        {tab.incognito && <button className="browser-menu-item" role="menuitem" disabled={!ready || busy} onClick={onNewRegular}><Globe2 size={16} />Новая обычная вкладка</button>}
+        {!tab.login && tab.kind !== "browser-settings" && <button className="browser-menu-item" role="menuitem" disabled={!ready || busy} onClick={() => setCookiesOpen(true)}><Cookie size={16} />Управление Cookie</button>}
+        <button className="browser-menu-item" role="menuitem" disabled={!ready || busy} onClick={() => onSettings('extensions')}><Puzzle size={16} />Расширения</button>
         <BrowserDownloads menu anchorRef={toolsTrigger} downloads={downloads} ready={ready && !busy} onStatus={onStatus} />
-        {tab.kind === "editor" && <button className="browser-menu-item" role="menuitem" aria-label="恢复编辑器" title="单独重启编辑器"
+        {tab.kind === "editor" && <button className="browser-menu-item" role="menuitem" aria-label="Восстановить редактор" title="Перезапустить редактор отдельно"
           disabled={!ready || busy || recoveringEditor} onClick={onRecover}>
-          <RefreshCw size={16} className={recoveringEditor ? "spin" : ""} /><span>恢复编辑器</span>
+          <RefreshCw size={16} className={recoveringEditor ? "spin" : ""} /><span>Восстановить редактор</span>
         </button>}
       </div>
       {vault && !tab.incognito && tab.kind === "web" && <BrowserVaultBar menu tab={tab} vault={vault} ready={ready} onManage={onManageVault} />}
-      <div className="browser-settings-menu-row"><button className="browser-menu-item" role="menuitem" disabled={!ready || busy} onClick={() => onSettings('general')}><Settings size={16} />设置</button></div>
+      <div className="browser-settings-menu-row"><button className="browser-menu-item" role="menuitem" disabled={!ready || busy} onClick={() => onSettings('general')}><Settings size={16} />Настройки</button></div>
     </div>
     </div>
     {cookiesOpen && <BrowserCookies key={`${tab.id}:${tab.url}`} tab={tab} onClose={() => { setCookiesOpen(false); toolsTrigger.current?.focus(); }} />}
-    {tab.incognito && <p className="browser-private-note">无痕会话 · 关闭全部无痕标签后清理网站数据；下载和主动保存的收藏会保留。</p>}
+    {tab.incognito && <p className="browser-private-note">Приватный сеанс · данные сайтов очищаются после закрытия всех приватных вкладок; загрузки и закладки, сохранённые вручную, остаются.</p>}
     {menu}
     {busy && <div className="progress-line" />}
   </header>;

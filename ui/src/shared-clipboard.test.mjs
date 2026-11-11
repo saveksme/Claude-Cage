@@ -258,7 +258,7 @@ test("text, images and file selections synchronize both ways and do not echo", a
   try {
     await settle();
     assert.deepEqual(f.sent, [{ text: "host initial" }]);
-    for (const content of [{ text: "中文🙂\nsecond line" }, { png: "fixture-png" }, { files: "fixture-file-selection" }]) {
+    for (const content of [{ text: "кириллица🙂\nвторая строка" }, { png: "fixture-png" }, { files: "fixture-file-selection" }]) {
       f.guest(content); await settle();
       assert.deepEqual(f.writes.at(-1), content);
       const sent = f.sent.length;

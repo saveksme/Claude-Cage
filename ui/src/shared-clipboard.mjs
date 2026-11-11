@@ -1,11 +1,11 @@
 export async function copyGuestText({ request, sendCopy, valid }) {
   const before = await request({ phase: "prepare" });
-  if (!valid() || typeof before.revision !== "number" || typeof before.session !== "string") throw new Error("复制窗口已变化，请重新选择文本。");
+  if (!valid() || typeof before.revision !== "number" || typeof before.session !== "string") throw new Error("Окно копирования изменилось. Выберите текст заново.");
   await sendCopy();
-  if (!valid()) throw new Error("复制窗口已变化，请重新选择文本。");
+  if (!valid()) throw new Error("Окно копирования изменилось. Выберите текст заново.");
   const result = await request({ phase: "read", revision: before.revision, session: before.session });
   if (!valid() || result.session !== before.session || result.revision === before.revision || typeof result.text !== "string") {
-    throw new Error("未收到新的选中文本，请重新选择后复制。");
+    throw new Error("Новый выделенный текст не получен. Выделите его заново и скопируйте.");
   }
   return { text: result.text };
 }
@@ -30,7 +30,7 @@ export function shareClipboard({ connect, native, onStatus, setActive, interval 
       void native("clipboardSyncRelease", { files: id }).catch(() => {});
     };
   };
-  const disconnected = () => new Error("剪贴板连接已变化，请确认客机已连接后重新粘贴。");
+  const disconnected = () => new Error("Соединение буфера обмена изменилось. Убедитесь, что гостевая система подключена, и вставьте заново.");
   const invalidateSession = () => {
     generation++; sessionGeneration++;
     sessionController.abort(); sessionController = new AbortController();
@@ -50,7 +50,7 @@ export function shareClipboard({ connect, native, onStatus, setActive, interval 
     if (signal.aborted) abort();
     else signal.addEventListener("abort", abort, { once: true });
   });
-  const warn = () => { if (!disposed && !errorShown) { errorShown = true; onStatus("剪贴板共享暂未完成，请检查文件是否仍存在及大小限制。"); } };
+  const warn = () => { if (!disposed && !errorShown) { errorShown = true; onStatus("Общий доступ к буферу обмена пока не завершён. Проверьте, что файлы на месте и не превышают ограничения размера."); } };
   const send = (connection, content) => new Promise((resolve, reject) => {
     const id = ++serial;
     const timeout = setTimeout(() => { acknowledgements.delete(id); reject(new Error("Clipboard acknowledgement timed out")); }, 8000);
@@ -137,7 +137,7 @@ export function shareClipboard({ connect, native, onStatus, setActive, interval 
       revision = result.revision;
       acknowledgedRevision = result.revision;
       lastPayload = JSON.stringify(content);
-      onStatus(content.files ? "文件已复制到本机，可在本机粘贴" : "已复制到本机");
+      onStatus(content.files ? "Файлы скопированы на этот компьютер, их можно вставить здесь" : "Скопировано на этот компьютер");
     }).catch(() => {
       if (session === sessionGeneration) warn();
     }).finally(releaseFiles);
@@ -173,7 +173,7 @@ export function shareClipboard({ connect, native, onStatus, setActive, interval 
       const sequence = generation;
       const current = await waitForSession(native("clipboardRevision"), signal);
       requireSession(signal);
-      if (typeof current !== "number") throw new Error("无法确认当前剪贴板版本，请重新粘贴。");
+      if (typeof current !== "number") throw new Error("Не удалось определить текущую версию буфера обмена. Вставьте заново.");
       if (current === acknowledgedRevision && sequence === generation && pendingWrites === writes) return;
     }
   }, dispose() {

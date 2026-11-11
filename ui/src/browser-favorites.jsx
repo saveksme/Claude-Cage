@@ -173,8 +173,8 @@ export function BrowserFavorites({ current, ready, onOpen, shortcuts = true, men
         <button
           className={`${menu ? "browser-menu-item" : "icon-button"} favorite-star ${favorite ? "saved" : ""}`}
           role={menu ? "menuitem" : undefined}
-          aria-label={favorite ? "编辑此页收藏" : "收藏此页"}
-          title={shortcut(favorite ? "编辑此页收藏 ⌘D" : "收藏此页 ⌘D")}
+          aria-label={favorite ? "Изменить закладку этой страницы" : "Добавить страницу в закладки"}
+          title={shortcut(favorite ? "Изменить закладку этой страницы ⌘D" : "Добавить страницу в закладки ⌘D")}
           disabled={!canSave || !data}
           onClick={(event) => {
             event.currentTarget.focus();
@@ -182,19 +182,19 @@ export function BrowserFavorites({ current, ready, onOpen, shortcuts = true, men
           }}
         >
           <Star size={17} fill={favorite ? "currentColor" : "none"} />
-          {menu && <span>{favorite ? "编辑此页收藏" : "收藏此页"}</span>}
+          {menu && <span>{favorite ? "Изменить закладку этой страницы" : "Добавить страницу в закладки"}</span>}
         </button>
         <button
           ref={toggle}
           className={menu ? "browser-menu-item" : "icon-button"}
           role={menu ? "menuitem" : undefined}
-          aria-label="收藏夹"
-          title={shortcut("收藏夹 ⌘⇧O")}
+          aria-label="Закладки"
+          title={shortcut("Закладки ⌘⇧O")}
           aria-expanded={open}
           onClick={() => (open ? setOpen(false) : show())}
         >
           <Folder size={17} />
-          {menu && <span>收藏夹</span>}
+          {menu && <span>Закладки</span>}
         </button>
       </div>
       {open &&
@@ -209,15 +209,15 @@ export function BrowserFavorites({ current, ready, onOpen, shortcuts = true, men
             <section
               className="favorites-panel"
               role="dialog"
-              aria-label="收藏夹"
+              aria-label="Закладки"
               data-browser-dialog
             >
               <header>
-                <h2>收藏夹</h2>
+                <h2>Закладки</h2>
                 <button
                   className="icon-button"
-                  aria-label="新建收藏夹"
-                  title="新建收藏夹"
+                  aria-label="Новая папка закладок"
+                  title="Новая папка закладок"
                   disabled={!data || saving}
                   onClick={() => {
                     setError("");
@@ -228,7 +228,7 @@ export function BrowserFavorites({ current, ready, onOpen, shortcuts = true, men
                 </button>
                 <button
                   className="icon-button"
-                  aria-label="关闭收藏夹"
+                  aria-label="Закрыть закладки"
                   onClick={() => setOpen(false)}
                 >
                   <X size={17} />
@@ -238,20 +238,20 @@ export function BrowserFavorites({ current, ready, onOpen, shortcuts = true, men
                 <Search size={15} />
                 <input
                   ref={search}
-                  aria-label="搜索收藏"
-                  placeholder="搜索收藏"
+                  aria-label="Поиск закладок"
+                  placeholder="Поиск закладок"
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                 />
               </label>
               <div className="favorites-folder-select">
                 <InlineSelect
-                  aria-label="筛选收藏夹"
+                  aria-label="Фильтр по папкам закладок"
                   value={folder}
                   onValueChange={(next) => setFolder(next)}
                 >
-                  <option value="all">全部收藏</option>
-                  <option value="">未分类</option>
+                  <option value="all">Все закладки</option>
+                  <option value="">Без папки</option>
                   {data?.folders.map((item) => (
                     <option key={item.id} value={item.id}>
                       {item.title}
@@ -262,8 +262,8 @@ export function BrowserFavorites({ current, ready, onOpen, shortcuts = true, men
                   <>
                     <button
                       className="icon-button"
-                      aria-label="重命名收藏夹"
-                      title="重命名收藏夹"
+                      aria-label="Переименовать папку закладок"
+                      title="Переименовать папку закладок"
                       disabled={saving}
                       onClick={() => {
                         setError("");
@@ -274,8 +274,8 @@ export function BrowserFavorites({ current, ready, onOpen, shortcuts = true, men
                     </button>
                     <button
                       className="icon-button"
-                      aria-label="删除收藏夹，收藏移至未分类"
-                      title="删除收藏夹，收藏移至未分类"
+                      aria-label="Удалить папку закладок; закладки перейдут в «Без папки»"
+                      title="Удалить папку закладок; закладки перейдут в «Без папки»"
                       disabled={saving}
                       onClick={() => remove(folder, true)}
                     >
@@ -287,21 +287,21 @@ export function BrowserFavorites({ current, ready, onOpen, shortcuts = true, men
               {error && !editor && (
                 <div className="favorites-error" role="alert">
                   {error}
-                  <button onClick={load}>重试读取</button>
+                  <button onClick={load}>Повторить чтение</button>
                 </div>
               )}
               <div className="favorites-list">
                 {!data && !error && (
-                  <p className="favorites-empty">正在读取收藏…</p>
+                  <p className="favorites-empty">Чтение закладок…</p>
                 )}
                 {data && visible.length === 0 && (
                   <div className="favorites-empty">
                     <Star size={24} />
-                    <p>{query ? "没有匹配的收藏" : "这里还没有收藏"}</p>
+                    <p>{query ? "Закладки не найдены" : "Здесь пока нет закладок"}</p>
                     <span>
                       {query
-                        ? "试试其他名称或网址。"
-                        : "点击地址栏旁的星标，保存常用网页。"}
+                        ? "Попробуйте другое название или адрес."
+                        : "Нажмите звезду рядом с адресной строкой, чтобы сохранить нужную страницу."}
                     </span>
                   </div>
                 )}
@@ -325,8 +325,8 @@ export function BrowserFavorites({ current, ready, onOpen, shortcuts = true, men
                     </button>
                     <button
                       className="icon-button"
-                      aria-label={`编辑收藏 ${item.title}`}
-                      title="编辑收藏"
+                      aria-label={`Изменить закладку ${item.title}`}
+                      title="Изменить закладку"
                       disabled={saving}
                       onClick={() => {
                         setError("");
@@ -340,7 +340,7 @@ export function BrowserFavorites({ current, ready, onOpen, shortcuts = true, men
               </div>
               {data && (
                 <footer>
-                  {visible.length} 个收藏<span>保存在此 Cage 环境</span>
+                  Закладок: {visible.length}{" "}<span>хранятся в этой среде Cage</span>
                 </footer>
               )}
             </section>
@@ -354,11 +354,11 @@ export function BrowserFavorites({ current, ready, onOpen, shortcuts = true, men
               title={
                 editor.kind === "folder"
                   ? editor.id
-                    ? "重命名收藏夹"
-                    : "新建收藏夹"
+                    ? "Переименовать папку закладок"
+                    : "Новая папка закладок"
                   : editor.id
-                    ? "编辑收藏"
-                    : "添加收藏"
+                    ? "Изменить закладку"
+                    : "Добавить закладку"
               }
               onClose={
                 saving
@@ -376,7 +376,7 @@ export function BrowserFavorites({ current, ready, onOpen, shortcuts = true, men
                       disabled={saving}
                       onClick={() => remove(editor.id)}
                     >
-                      删除收藏
+                      Удалить закладку
                     </button>
                   )}
                   <button
@@ -386,7 +386,7 @@ export function BrowserFavorites({ current, ready, onOpen, shortcuts = true, men
                       setError("");
                     }}
                   >
-                    取消
+                    Отмена
                   </button>
                   <button
                     className="primary"
@@ -394,7 +394,7 @@ export function BrowserFavorites({ current, ready, onOpen, shortcuts = true, men
                     form="favorite-form"
                     disabled={saving}
                   >
-                    {saving ? "保存中…" : "保存"}
+                    {saving ? "Сохранение…" : "Сохранить"}
                   </button>
                 </>
               }
@@ -405,9 +405,9 @@ export function BrowserFavorites({ current, ready, onOpen, shortcuts = true, men
                 onSubmit={save}
               >
                 <label>
-                  名称
+                  Название
                   <input
-                    aria-label="收藏名称"
+                    aria-label="Название закладки"
                     required
                     maxLength={250}
                     value={editor.title}
@@ -419,9 +419,9 @@ export function BrowserFavorites({ current, ready, onOpen, shortcuts = true, men
                 {editor.kind === "item" && (
                   <>
                     <label>
-                      网址
+                      Адрес
                       <input
-                        aria-label="收藏网址"
+                        aria-label="Адрес закладки"
                         type="url"
                         required
                         value={editor.url}
@@ -431,9 +431,9 @@ export function BrowserFavorites({ current, ready, onOpen, shortcuts = true, men
                       />
                     </label>
                     <label>
-                      收藏夹
+                      Папка закладок
                       <InlineSelect
-                        aria-label="保存到收藏夹"
+                        aria-label="Сохранить в папку закладок"
                         value={editor.folder_id}
                         disabled={Boolean(editor.newFolder)}
                         onValueChange={(next) =>
@@ -443,7 +443,7 @@ export function BrowserFavorites({ current, ready, onOpen, shortcuts = true, men
                           })
                         }
                       >
-                        <option value="">未分类</option>
+                        <option value="">Без папки</option>
                         {data?.folders.map((item) => (
                           <option key={item.id} value={item.id}>
                             {item.title}
@@ -452,11 +452,11 @@ export function BrowserFavorites({ current, ready, onOpen, shortcuts = true, men
                       </InlineSelect>
                     </label>
                     <label>
-                      新建收藏夹（可选）
+                      Новая папка закладок (необязательно)
                       <input
-                        aria-label="新收藏夹名称"
+                        aria-label="Название новой папки закладок"
                         maxLength={250}
-                        placeholder="填写名称后，将收藏保存到新文件夹"
+                        placeholder="Введите название, чтобы сохранить закладку в новую папку"
                         value={editor.newFolder || ""}
                         onChange={(event) =>
                           setEditor({

@@ -51,12 +51,12 @@ export function TerminalMenu({ choice, busy, onClose, onSelect }) {
   }, [choice]);
 
   return (
-    <div ref={menu} id="terminal-create-menu" className="menu terminal-create-menu" role="menu" aria-label="新建终端">
+    <div ref={menu} id="terminal-create-menu" className="menu terminal-create-menu" role="menu" aria-label="Новый терминал">
       <button role="menuitem" disabled={busy} onClick={() => onSelect("shell")}>
-        <TerminalSquare size={16} />普通终端
+        <TerminalSquare size={16} />Обычный терминал
       </button>
       <button role="menuitem" disabled={busy} onClick={() => onSelect("claude")}>
-        <AgentIcon />Claude 终端
+        <AgentIcon />Терминал Claude
       </button>
     </div>
   );

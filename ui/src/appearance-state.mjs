@@ -153,40 +153,40 @@ export function terminalTheme(theme, variant) {
 // Optional overrides keep unedited colors linked to the three base colors.
 export const colorGroups = [
   {
-    label: "界面与层级",
+    label: "Интерфейс и уровни",
     entries: [
-      ["chrome", "面板背景"],
-      ["sidebar", "侧栏背景"],
-      ["sidebarInk", "侧栏文字"],
-      ["toolbar", "工具栏背景"],
-      ["toolbarInk", "工具栏文字"],
-      ["chromeDark", "次级背景"],
-      ["strong", "标题文字"],
-      ["muted", "辅助文字"],
-      ["line", "边框与分隔线"],
-      ["input", "输入框背景"],
+      ["chrome", "Фон панели"],
+      ["sidebar", "Фон боковой панели"],
+      ["sidebarInk", "Текст боковой панели"],
+      ["toolbar", "Фон панели инструментов"],
+      ["toolbarInk", "Текст панели инструментов"],
+      ["chromeDark", "Вспомогательный фон"],
+      ["strong", "Текст заголовков"],
+      ["muted", "Вспомогательный текст"],
+      ["line", "Границы и разделители"],
+      ["input", "Фон полей ввода"],
     ],
   },
   {
-    label: "按钮与交互",
+    label: "Кнопки и взаимодействие",
     entries: [
-      ["button", "主按钮背景"],
-      ["buttonInk", "主按钮文字"],
-      ["accentInk", "强调色上的文字"],
-      ["link", "链接"],
-      ["focus", "焦点边框"],
-      ["hover", "悬停背景"],
-      ["selected", "选中背景"],
-      ["selection", "文本选区"],
+      ["button", "Фон основной кнопки"],
+      ["buttonInk", "Текст основной кнопки"],
+      ["accentInk", "Текст на акцентном цвете"],
+      ["link", "Ссылки"],
+      ["focus", "Рамка фокуса"],
+      ["hover", "Фон при наведении"],
+      ["selected", "Фон выбранного"],
+      ["selection", "Выделение текста"],
     ],
   },
   {
-    label: "状态提示",
+    label: "Индикаторы состояния",
     entries: [
-      ["success", "成功状态"],
-      ["warning", "警告状态"],
-      ["danger", "错误状态"],
-      ["inactive", "未启动状态"],
+      ["success", "Успешное состояние"],
+      ["warning", "Предупреждение"],
+      ["danger", "Ошибка"],
+      ["inactive", "Не запущено"],
     ],
   },
 ];
@@ -200,34 +200,34 @@ export const colorTokens = Object.fromEntries(
 );
 export const terminalColorGroups = [
   {
-    label: "终端",
+    label: "Терминал",
     entries: [
-      ["background", "背景"],
-      ["foreground", "文字"],
-      ["cursor", "光标"],
-      ["cursorAccent", "光标内文字"],
-      ["selectionBackground", "选区背景"],
+      ["background", "Фон"],
+      ["foreground", "Текст"],
+      ["cursor", "Курсор"],
+      ["cursorAccent", "Текст под курсором"],
+      ["selectionBackground", "Фон выделения"],
     ],
   },
   {
-    label: "终端 ANSI 配色",
+    label: "Цвета ANSI терминала",
     entries: [
-      ["black", "黑色"],
-      ["red", "红色"],
-      ["green", "绿色"],
-      ["yellow", "黄色"],
-      ["blue", "蓝色"],
-      ["magenta", "品红"],
-      ["cyan", "青色"],
-      ["white", "白色"],
-      ["brightBlack", "亮黑"],
-      ["brightRed", "亮红"],
-      ["brightGreen", "亮绿"],
-      ["brightYellow", "亮黄"],
-      ["brightBlue", "亮蓝"],
-      ["brightMagenta", "亮品红"],
-      ["brightCyan", "亮青"],
-      ["brightWhite", "亮白"],
+      ["black", "Чёрный"],
+      ["red", "Красный"],
+      ["green", "Зелёный"],
+      ["yellow", "Жёлтый"],
+      ["blue", "Синий"],
+      ["magenta", "Пурпурный"],
+      ["cyan", "Голубой"],
+      ["white", "Белый"],
+      ["brightBlack", "Яркий чёрный"],
+      ["brightRed", "Яркий красный"],
+      ["brightGreen", "Яркий зелёный"],
+      ["brightYellow", "Яркий жёлтый"],
+      ["brightBlue", "Яркий синий"],
+      ["brightMagenta", "Яркий пурпурный"],
+      ["brightCyan", "Яркий голубой"],
+      ["brightWhite", "Яркий белый"],
     ],
   },
 ];
@@ -237,7 +237,7 @@ const hexColor = /^#[0-9a-fA-F]{6}$/;
 const object = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 export function validateTheme(theme) {
-  if (!object(theme)) throw new Error("主题缺少浅色或深色配置");
+  if (!object(theme)) throw new Error("В теме отсутствует конфигурация светлой или тёмной схемы");
   const allowed = [
     "preset",
     "accent",
@@ -250,13 +250,13 @@ export function validateTheme(theme) {
     "terminal",
   ];
   if (Object.keys(theme).some((key) => !allowed.includes(key)))
-    throw new Error("主题包含不支持的设置");
+    throw new Error("Тема содержит неподдерживаемые настройки");
   if (
     ![theme.accent, theme.surface, theme.ink].every(
       (value) => typeof value === "string" && hexColor.test(value),
     )
   )
-    throw new Error("颜色须为六位十六进制值，例如 #fdf6e3");
+    throw new Error("Цвет должен быть шестизначным шестнадцатеричным значением, например #fdf6e3");
   if (
     typeof theme.preset !== "string" ||
     theme.preset.length > 80 ||
@@ -265,7 +265,7 @@ export function validateTheme(theme) {
     theme.contrast > 100 ||
     typeof theme.opaqueWindows !== "boolean"
   )
-    throw new Error("主题配置无效");
+    throw new Error("Недопустимая конфигурация темы");
   if (
     !object(theme.fonts) ||
     Object.keys(theme.fonts).some((key) => !["ui", "code"].includes(key)) ||
@@ -276,7 +276,7 @@ export function validateTheme(theme) {
         /[;{}<>\r\n]/.test(font),
     )
   )
-    throw new Error("字体名称无效");
+    throw new Error("Недопустимое название шрифта");
   for (const [field, keys] of [
     ["colors", Object.keys(colorTokens)],
     [
@@ -294,13 +294,13 @@ export function validateTheme(theme) {
           !hexColor.test(value),
       )
     )
-      throw new Error("元素颜色无效或包含不支持的颜色项目");
+      throw new Error("Недопустимый цвет элемента или неподдерживаемый цветовой параметр");
   }
   return structuredClone(theme);
 }
 export function validateThemeName(name) {
   if (typeof name !== "string" || !name.trim() || name.trim().length > 80)
-    throw new Error("请输入 1–80 个字符的主题名称");
+    throw new Error("Введите название темы длиной от 1 до 80 символов");
   return name.trim();
 }
 export function themeDocument(name, appearance) {
@@ -314,22 +314,22 @@ export function themeDocument(name, appearance) {
 }
 export function parseThemeDocument(text) {
   if (new TextEncoder().encode(text).length > themeFileLimit)
-    throw new Error("主题文件不能超过 256 KB");
+    throw new Error("Файл темы не должен превышать 256 КБ");
   let data;
   try {
     data = JSON.parse(text);
   } catch {
-    throw new Error("无法读取主题，请选择有效的 JSON 文件");
+    throw new Error("Не удалось прочитать тему. Выберите допустимый файл JSON");
   }
   if (!object(data) || data.format !== "cage-theme" || data.version !== 1)
-    throw new Error("不支持的主题格式或版本，请使用 Cage 导出的主题文件");
+    throw new Error("Неподдерживаемый формат или версия темы. Используйте файл темы, экспортированный из Cage");
   if (
     Object.keys(data).some(
       (key) =>
         !["format", "version", "name", "lightTheme", "darkTheme"].includes(key),
     )
   )
-    throw new Error("主题文件包含不支持的设置");
+    throw new Error("Файл темы содержит неподдерживаемые настройки");
   return themeDocument(data.name, data);
 }
 export function sameTheme(left, right) {

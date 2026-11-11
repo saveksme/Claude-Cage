@@ -25,31 +25,31 @@ export const themeCatalog = [
   {
     id: "codex",
     name: "Codex",
-    group: "经典",
-    description: "中性背景与蓝色强调，保持 Cage 的默认外观。",
+    group: "Классические",
+    description: "Нейтральный фон и синий акцент сохраняют внешний вид Cage по умолчанию.",
     light: light("#339cff", "#ffffff", "#1a1c1f"),
     dark: dark("#339cff", "#181818", "#ffffff"),
   },
   {
     id: "solarized",
     name: "Solarized",
-    group: "经典",
-    description: "暖米白与深青底色，使用低饱和度的阅读配色。",
+    group: "Классические",
+    description: "Тёплый кремово-белый и тёмно-бирюзовый фоны с малонасыщенной палитрой для чтения.",
     light: light("#b58900", "#fdf6e3", "#657b83"),
     dark: dark("#b58900", "#002b36", "#93a1a1"),
   },
   {
     id: "ayu",
     name: "Ayu",
-    group: "经典",
-    description: "深蓝灰背景，搭配温暖的金色强调。",
+    group: "Классические",
+    description: "Тёмно-сине-серый фон с тёплым золотым акцентом.",
     dark: dark("#e6b450", "#10141c", "#bfbdb6"),
   },
   {
     id: "vscode-modern",
     name: "VS Code Modern",
-    group: "编辑器",
-    description: "参考 VS Code Modern，区分工作区、侧栏和输入框的层级。",
+    group: "Редакторы",
+    description: "По мотивам VS Code Modern; различает уровни рабочей области, боковой панели и полей ввода.",
     light: light(
       "#005fb8",
       "#ffffff",
@@ -111,8 +111,8 @@ export const themeCatalog = [
   {
     id: "vscode-classic",
     name: "VS Code Classic",
-    group: "编辑器",
-    description: "参考经典 Light+ / Dark+，蓝色强调与清楚的面板分区。",
+    group: "Редакторы",
+    description: "По мотивам классических Light+ / Dark+; синий акцент и чёткое разделение панелей.",
     light: light(
       "#0066b8",
       "#ffffff",
@@ -166,8 +166,8 @@ export const themeCatalog = [
   {
     id: "github",
     name: "GitHub",
-    group: "编辑器",
-    description: "清爽的蓝灰配色，提供白底与深色两套搭配。",
+    group: "Редакторы",
+    description: "Чистая сине-серая палитра в светлом и тёмном вариантах.",
     light: light(
       "#0969da",
       "#ffffff",
@@ -227,8 +227,8 @@ export const themeCatalog = [
   {
     id: "nord",
     name: "Nord",
-    group: "编辑器",
-    description: "冷调蓝灰与冰蓝强调，参考 Nord 的极地色板。",
+    group: "Редакторы",
+    description: "Холодные сине-серые тона и ледяной голубой акцент по мотивам полярной палитры Nord.",
     light: light(
       "#375f88",
       "#eceff4",
@@ -286,8 +286,8 @@ export const themeCatalog = [
   {
     id: "dracula",
     name: "Dracula",
-    group: "编辑器",
-    description: "紫灰底色，搭配粉、紫与青绿的鲜明终端色板。",
+    group: "Редакторы",
+    description: "Фиолетово-серый фон и яркая палитра терминала с розовыми, пурпурными и бирюзовыми оттенками.",
     dark: dark(
       "#bd93f9",
       "#282a36",
@@ -328,8 +328,8 @@ export const themeCatalog = [
   {
     id: "monokai",
     name: "Monokai",
-    group: "编辑器",
-    description: "参考 VS Code Monokai，橄榄黑背景与鲜明的暖色强调。",
+    group: "Редакторы",
+    description: "По мотивам VS Code Monokai; оливково-чёрный фон и яркие тёплые акценты.",
     dark: dark(
       "#f8c555",
       "#272822",
@@ -361,10 +361,10 @@ export const themeCatalog = [
   },
   {
     id: "paper",
-    name: "纸白 · Typora 风格",
-    group: "阅读",
+    name: "Бумажный · стиль Typora",
+    group: "Для чтения",
     description:
-      "参考 Typora 的 GitHub 阅读主题，白纸、深灰文字和克制的蓝色链接。",
+      "По мотивам темы чтения GitHub для Typora: белая бумага, тёмно-серый текст и сдержанные синие ссылки.",
     light: light(
       "#336da0",
       "#ffffff",
@@ -392,9 +392,9 @@ export const themeCatalog = [
   },
   {
     id: "sepia",
-    name: "暖纸 · Sepia",
-    group: "阅读",
-    description: "参考 Typora 的暖纸阅读风格，米色背景、棕色强调与柔和分区。",
+    name: "Тёплая бумага · Sepia",
+    group: "Для чтения",
+    description: "По мотивам тёплой бумажной темы Typora: бежевый фон, коричневые акценты и мягкие уровни.",
     light: light(
       "#80552f",
       "#f8f0e3",
@@ -423,9 +423,9 @@ export const themeCatalog = [
   },
   {
     id: "night",
-    name: "夜间 · Typora 风格",
-    group: "阅读",
-    description: "参考 Typora Night，使用柔和蓝灰底色与较低饱和度的强调色。",
+    name: "Ночной · стиль Typora",
+    group: "Для чтения",
+    description: "По мотивам Typora Night: мягкий сине-серый фон и менее насыщенные акценты.",
     dark: dark(
       "#a6c9ea",
       "#363b40",
@@ -457,10 +457,10 @@ export const themeCatalog = [
   },
   {
     id: "color-vision",
-    name: "色觉友好 · 蓝橙",
-    group: "无障碍",
+    name: "Дружелюбно к цветовосприятию · синий и оранжевый",
+    group: "Доступность",
     description:
-      "用蓝色和橙色区分成功与错误，减少红绿依赖；状态仍有图标和文字。",
+      "Синий и оранжевый различают успех и ошибку, снижая зависимость от красного и зелёного; состояния также обозначены значками и текстом.",
     light: {
       ...light(
         "#005a9c",
@@ -560,10 +560,10 @@ export const themeCatalog = [
   },
   {
     id: "high-contrast",
-    name: "高对比",
-    group: "无障碍",
+    name: "Высокая контрастность",
+    group: "Доступность",
     description:
-      "提高文字、边框和焦点的对比度，关闭半透明侧栏；浅色为白底，深色为黑底。",
+      "Повышает контраст текста, границ и фокуса, отключает полупрозрачную боковую панель; светлая схема на белом, тёмная на чёрном.",
     light: {
       ...light(
         "#002b66",
@@ -676,14 +676,14 @@ export const presets = Object.fromEntries(
 export const presetNames = Object.fromEntries(
   themeCatalog.map((item) => [item.id, item.name]),
 );
-export const presetGroups = ["经典", "编辑器", "阅读", "无障碍"];
+export const presetGroups = ["Классические", "Редакторы", "Для чтения", "Доступность"];
 export const presetInfo = Object.fromEntries(
   themeCatalog.map((item) => [item.id, item]),
 );
 
 export function applyThemePreset(current, variant, id) {
   const preset = presets[variant]?.[id];
-  if (!preset) throw new Error("所选主题不支持当前明暗模式");
+  if (!preset) throw new Error("Выбранная тема не поддерживает текущий светлый или тёмный режим");
   return {
     ...current,
     ...structuredClone(preset),

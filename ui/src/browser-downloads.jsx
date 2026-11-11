@@ -42,7 +42,7 @@ export function useDownloadNotifications(
         observed.current.add(item.id);
       if (item.state === "failed" && previous.current.get(item.id)?.state !== "failed")
         onStatus(
-          `“${item.name}”未能保存：${item.error || "请在下载列表中重试"}`,
+          `«${item.name}» не удалось сохранить: ${item.error || "Повторите попытку в списке загрузок"}`,
         );
       if (
         item.target === "desktop" &&
@@ -50,12 +50,12 @@ export function useDownloadNotifications(
         previous.current.get(item.id)?.state !== item.state
       ) {
         if (item.state === "downloading")
-          onStatus(`正在下载“${item.name}”，可在侧栏“下载”查看`);
+          onStatus(`Загрузка «${item.name}»; ход можно увидеть в разделе «Загрузки» на боковой панели`);
         if (item.state === "saved")
-          onStatus(`“${item.name}”已保存到默认工作区的 Downloads`);
+          onStatus(`«${item.name}» сохранён в папку Downloads рабочей среды по умолчанию`);
       }
       if (item.openError && previous.current.get(item.id)?.openError !== item.openError)
-        onStatus(`“${item.name}”${item.openError}`);
+        onStatus(`«${item.name}»: ${item.openError}`);
       if (
         nativeAvailable() &&
         !uploading &&
@@ -108,10 +108,10 @@ export function useDesktopFiles(ready, onStatus) {
               await api("/input/files/desktop/open", {
                 id: request.id,
                 stage: "complete",
-                error: "请在 Cage 桌面应用中打开文件",
+                error: "Откройте файл в настольном приложении Cage",
               });
               throw new Error(
-                "请在 Cage 桌面应用中打开文件，或从下载列表保存文件",
+                "Откройте файл в настольном приложении Cage или сохраните его из списка загрузок",
               );
             }
             await native("desktopFileAction", { id: request.id });
@@ -251,11 +251,11 @@ export function BrowserDownloads({
       items.push({ ...item, localSaved: true, state: "saved" });
   const failed = items.some((item) => item.state === "failed" || item.openError);
   const labels = {
-    downloading: "正在下载",
-    saving: remote ? "正在保存到云端" : "正在保存到本机",
-    saved: remote ? "已保存到云端" : "已保存到本机",
-    failed: "保存失败",
-    canceled: "下载已取消",
+    downloading: "Загрузка",
+    saving: remote ? "Сохранение в облако" : "Сохранение на этот компьютер",
+    saved: remote ? "Сохранено в облако" : "Сохранено на этот компьютер",
+    failed: "Не удалось сохранить",
+    canceled: "Загрузка отменена",
   };
   return (
     <>
@@ -269,16 +269,16 @@ export function BrowserDownloads({
               : "icon-button browser-download-button"
         }
         role={menu ? "menuitem" : undefined}
-        aria-label={sidebar ? "下载文件" : "浏览器下载"}
+        aria-label={sidebar ? "Скачать файл" : "Загрузки браузера"}
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
-        title={failed ? "有下载需要处理，点击查看" : "下载文件"}
+        title={failed ? "Есть загрузки, требующие внимания. Нажмите, чтобы открыть" : "Скачать файл"}
         onClick={() => setOpen((value) => !value)}
       >
         {sidebar && failed ? <CircleAlert size={16} /> : <ArrowDownToLine size={16} />}
         {failed && !sidebar && !menu && <span className="browser-download-warning" aria-hidden="true" />}
-        {(sidebar || menu) && <span>下载</span>}
+        {(sidebar || menu) && <span>Загрузки</span>}
       </button>
       {open &&
         createPortal(
@@ -287,15 +287,15 @@ export function BrowserDownloads({
             id={panelId}
             className="browser-download-panel"
             role="dialog"
-            aria-label="下载文件"
+            aria-label="Загрузки файлов"
             data-browser-dialog
           >
             <header className="browser-download-heading">
-              <h2>下载</h2>
+              <h2>Загрузки</h2>
               <button
                 className="icon-button"
-                aria-label="关闭面板"
-                title="关闭下载"
+                aria-label="Закрыть панель"
+                title="Закрыть загрузки"
                 onClick={() => {
                   setOpen(false);
                   (anchorRef?.current || trigger.current)?.focus();
@@ -308,8 +308,8 @@ export function BrowserDownloads({
               {!items.length && (
                 <div className="browser-download-empty">
                   <ArrowDownToLine size={28} />
-                  <strong>暂无下载</strong>
-                  <p>下载的文件会显示在这里。</p>
+                  <strong>Загрузок пока нет</strong>
+                  <p>Загруженные файлы появятся здесь.</p>
                 </div>
               )}
               {items.map((item) => (
@@ -324,8 +324,8 @@ export function BrowserDownloads({
                     <p className="download-status">
                       <span className="download-state">
                         {item.localSaved
-                          ? "已保存到本机"
-                          : labels[item.state] || "状态待确认"}
+                          ? "Сохранено на этот компьютер"
+                          : labels[item.state] || "Состояние уточняется"}
                         {item.state === "downloading" &&
                           item.totalBytes > 0 &&
                           ` · ${Math.min(100, Math.floor((item.receivedBytes / item.totalBytes) * 100))}%`}
@@ -334,8 +334,8 @@ export function BrowserDownloads({
                         <span className="download-path" title={item.path}>
                           {remote
                             ? item.localSaved
-                              ? "本机："
-                              : "云端："
+                              ? "Этот компьютер: "
+                              : "Облако: "
                             : ""}
                           {item.path}
                         </span>
@@ -343,7 +343,7 @@ export function BrowserDownloads({
                     </p>
                     {item.state === "downloading" && (
                       <progress
-                        aria-label={`${item.name} 下载进度`}
+                        aria-label={`Ход загрузки ${item.name}`}
                         value={
                           item.totalBytes > 0 ? item.receivedBytes : undefined
                         }
@@ -371,15 +371,15 @@ export function BrowserDownloads({
                             }}
                           >
                             <Save size={13} />
-                            {retrying === item.id ? "正在保存…" : "另存为…"}
+                            {retrying === item.id ? "Сохранение…" : "Сохранить как…"}
                           </button>
                         )}
                         {nativeAvailable() &&
                           item.state === "saved" &&
                           (!remote || item.localSaved) &&
                           [
-                            ["open", "打开文件"],
-                            ["reveal", "在文件夹中显示"],
+                            ["open", "Открыть файл"],
+                            ["reveal", "Показать в папке"],
                           ].map(([operation, label]) => (
                             <button
                               className={
@@ -433,7 +433,7 @@ export function BrowserDownloads({
                               }
                             }}
                           >
-                            {retrying === item.id ? "正在重试…" : "重试保存"}
+                            {retrying === item.id ? "Повторная попытка…" : "Повторить сохранение"}
                           </button>
                         )}
                       </div>

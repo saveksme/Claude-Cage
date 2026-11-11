@@ -30,20 +30,20 @@ export function rememberClientProjectName(share) {
 
 export function projectName(path, defaultWorkspace) {
   if (clientMount.test(path)) {
-    try { return sessionStorage.getItem(path) || "本机共享项目"; }
-    catch { return "本机共享项目"; }
+    try { return sessionStorage.getItem(path) || "Общий проект с этого компьютера"; }
+    catch { return "Общий проект с этого компьютера"; }
   }
-  if (path === defaultWorkspace && path?.endsWith("-workspace")) return "默认工作区";
-  return folderName(path) || "新项目";
+  if (path === defaultWorkspace && path?.endsWith("-workspace")) return "Рабочая среда по умолчанию";
+  return folderName(path) || "Новый проект";
 }
 
 export function tabName(tab, saved, project) {
-  return (tab.incognito ? "无痕 · " : "") + (
+  return (tab.incognito ? "Приватный · " : "") + (
     saved[tab.id]?.title ||
     (tab.kind === "editor"
-      ? `文件 · ${tab.workspace ? projectName(tab.workspace) : project}`
+      ? `Файл · ${tab.workspace ? projectName(tab.workspace) : project}`
       : tab.title) ||
-    "新标签页"
+    "Новая вкладка"
   );
 }
 

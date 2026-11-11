@@ -51,9 +51,9 @@ test("theme document round trips both variants and all editable colors, without 
     ),
   );
   appearance.darkTheme.fonts.code = "Menlo";
-  const document = themeDocument("  自定义主题  ", appearance);
+  const document = themeDocument("  Своя тема  ", appearance);
   const imported = parseThemeDocument(JSON.stringify(document));
-  assert.equal(imported.name, "自定义主题");
+  assert.equal(imported.name, "Своя тема");
   assert.ok(sameTheme(appearance, imported));
   assert.deepEqual(Object.keys(imported).sort(), [
     "darkTheme",
@@ -72,7 +72,7 @@ test("theme document round trips both variants and all editable colors, without 
 });
 
 test("invalid theme files are rejected before any mutation", () => {
-  const valid = themeDocument("主题", defaultAppearance);
+  const valid = themeDocument("Тестовая тема", defaultAppearance);
   const reject = (mutate) => {
     const data = structuredClone(valid);
     mutate(data);

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { terminalClipboardText } from "./terminal-clipboard.mjs";
 
 test("OSC 52 accepts UTF-8 clipboard writes within the shared clipboard limit", () => {
-  const text = "Claude 回复\n含有换行和 emoji 🖼️";
+  const text = "Ответ Claude\nс переносом строки и emoji 🖼️";
   assert.equal(terminalClipboardText(`c;${Buffer.from(text).toString("base64")}`), text);
   assert.equal(terminalClipboardText(";"), "");
   const maximum = "x".repeat(2 * 1024 * 1024);

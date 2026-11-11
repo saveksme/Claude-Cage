@@ -44,8 +44,8 @@ export function DesktopToolbar({ desktop, platform, zoom, setZoom, onConfirm, on
   if (hidden && desktop?.running) {
     return (
       <div className="desktop-toolbar-reveal">
-        {sidebarCollapsed && <button className="icon-button" aria-label="展开侧栏" title="展开侧栏" onClick={onExpand}><PanelLeftOpen size={15} /></button>}
-        <button className="icon-button" aria-label="显示 Desktop 工具栏" title="显示 Desktop 工具栏" onClick={() => toggleToolbar(false)}><ChevronDown size={15} /></button>
+        {sidebarCollapsed && <button className="icon-button" aria-label="Развернуть боковую панель" title="Развернуть боковую панель" onClick={onExpand}><PanelLeftOpen size={15} /></button>}
+        <button className="icon-button" aria-label="Показать панель Desktop" title="Показать панель Desktop" onClick={() => toggleToolbar(false)}><ChevronDown size={15} /></button>
       </div>
     );
   }
@@ -54,7 +54,7 @@ export function DesktopToolbar({ desktop, platform, zoom, setZoom, onConfirm, on
         {sidebarCollapsed && (
           <button
             className="icon-button"
-            aria-label="展开侧栏"
+            aria-label="Развернуть боковую панель"
             onClick={onExpand}
           >
             <PanelLeftOpen size={17} />
@@ -69,14 +69,14 @@ export function DesktopToolbar({ desktop, platform, zoom, setZoom, onConfirm, on
         {children}
         {desktop?.running && (
           <label className="desktop-display-size">
-            显示大小
-            <InlineSelect aria-label="Desktop 显示大小" value={zoom} onValueChange={(next) => {
+            Размер отображения
+            <InlineSelect aria-label="Размер отображения Desktop" value={zoom} onValueChange={(next) => {
               const value = next === "auto" ? "auto" : Number(next);
               setZoom(value);
               try { localStorage.setItem(automatic ? "cage-windows-desktop-zoom" : "cage-desktop-zoom", String(value)); } catch { /* Session-only preference. */ }
             }}>
-              {automatic && <option value="auto">自适应（推荐）</option>}
-              {desktopZooms.map((value) => <option key={value} value={value}>{Math.round(value * 100)}%{value === 1 ? "（默认）" : ""}</option>)}
+              {automatic && <option value="auto">Адаптивно (рекомендуется)</option>}
+              {desktopZooms.map((value) => <option key={value} value={value}>{Math.round(value * 100)}%{value === 1 ? " (по умолчанию)" : ""}</option>)}
             </InlineSelect>
           </label>
         )}
@@ -87,27 +87,27 @@ export function DesktopToolbar({ desktop, platform, zoom, setZoom, onConfirm, on
             onClick={async () => {
               if (
                 await onConfirm({
-                  title: "关闭 Claude Desktop？",
-                  body: "请先保存应用内的工作。浏览器和 Cage 终端会继续运行。",
-                  confirm: "关闭应用",
+                  title: "Закрыть Claude Desktop?",
+                  body: "Сначала сохраните работу в приложении. Браузер и терминалы Cage продолжат работу.",
+                  confirm: "Закрыть приложение",
                 })
               )
                 onStop();
             }}
           >
             <Power size={15} />
-            关闭应用
+            Закрыть приложение
           </button>
         )}
         <button
           className="icon-button"
-          aria-label="刷新 Claude Desktop 状态"
+          aria-label="Обновить состояние Claude Desktop"
           disabled={busy}
           onClick={refresh}
         >
           <RefreshCw size={15} />
         </button>
-        {desktop?.running && <button className="icon-button" aria-label="隐藏 Desktop 工具栏" title="隐藏 Desktop 工具栏" onClick={() => toggleToolbar(true)}><ChevronUp size={15} /></button>}
+        {desktop?.running && <button className="icon-button" aria-label="Скрыть панель Desktop" title="Скрыть панель Desktop" onClick={() => toggleToolbar(true)}><ChevronUp size={15} /></button>}
       </header>
   );
 }
@@ -223,18 +223,18 @@ export function ClaudeDesktop({
       {(error || statusError || desktop?.failed) && (
         <div className="connection-banner" role="alert">
           <SafetyMessage message={error || statusError || (desktop?.failure_reason === "oom-kill"
-            ? "环境内存不足，Claude Desktop 已被系统关闭。请在设置中检查计算资源后重新打开。"
-            : "Claude Desktop 未能启动，可重试打开或修复安装。")} />
-          <button onClick={onDetails}>操作详情</button>
+            ? "Недостаточно памяти среды: Claude Desktop был закрыт системой. Проверьте вычислительные ресурсы в настройках и откройте приложение заново."
+            : "Не удалось запустить Claude Desktop. Повторите запуск или восстановите установку.")} />
+          <button onClick={onDetails}>Подробности</button>
         </div>
       )}
-      {desktop?.running && desktop.managed === false && !desktop.native_user_session && <div className="connection-banner" role="status">当前应用尚未接入 Cage 账户解锁。请先保存并关闭应用，再重新打开。</div>}
+      {desktop?.running && desktop.managed === false && !desktop.native_user_session && <div className="connection-banner" role="status">Приложение ещё не подключено к разблокировке аккаунта Cage. Сохраните работу, закройте приложение и откройте его заново.</div>}
       {busy && ownJob && (
         <div className="desktop-progress" role="status">
           <RefreshCw size={16} className="spin" />
           {status.job.message}
           <button className="text-button" onClick={onDetails}>
-            查看进度
+            Посмотреть ход выполнения
           </button>
         </div>
       )}
@@ -256,15 +256,15 @@ export function ClaudeDesktop({
             <h2>
               {desktop?.installed
                 ? "Claude Desktop"
-                : "在 Cage 中使用 Claude Desktop"}
+                : "Используйте Claude Desktop в Cage"}
             </h2>
             <p>
-              Chat 和 Code 共用一个官方应用。在 Cage
-              内安装、登录并使用，项目文件来自已打开的文件夹。
+              Chat и Code используют одно официальное приложение. Установите его,
+              войдите и работайте в Cage; файлы проекта берутся из открытой папки.
             </p>
             {!desktop?.installed && (
               <p>
-                首次使用时从 Anthropic 官方源下载，不增加 Cage 默认安装包体积。
+                При первом использовании приложение загружается из официального источника Anthropic и не увеличивает размер установочного пакета Cage по умолчанию.
               </p>
             )}
             <div className="desktop-actions">
@@ -279,7 +279,7 @@ export function ClaudeDesktop({
                   ) : (
                     <Download size={16} />
                   )}
-                  {desktop.installed ? "打开 Claude Desktop" : "下载并安装"}
+                  {desktop.installed ? "Открыть Claude Desktop" : "Скачать и установить"}
                 </button>
               )}
               {desktop?.installed && (
@@ -288,7 +288,7 @@ export function ClaudeDesktop({
                   disabled={busy}
                   onClick={() => run("install")}
                 >
-                  更新 / 修复安装
+                  Обновить / восстановить установку
                 </button>
               )}
               {!desktop && (
@@ -297,13 +297,14 @@ export function ClaudeDesktop({
                   disabled={busy}
                   onClick={refresh}
                 >
-                  重新读取状态
+                  Прочитать состояние заново
                 </button>
               )}
             </div>
             <p className="desktop-note">
-              关闭应用后释放图形会话资源，登录状态保留在 Cage
-              环境中。需要额外虚拟机的 Cowork 功能暂未适配。
+              После закрытия приложения ресурсы графического сеанса освобождаются,
+              а состояние входа сохраняется в среде Cage. Функция Cowork, требующая
+              отдельной виртуальной машины, пока не поддерживается.
             </p>
           </div>
         )}

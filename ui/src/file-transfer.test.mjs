@@ -22,7 +22,7 @@ function fixture({ fail, switchAfterUpload = false } = {}) {
 
 test("video and document files remain one ordered batch and bypass image conversion", async () => {
   const f = fixture();
-  const files = [{ name: "原视频.mp4", size: 8 << 20 }, { name: "中文.txt", size: 13 }];
+  const files = [{ name: "исходное-видео.mp4", size: 8 << 20 }, { name: "кириллица.txt", size: 13 }];
   const result = await f.sendFiles({ files, kind: "drop", x: 0.2, y: 0.8 }, "browser", "original-tab");
   assert.equal(f.calls[0][1].id, "original-tab");
   assert.equal(f.calls[1][1], files[0]); assert.equal(f.calls[2][1], files[1]);

@@ -85,7 +85,7 @@ export class AudioOutput {
       await this.prepare();
       const format = await api("/audio");
       if (!live()) return;
-      if (format.format !== "s16le" || format.sample_rate !== 48000 || format.channels !== 2) throw new Error("声音格式不兼容");
+      if (format.format !== "s16le" || format.sample_rate !== 48000 || format.channels !== 2) throw new Error("Формат звука несовместим");
       this.onError("");
       const socket = new WebSocket(runtimeSocketURL("/audio"));
       socket.binaryType = "arraybuffer";
@@ -108,7 +108,7 @@ export class AudioOutput {
       socket.onerror = () => socket.close();
       this.opening = false;
     } catch (error) {
-      if (live()) this.onError(error.message || "声音连接未能建立，请重试");
+      if (live()) this.onError(error.message || "Не удалось установить звуковое соединение. Повторите попытку");
       reconnect();
     }
   }

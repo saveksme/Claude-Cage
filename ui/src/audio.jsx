@@ -60,17 +60,17 @@ export function AudioControls({ audio }) {
     if (!audio.enabled) setOpen(false);
   }, [audio.enabled]);
   const silent = audio.muted || audio.volume === 0;
-  const label = !audio.enabled ? "环境声音：未启动" : !open ? "打开音量控制" : silent ? "取消静音" : "静音";
-  const status = audio.error || (audio.state === "unsupported" ? "当前窗口不支持声音播放" : audio.state === "disconnected" ? "声音连接中断，正在重连" : "");
+  const label = !audio.enabled ? "Звук среды: не запущен" : !open ? "Открыть управление громкостью" : silent ? "Включить звук" : "Выключить звук";
+  const status = audio.error || (audio.state === "unsupported" ? "Текущее окно не поддерживает воспроизведение звука" : audio.state === "disconnected" ? "Соединение звука прервано, идёт переподключение" : "");
   return <div className="audio-controls" ref={controls}
     onPointerLeave={event => { pressingSpeaker.current = false; if (event.pointerType !== "touch") setOpen(false); }}
     onBlur={event => { if (!pressingSpeaker.current && !event.currentTarget.contains(event.relatedTarget)) setOpen(false); }}
     onKeyDown={event => { if (event.key === "Escape" && open) { event.stopPropagation(); setOpen(false); controls.current?.querySelector("button")?.focus(); } }}>
-    <button onPointerDown={() => { pressingSpeaker.current = true; }} onPointerCancel={() => { pressingSpeaker.current = false; }} onClick={event => { pressingSpeaker.current = false; if (open) audio.toggle(); else { keyboardOpened.current = event.detail === 0; setOpen(true); } }} disabled={!audio.enabled} aria-label={label} title={status ? `${label}（${status}）` : label} aria-expanded={open} aria-pressed={open ? silent : undefined}>
+    <button onPointerDown={() => { pressingSpeaker.current = true; }} onPointerCancel={() => { pressingSpeaker.current = false; }} onClick={event => { pressingSpeaker.current = false; if (open) audio.toggle(); else { keyboardOpened.current = event.detail === 0; setOpen(true); } }} disabled={!audio.enabled} aria-label={label} title={status ? `${label} (${status})` : label} aria-expanded={open} aria-pressed={open ? silent : undefined}>
       {silent ? <VolumeX size={15} /> : <Volume2 size={15} />}
     </button>
     {open && <div className="audio-volume-panel">
-      <input type="range" aria-label="环境音量" title={`环境音量 ${Math.round(audio.volume * 100)}%`} min="0" max="100" step="1" value={Math.round(audio.volume * 100)} style={{ "--volume-level": `${Math.round(audio.volume * 100)}%` }} disabled={!audio.enabled} autoFocus={keyboardOpened.current} onChange={e => audio.volumeChange(Number(e.target.value) / 100)} onKeyDown={event => {
+      <input type="range" aria-label="Громкость звука среды" title={`Громкость звука среды ${Math.round(audio.volume * 100)}%`} min="0" max="100" step="1" value={Math.round(audio.volume * 100)} style={{ "--volume-level": `${Math.round(audio.volume * 100)}%` }} disabled={!audio.enabled} autoFocus={keyboardOpened.current} onChange={e => audio.volumeChange(Number(e.target.value) / 100)} onKeyDown={event => {
         const value = Math.round(audio.volume * 100);
         const next = { ArrowUp: value + 1, ArrowRight: value + 1, ArrowDown: value - 1, ArrowLeft: value - 1, Home: 0, End: 100, PageUp: value + 10, PageDown: value - 10 }[event.key];
         if (next !== undefined) { event.preventDefault(); audio.volumeChange(Math.max(0, Math.min(100, next)) / 100); }
