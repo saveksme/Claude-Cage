@@ -9,10 +9,10 @@ func Applied(profile, endpoint, revision string) (Store, error) {
 		return p, err
 	}
 	if _, ok := p.Find(p.Selected); !ok {
-		return p, errors.New("尚未选择代理节点，请在网络与代理中添加来源并选择节点")
+		return p, errors.New("Узел прокси ещё не выбран; добавьте источник в разделе «Сеть и прокси» и выберите узел")
 	}
 	if revision == "" || p.Revision == "" || revision != p.Revision || endpoint != p.Endpoint() {
-		return p, errors.New("代理节点尚未应用或配置不一致，请重新应用节点；外网保持关闭")
+		return p, errors.New("Узел прокси ещё не применён или конфигурация не совпадает; примените узел заново; внешняя сеть остаётся отключённой")
 	}
 	if _, err := p.Route(); err != nil {
 		return p, err

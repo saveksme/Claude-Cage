@@ -31,7 +31,7 @@ type passwordProbe struct {
 func (s *loginSession) openPasswordProbe() (*passwordProbe, error) {
 	bound, err := guestos.LoadMacOSProfile(s.profile)
 	if err != nil || bound == nil || bound.SetupID == "" {
-		return nil, errors.New("首次设置身份已变化，请重新打开授权画面")
+		return nil, errors.New("Идентичность первоначальной настройки изменилась; откройте экран авторизации заново")
 	}
 	administrator, err := guestos.MacOSProvisionUser(s.profile)
 	if err != nil {
@@ -78,10 +78,10 @@ func (probe *passwordProbe) target() (passwordTarget, error) {
 		return target, err
 	}
 	if !probe.scanner.Scan() {
-		return target, errors.New("无法确认系统授权窗口，请重新打开授权画面")
+		return target, errors.New("Не удалось подтвердить окно системной авторизации; откройте экран авторизации заново")
 	}
 	if json.Unmarshal(probe.scanner.Bytes(), &target) != nil || !target.valid(probe.user) {
-		return target, errors.New("请打开 Apple 系统授权窗口，再选中需要填写的密码框")
+		return target, errors.New("Откройте окно системной авторизации Apple и выберите поле пароля, которое нужно заполнить")
 	}
 	return target, nil
 }
@@ -104,7 +104,7 @@ func (s *loginSession) fillSetupPassword(password string) error {
 	s.passwordSelection = passwordSelection{}
 	sequence, valid := passwordKeys(password)
 	if !s.setup || !valid {
-		return errors.New("首次设置凭据不可用，请重新打开授权画面")
+		return errors.New("Учётные данные первоначальной настройки недоступны; откройте экран авторизации заново")
 	}
 	probe, err := s.openPasswordProbe()
 	if err != nil {
@@ -116,10 +116,10 @@ func (s *loginSession) fillSetupPassword(password string) error {
 		return err
 	}
 	if !selection.permits(target, probe.user, time.Now()) {
-		return errors.New("请先点选系统授权窗口的密码框，再点击填写授权密码")
+		return errors.New("Сначала выберите поле пароля в окне системной авторизации, затем нажмите, чтобы заполнить пароль авторизации")
 	}
 	if !target.Accessibility && !bool(C.cageLoginClick(C.int(selection.X), C.int(selection.Y))) {
-		return errors.New("所选密码框已变化，请重新点选")
+		return errors.New("Выбранное поле пароля изменилось; выберите его заново")
 	}
 	geometry := target.geometry()
 	check := func() error {
@@ -128,7 +128,7 @@ func (s *loginSession) fillSetupPassword(password string) error {
 			return err
 		}
 		if current.geometry() != geometry || !selection.permits(current, probe.user, time.Now()) {
-			return errors.New("系统授权窗口或密码框已变化，填写已停止，请重新选择")
+			return errors.New("Окно системной авторизации или поле пароля изменились; ввод остановлен, выберите заново")
 		}
 		return nil
 	}
@@ -136,14 +136,14 @@ func (s *loginSession) fillSetupPassword(password string) error {
 		return err
 	}
 	if !bool(C.cageLoginSelectAll()) {
-		return errors.New("系统密码框尚未准备好，请重试")
+		return errors.New("Системное поле пароля ещё не готово; повторите попытку")
 	}
 	for _, key := range sequence {
 		if err = check(); err != nil {
 			return err
 		}
 		if !bool(C.cageLoginKey(C.int(key.code), C.bool(key.shift))) {
-			return errors.New("授权密码未能填写，请重新选择密码框后重试")
+			return errors.New("Не удалось заполнить пароль авторизации; выберите поле пароля заново и повторите попытку")
 		}
 	}
 	return nil

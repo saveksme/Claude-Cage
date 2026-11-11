@@ -104,7 +104,7 @@ func BindNewMacOSProfile(profile, user string, hostKey []byte, id uuid.UUID) err
 		return err
 	}
 	if install == nil || id == uuid.Nil || install.ID != id || install.System != MacOS {
-		return errors.New("首次设置与当前安装记录不匹配")
+		return errors.New("Первоначальная настройка не соответствует текущей записи установки")
 	}
 	return bindMacOSProfile(profile, user, hostKey, id.String())
 }
@@ -184,7 +184,7 @@ func FinishMacOSSetup(profile, setupID string) error {
 		return err
 	}
 	if bound == nil || !validSetupID(setupID) || bound.SetupID != setupID {
-		return errors.New("首次设置已关闭或安装实例已变更")
+		return errors.New("Первоначальная настройка закрыта или экземпляр установки изменился")
 	}
 	bound.SetupID = ""
 	data, err := json.Marshal(bound)

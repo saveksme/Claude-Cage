@@ -162,9 +162,9 @@ func run(args []string) error {
 		}
 		return printJSON(workbench.BrowserFileForConnection(config, connection, args[2], args[3], destination))
 	case "app-update":
-		return printJSON(map[string]any{"phase": "manual", "currentVersion": version.Version, "message": "轻量客户端使用独立安装包更新；连接配置会保留，云端任务不受影响。"}, nil)
+		return printJSON(map[string]any{"phase": "manual", "currentVersion": version.Version, "message": "Обновление лёгкого клиента выполняется отдельным установочным пакетом; настройки подключения сохранятся, облачные задачи не пострадают."}, nil)
 	default:
-		return errors.New("轻量客户端只负责连接；请在远程工作台管理运行环境")
+		return errors.New("Лёгкий клиент отвечает только за подключение; управляйте средой выполнения в удалённой рабочей среде")
 	}
 }
 

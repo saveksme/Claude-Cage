@@ -31,12 +31,12 @@ func Lookup(ctx context.Context, client *http.Client, address net.IP) (Location,
 		}
 		// Only our own summaries reach the UI; transport errors may contain
 		// local network details and provider bodies are untrusted text.
-		failures = append(failures, provider.name+"："+err.Error())
+		failures = append(failures, provider.name+": "+err.Error())
 	}
 	if err := ctx.Err(); err != nil {
 		return Location{}, err
 	}
-	return Location{}, fmt.Errorf("已测得出口 IP，但位置查询均失败（%s）；请重试或切换节点。未使用直连回退", strings.Join(failures, "；"))
+	return Location{}, fmt.Errorf("IP-адрес выхода получен, но все запросы местоположения не удались (%s). Повторите попытку или смените узел. Прямое подключение не использовалось", strings.Join(failures, "; "))
 }
 
 func queryLocation(ctx context.Context, client *http.Client, endpoint string, requireSuccess bool, address net.IP) (Location, error) {
@@ -44,12 +44,12 @@ func queryLocation(ctx context.Context, client *http.Client, endpoint string, re
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
-		return Location{}, errors.New("查询地址无效")
+		return Location{}, errors.New("Недопустимый адрес запроса")
 	}
 	req.Header.Set("User-Agent", "Cage-network-check/1")
 	r, err := client.Do(req)
 	if err != nil {
-		return Location{}, errors.New("连接失败或超时")
+		return Location{}, errors.New("Соединение не удалось или истекло время ожидания")
 	}
 	defer r.Body.Close()
 	if r.StatusCode != http.StatusOK {
@@ -68,11 +68,11 @@ func queryLocation(ctx context.Context, client *http.Client, endpoint string, re
 	if json.NewDecoder(io.LimitReader(r.Body, 128<<10)).Decode(&v) != nil ||
 		(requireSuccess && (v.Success == nil || !*v.Success)) ||
 		net.ParseIP(v.IP) == nil || !net.ParseIP(v.IP).Equal(address) {
-		return Location{}, errors.New("响应无效或 IP 不匹配")
+		return Location{}, errors.New("Недопустимый ответ или несовпадение IP")
 	}
 	country := strings.ToUpper(strings.TrimSpace(v.CountryCode))
 	if len(country) != 2 || country[0] < 'A' || country[0] > 'Z' || country[1] < 'A' || country[1] > 'Z' {
-		return Location{}, errors.New("缺少有效国家或地区")
+		return Location{}, errors.New("Отсутствует действительная страна или регион")
 	}
 	var timezone string
 	if requireSuccess {
@@ -86,10 +86,10 @@ func queryLocation(ctx context.Context, client *http.Client, endpoint string, re
 		_ = json.Unmarshal(v.Timezone, &timezone)
 	}
 	if timezone == "" || timezone == "Local" {
-		return Location{}, errors.New("缺少有效时区")
+		return Location{}, errors.New("Отсутствует действительный часовой пояс")
 	}
 	if _, err = time.LoadLocation(timezone); err != nil {
-		return Location{}, errors.New("缺少有效时区")
+		return Location{}, errors.New("Отсутствует действительный часовой пояс")
 	}
 	return Location{IP: address.String(), Country: v.Country, CountryCode: country, Region: v.Region, RegionCode: v.RegionCode, City: v.City, Timezone: timezone, CheckedAt: time.Now()}, nil
 }

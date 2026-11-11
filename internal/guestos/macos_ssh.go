@@ -18,16 +18,16 @@ func MacOSSSHPort(config []byte) (int, error) {
 			continue
 		}
 		if len(fields) != 2 || port != 0 {
-			return 0, errors.New("macOS 客机 SSH 端口配置无效")
+			return 0, errors.New("Недопустимая конфигурация порта SSH гостевой системы macOS")
 		}
 		value, err := strconv.Atoi(fields[1])
 		if err != nil || value < 1 || value > 65535 {
-			return 0, errors.New("macOS 客机 SSH 端口配置无效")
+			return 0, errors.New("Недопустимая конфигурация порта SSH гостевой системы macOS")
 		}
 		port = value
 	}
 	if port == 0 {
-		return 0, errors.New("macOS 客机 SSH 端口尚未就绪")
+		return 0, errors.New("Порт SSH гостевой системы macOS ещё не готов")
 	}
 	return port, nil
 }
@@ -68,12 +68,12 @@ func MacOSProvisionUser(profile string) (string, error) {
 			continue
 		}
 		if len(fields) != 2 || user != "" || (fields[1] != "cage" && fields[1] != "cageprovision") {
-			return "", errors.New("macOS 客机安装账户配置无效")
+			return "", errors.New("Недопустимая конфигурация установочного аккаунта гостевой системы macOS")
 		}
 		user = fields[1]
 	}
 	if user == "" {
-		return "", errors.New("macOS 客机安装账户尚未就绪")
+		return "", errors.New("Установочный аккаунт гостевой системы macOS ещё не готов")
 	}
 	return user, nil
 }

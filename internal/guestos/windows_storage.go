@@ -45,14 +45,14 @@ func (runtime *windowsStorageRuntime) Snapshot(ctx context.Context, source strin
 		return snapshot, err
 	}
 	if binding == nil {
-		return snapshot, errors.New("Windows 客机尚未绑定")
+		return snapshot, errors.New("Гостевая система Windows ещё не привязана")
 	}
 	state, err := runtime.call(ctx, binding.VMID, windowsHostStorageRequest{Action: "status"})
 	if err != nil {
-		return snapshot, fmt.Errorf("请先在设置的环境页选择“同步环境组件”，完成 Windows 系统授权后再迁移：%w", err)
+		return snapshot, fmt.Errorf("Сначала на странице среды в настройках выберите синхронизацию компонентов среды, завершите системную авторизацию Windows, затем выполняйте миграцию: %w", err)
 	}
 	if state.Pending != "" {
-		return snapshot, errors.New("这台 Windows 客机仍有待恢复的存储迁移，请打开发起迁移的原工作台")
+		return snapshot, errors.New("У этой гостевой системы Windows осталась незавершённая миграция хранилища; откройте исходную рабочую среду, из которой начата миграция")
 	}
 	instance, err := paths.Resolve(binding.InstanceDirectory)
 	if err != nil {
@@ -88,7 +88,7 @@ func windowsMoveSnapshot(move cage.StorageTransition) (windowsStorageSnapshot, e
 	var snapshot windowsStorageSnapshot
 	if json.Unmarshal(move.State, &snapshot) != nil || snapshot.Profile.validate() != nil ||
 		!filepath.IsAbs(snapshot.Instance) || !filepath.IsAbs(snapshot.Disk.Path) || snapshot.Disk.Volume == 0 || snapshot.Disk.FileID == 0 {
-		return snapshot, errors.New("Windows 存储迁移的恢复信息无效")
+		return snapshot, errors.New("Недопустимые сведения восстановления миграции хранилища Windows")
 	}
 	return snapshot, nil
 }
@@ -105,10 +105,10 @@ func (runtime *windowsStorageRuntime) action(ctx context.Context, move cage.Stor
 	}
 	if action == "begin" || action == "attach" {
 		if state.Pending != move.ID {
-			return errors.New("Windows 管理助手没有保留当前迁移事务")
+			return errors.New("Помощник управления Windows не сохранил текущую транзакцию миграции")
 		}
 	} else if state.Pending != "" || state.Outcome != action {
-		return errors.New("Windows 管理助手尚未完成迁移恢复")
+		return errors.New("Помощник управления Windows ещё не завершил восстановление миграции")
 	}
 	return nil
 }
@@ -211,7 +211,7 @@ func (runtime *windowsStorageRuntime) writeProfile(before, after, chosen Windows
 		return err
 	}
 	if current == nil || *current != before && *current != after {
-		return errors.New("Windows 客机配对在迁移期间发生变化，请保留迁移记录并核对原配置")
+		return errors.New("Сопряжение гостевой системы Windows изменилось во время миграции; сохраните запись миграции и сверьтесь с исходной конфигурацией")
 	}
 	if *current == chosen {
 		return nil

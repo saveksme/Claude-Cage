@@ -83,7 +83,7 @@ func Load(profile string) (Store, error) {
 		return s, err
 	}
 	if len(b) > maxStoreSize || json.Unmarshal(b, &s) != nil || s.Version != 1 || s.Port < 1024 || s.Port > 65535 || len(s.Auth) != 48 {
-		return s, errors.New("Cage 代理配置无效，请恢复私有配置备份")
+		return s, errors.New("Недопустимая конфигурация прокси Cage; восстановите закрытую резервную копию конфигурации")
 	}
 	return s, nil
 }
@@ -116,7 +116,7 @@ func (s Store) Save(profile string) error {
 		return err
 	}
 	if len(b) > maxStoreSize {
-		return errors.New("代理来源配置总大小超过 32 MiB，请减少来源或节点；原配置已保留")
+		return errors.New("Общий размер конфигураций источников прокси превышает 32 MiB; уменьшите число источников или узлов; исходная конфигурация сохранена")
 	}
 	return Write(filepath.Join(Dir(profile), "sources.json"), b)
 }
@@ -141,10 +141,10 @@ func (s Store) Count() int {
 func (s *Store) Import(name, rawURL string, data []byte, id string, interval int, usage string) error {
 	name = strings.TrimSpace(name)
 	if name == "" || len(name) > 100 {
-		return errors.New("请填写 1–100 字节的来源名称")
+		return errors.New("Укажите имя источника длиной от 1 до 100 байт")
 	}
 	if interval < 0 || interval > 168 {
-		return errors.New("更新间隔应为 0–168 小时，0 表示手动更新")
+		return errors.New("Интервал обновления должен быть от 0 до 168 часов; 0 означает ручное обновление")
 	}
 	if id == "" {
 		id = Token()[:16]
@@ -172,14 +172,14 @@ func (s *Store) Import(name, rawURL string, data []byte, id string, interval int
 			}
 			for _, old := range s.Sources[i].Nodes {
 				if required[old.ID] && !available[old.ID] {
-					reason := "节点未包含在更新中"
+					reason := "Узел отсутствует в обновлении"
 					for _, issue := range skipped {
 						if issue.Name == old.Name {
 							reason = issue.Reason
 							break
 						}
 					}
-					return fmt.Errorf("订阅更新移除或跳过了当前出口或中转节点 %q：%s；原配置已保留，请先应用其他节点再更新", old.Name, reason)
+					return fmt.Errorf("Обновление подписки удалило или пропустило текущий выходной или промежуточный узел %q: %s; исходная конфигурация сохранена; сначала примените другие узлы, затем обновляйте", old.Name, reason)
 				}
 			}
 			s.Sources[i] = src
@@ -232,19 +232,19 @@ func unsafeField(key string, value any) bool {
 // dialers at runtime without modifying subscription nodes or their credentials.
 func (s Store) Route() ([]string, error) {
 	if _, ok := s.Find(s.Selected); !ok {
-		return nil, errors.New("请先选择有效的最终出口")
+		return nil, errors.New("Сначала выберите действительный конечный выход")
 	}
 	if len(s.Chain) > 0 {
 		if s.Chain[len(s.Chain)-1] != s.Selected {
-			return nil, errors.New("代理链与最终出口不一致，请重新配置代理")
+			return nil, errors.New("Цепочка прокси не соответствует конечному выходу; настройте прокси заново")
 		}
 		seen := map[string]bool{}
 		for _, id := range s.Chain {
 			if _, ok := s.Find(id); !ok {
-				return nil, errors.New("代理链中的节点已被移除，请重新选择；原配置已保留")
+				return nil, errors.New("Узел в цепочке прокси удалён; выберите заново; исходная конфигурация сохранена")
 			}
 			if seen[id] {
-				return nil, errors.New("代理链不能重复使用同一个节点")
+				return nil, errors.New("Цепочка прокси не может повторно использовать один и тот же узел")
 			}
 			seen[id] = true
 		}
@@ -255,7 +255,7 @@ func (s Store) Route() ([]string, error) {
 	for id := s.Selected; id != ""; {
 		n, ok := s.Find(id)
 		if !ok || seen[id] {
-			return nil, errors.New("导入的代理链存在循环或缺失节点，请检查来源配置")
+			return nil, errors.New("Импортированная цепочка прокси содержит цикл или отсутствующие узлы; проверьте конфигурацию источника")
 		}
 		seen[id] = true
 		reversed = append(reversed, id)
@@ -287,7 +287,7 @@ func (s Store) Runtime(profile string) ([]byte, error) {
 			}
 			// Older stores may contain legacy headers accepted before normalization.
 			if err := normalizeWebSocket(config); err != nil {
-				return nil, fmt.Errorf("节点 %q：%w", n.Name, err)
+				return nil, fmt.Errorf("Узел %q: %w", n.Name, err)
 			}
 			if via, overridden := dialers[n.ID]; overridden {
 				delete(config, "dialer-proxy")

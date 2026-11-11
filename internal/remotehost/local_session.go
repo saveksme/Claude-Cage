@@ -16,14 +16,14 @@ import (
 func LocalSession(ctx context.Context, origin string, manifest PublicManifest, jar http.CookieJar) (*Session, error) {
 	u, err := url.Parse(origin)
 	if err != nil || u.Scheme != "http" || u.Hostname() != "localhost" || u.Port() == "" || u.User != nil || origin != "http://"+u.Host || jar == nil || len(jar.Cookies(u)) == 0 {
-		return nil, errors.New("本机控制服务会话无效")
+		return nil, errors.New("Недопустимый сеанс локальной службы управления")
 	}
 	endpoint := net.JoinHostPort("127.0.0.1", u.Port())
 	dial := &net.Dialer{Timeout: 5 * time.Second}
 	life, cancel := context.WithCancel(ctx)
 	base := &http.Transport{MaxIdleConnsPerHost: 16, IdleConnTimeout: time.Minute, ResponseHeaderTimeout: 30 * time.Second, DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
 		if network != "tcp" || address != u.Host {
-			return nil, errors.New("本机服务地址已改变")
+			return nil, errors.New("Адрес локальной службы изменился")
 		}
 		conn, err := dial.DialContext(ctx, "tcp4", endpoint)
 		if errors.Is(err, connectionRefused) {
@@ -40,7 +40,9 @@ func LocalSession(ctx context.Context, origin string, manifest PublicManifest, j
 		return nil
 	}
 	bound.invalidate = s.Close
-	s.Client = &http.Client{Transport: transport, CheckRedirect: func(*http.Request, []*http.Request) error { return errors.New("本机服务重定向已拒绝") }}
+	s.Client = &http.Client{Transport: transport, CheckRedirect: func(*http.Request, []*http.Request) error {
+		return errors.New("Перенаправление локальной службы отклонено")
+	}}
 	context.AfterFunc(life, func() { _ = s.Close() })
 	return s, nil
 }

@@ -24,7 +24,7 @@ func temporaryDirectory() (string, error) { return os.MkdirTemp("", "cage-clipbo
 
 func linkCachedFiles(paths []string, directory func() (string, error)) (result []string, err error) {
 	if len(paths) == 0 || len(paths) > SelectionLimit {
-		return nil, errors.New("请选择 1 至 100 个文件")
+		return nil, errors.New("Выберите от 1 до 100 файлов")
 	}
 	root, err := directory()
 	if err != nil {
@@ -39,15 +39,15 @@ func linkCachedFiles(paths []string, directory func() (string, error)) (result [
 		name := filepath.Base(source)
 		info, err := os.Lstat(source)
 		if err != nil || !filepath.IsAbs(source) || !strings.HasPrefix(filepath.Base(filepath.Dir(source)), "cage-clipboard-") || !validName(name) || !info.Mode().IsRegular() || info.Size() > FileLimit {
-			return nil, errors.New("附件缓存文件无效")
+			return nil, errors.New("Недопустимый файл кеша вложений")
 		}
 		target := filepath.Join(root, name)
 		if err := os.Link(source, target); err != nil {
-			return nil, errors.New("无法准备附件选择，请核对文件名是否重复")
+			return nil, errors.New("Не удалось подготовить выбор вложений; проверьте, не повторяются ли имена файлов")
 		}
 		linked, err := os.Lstat(target)
 		if err != nil || !linked.Mode().IsRegular() || !os.SameFile(info, linked) {
-			return nil, errors.New("附件缓存已变化，请重新选择文件")
+			return nil, errors.New("Кеш вложений изменился; выберите файлы заново")
 		}
 		result = append(result, target)
 	}
@@ -62,7 +62,7 @@ func Save(input io.Reader, name string) (path string, err error) {
 
 func save(input io.Reader, name string, directory func() (string, error)) (path string, err error) {
 	if !validName(name) || strings.Contains(name, ":") {
-		return "", errors.New("剪贴板文件名称无效")
+		return "", errors.New("Недопустимое имя файла в буфере обмена")
 	}
 	root, err := directory()
 	if err != nil {
@@ -80,7 +80,7 @@ func save(input io.Reader, name string, directory func() (string, error)) (path 
 	}
 	count, writeErr := io.Copy(file, io.LimitReader(input, FileLimit+1))
 	if count > FileLimit {
-		writeErr = errors.New("每个文件不能超过 2 GB")
+		writeErr = errors.New("Каждый файл не должен превышать 2 GB")
 	}
 	if writeErr == nil {
 		writeErr = file.Sync()
@@ -98,22 +98,22 @@ func validName(name string) bool {
 
 func Write(output io.Writer, paths []string) error {
 	if len(paths) == 0 || len(paths) > SelectionLimit {
-		return errors.New("请选择 1 至 100 个文件或文件夹")
+		return errors.New("Выберите от 1 до 100 файлов или папок")
 	}
 	writer := tar.NewWriter(output)
 	names := map[string]bool{}
 	for _, selected := range paths {
 		name := filepath.Base(selected)
 		if !filepath.IsAbs(selected) || !validName(name) || names[name] {
-			return errors.New("剪贴板文件名称无效或重复")
+			return errors.New("Имя файла в буфере обмена недопустимо или повторяется")
 		}
 		names[name] = true
 		err := filepath.Walk(selected, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
-				return errors.New("无法读取所选剪贴板文件")
+				return errors.New("Не удалось прочитать выбранный файл из буфера обмена")
 			}
 			if !(info.Mode().IsRegular() || info.IsDir()) || info.Size() > FileLimit {
-				return errors.New("剪贴板支持普通文件和文件夹，每个文件最多 2 GB")
+				return errors.New("Буфер обмена поддерживает обычные файлы и папки, каждый файл не более 2 GB")
 			}
 			relative, err := filepath.Rel(filepath.Dir(selected), path)
 			if err != nil {
@@ -132,12 +132,12 @@ func Write(output io.Writer, paths []string) error {
 			}
 			file, err := os.Open(path)
 			if err != nil {
-				return errors.New("无法读取所选剪贴板文件")
+				return errors.New("Не удалось прочитать выбранный файл из буфера обмена")
 			}
 			defer file.Close()
 			after, err := file.Stat()
 			if err != nil || !os.SameFile(info, after) || after.Size() != info.Size() {
-				return errors.New("文件已变化，请重新复制")
+				return errors.New("Файл изменился; скопируйте заново")
 			}
 			_, err = io.CopyN(writer, file, info.Size())
 			return err
@@ -176,18 +176,18 @@ func read(input io.Reader, directory func() (string, error)) (paths []string, er
 		name := strings.TrimSuffix(header.Name, "/")
 		parts := strings.Split(name, "/")
 		if !filepath.IsLocal(filepath.FromSlash(name)) || header.Size < 0 || header.Size > FileLimit {
-			return nil, errors.New("剪贴板文件位置或大小无效")
+			return nil, errors.New("Недопустимое расположение или размер файла в буфере обмена")
 		}
 		for _, part := range parts {
 			if !validName(part) || strings.Contains(part, ":") {
-				return nil, errors.New("剪贴板文件名称无效")
+				return nil, errors.New("Недопустимое имя файла в буфере обмена")
 			}
 		}
 		if !names[parts[0]] {
 			names[parts[0]] = true
 			paths = append(paths, filepath.Join(root, parts[0]))
 			if len(paths) > SelectionLimit {
-				return nil, errors.New("剪贴板文件数量超过 100 个")
+				return nil, errors.New("Количество файлов в буфере обмена превышает 100")
 			}
 		}
 		destination := filepath.Join(root, filepath.FromSlash(name))
@@ -210,11 +210,11 @@ func read(input io.Reader, directory func() (string, error)) (paths []string, er
 				return nil, errors.Join(copyErr, closeErr)
 			}
 		default:
-			return nil, errors.New("剪贴板不支持链接或特殊文件")
+			return nil, errors.New("Буфер обмена не поддерживает ссылки и специальные файлы")
 		}
 	}
 	if len(paths) == 0 {
-		return nil, errors.New("剪贴板文件为空")
+		return nil, errors.New("Буфер обмена не содержит файлов")
 	}
 	return paths, nil
 }

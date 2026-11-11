@@ -26,7 +26,7 @@ func rootMountPropagation(containerMounts, hostMounts string) (MountPropagation,
 		}
 	}
 	if root == nil {
-		return MountPropagation{}, errors.New("无法核验容器根挂载")
+		return MountPropagation{}, errors.New("Не удалось проверить корневое монтирование контейнера")
 	}
 	result := MountPropagation{DetachedFromHost: true}
 	for _, field := range root[6:] {
@@ -34,12 +34,12 @@ func rootMountPropagation(containerMounts, hostMounts string) (MountPropagation,
 			break
 		}
 		if strings.HasPrefix(field, "master:") || strings.HasPrefix(field, "propagate_from:") {
-			return MountPropagation{}, errors.New("容器根仍有外部挂载传播关系")
+			return MountPropagation{}, errors.New("Корень контейнера всё ещё связан с внешним распространением монтирования")
 		}
 		if strings.HasPrefix(field, "shared:") {
 			group, err := strconv.ParseUint(strings.TrimPrefix(field, "shared:"), 10, 64)
 			if err != nil || group == 0 {
-				return MountPropagation{}, errors.New("容器共享挂载组无效")
+				return MountPropagation{}, errors.New("Недопустимая общая группа монтирования контейнера")
 			}
 			result.SharedGroup = group
 		}
@@ -56,7 +56,7 @@ func rootMountPropagation(containerMounts, hostMounts string) (MountPropagation,
 					break
 				}
 				if field == "shared:"+group || field == "master:"+group || field == "propagate_from:"+group {
-					return MountPropagation{}, errors.New("容器共享挂载组与宿主关联，拒绝连接")
+					return MountPropagation{}, errors.New("Общая группа монтирования контейнера связана с хостом; подключение отклонено")
 				}
 			}
 		}

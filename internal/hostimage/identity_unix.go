@@ -64,6 +64,6 @@ func linuxIdentity(data string) (Identity, error) {
 	case "debian-12", "debian-13", "ubuntu-22.04", "ubuntu-24.04":
 		return identity, nil
 	default:
-		return Identity{}, fmt.Errorf("当前尚未适配 %s 的本机系统创建，仍可选择 Debian 13", values["PRETTY_NAME"])
+		return Identity{}, fmt.Errorf("Создание локальной системы для %s пока не поддерживается; можно выбрать Debian 13", values["PRETTY_NAME"])
 	}
 }

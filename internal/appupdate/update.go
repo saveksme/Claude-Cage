@@ -91,7 +91,7 @@ func Run(configPath string, args []string, output io.Writer) int {
 		return 1
 	}
 	if len(args) != 1 || (args[0] != "check" && args[0] != "download") {
-		return fail(errors.New("更新操作无效"))
+		return fail(errors.New("Недопустимая операция обновления"))
 	}
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
@@ -100,20 +100,20 @@ func Run(configPath string, args []string, output io.Writer) int {
 		return fail(err)
 	}
 	defer client.CloseIdleConnections()
-	state.Phase, state.Message = "checking", "正在检查更新"
+	state.Phase, state.Message = "checking", "Проверка обновлений"
 	emit()
 	c, err := findRelease(ctx, client, version.Version)
 	if err != nil {
 		return fail(err)
 	}
 	if c == nil {
-		state.Phase, state.Message = "current", "已是当前更新通道的最新版本"
+		state.Phase, state.Message = "current", "Уже установлена последняя версия в текущем канале обновлений"
 		emit()
 		return 0
 	}
 	state.LatestVersion = c.Version
 	if args[0] == "check" {
-		state.Phase, state.Message = "available", "发现新版本，可下载更新"
+		state.Phase, state.Message = "available", "Доступна новая версия, можно скачать обновление"
 		emit()
 		return 0
 	}
@@ -123,15 +123,15 @@ func Run(configPath string, args []string, output io.Writer) int {
 	}
 	directory := filepath.Join(filepath.Dir(configPath), "updates")
 	if err = host.EnsurePrivateDir(directory); err != nil {
-		return fail(errors.New("无法创建私有更新目录"))
+		return fail(errors.New("Не удалось создать закрытый каталог обновлений"))
 	}
 	if st, e := os.Lstat(directory); e != nil || !st.IsDir() || st.Mode()&os.ModeSymlink != 0 {
-		return fail(errors.New("更新目录必须是私有普通目录"))
+		return fail(errors.New("Каталог обновлений должен быть закрытым обычным каталогом"))
 	}
 
 	job, err := os.MkdirTemp(directory, "download-")
 	if err != nil {
-		return fail(errors.New("无法创建更新下载任务"))
+		return fail(errors.New("Не удалось создать задачу загрузки обновления"))
 	}
 	keep := false
 	defer func() {
@@ -147,7 +147,7 @@ func Run(configPath string, args []string, output io.Writer) int {
 		localName = "Cage-setup.exe"
 	}
 	archive := filepath.Join(job, localName)
-	state.Phase, state.Message, state.TotalBytes = "downloading", "正在下载更新", c.Archive.Size
+	state.Phase, state.Message, state.TotalBytes = "downloading", "Загрузка обновления", c.Archive.Size
 	emit()
 	err = download(ctx, client, c.Archive, digest, archive, func(n int64) {
 		state.ReceivedBytes = n
@@ -157,7 +157,7 @@ func Run(configPath string, args []string, output io.Writer) int {
 		return fail(err)
 	}
 	keep = true
-	state.Phase, state.Message, state.ArchivePath, state.SHA256 = "downloaded", "下载摘要已校验，正在验证应用", archive, digest
+	state.Phase, state.Message, state.ArchivePath, state.SHA256 = "downloaded", "Контрольная сумма загрузки проверена, выполняется проверка приложения", archive, digest
 	emit()
 	return 0
 }
@@ -165,26 +165,26 @@ func Run(configPath string, args []string, output io.Writer) int {
 func managedClient(ctx context.Context, configPath string) (*http.Client, error) {
 	cfg, err := cage.Load(configPath)
 	if err != nil {
-		return nil, errors.New("请先配置并启动 Cage 的所选代理，再检查更新")
+		return nil, errors.New("Сначала настройте и запустите выбранный прокси Cage, затем проверьте обновления")
 	}
 	profile := filepath.Dir(configPath)
 	p, err := managedproxy.Applied(profile, cfg.ProxyURL, cfg.ProxyRevision)
 	if err != nil {
-		return nil, &proxyUnavailableError{"所选代理尚未应用，更新检查将在代理就绪后重试"}
+		return nil, &proxyUnavailableError{"Выбранный прокси ещё не применён; проверка обновлений повторится, когда прокси будет готов"}
 	}
 	if !managedproxy.Running(ctx, profile, p) {
-		return nil, &proxyUnavailableError{"所选代理未运行，更新检查将在代理就绪后重试；更新不会改用主机直连"}
+		return nil, &proxyUnavailableError{"Выбранный прокси не запущен; проверка обновлений повторится, когда прокси будет готов. Обновление не переключится на прямое подключение через хост"}
 	}
 	egress, err := cage.NewEgress(cfg)
 	if err != nil {
-		return nil, errors.New("更新代理配置无效")
+		return nil, errors.New("Недопустимая конфигурация прокси обновлений")
 	}
 	return &http.Client{
 		Transport: &http.Transport{Proxy: nil, DialContext: egress.DialContext, ForceAttemptHTTP2: true, TLSHandshakeTimeout: 15 * time.Second, ResponseHeaderTimeout: 30 * time.Second, IdleConnTimeout: 10 * time.Second},
 		Timeout:   20 * time.Minute,
 		CheckRedirect: func(r *http.Request, via []*http.Request) error {
 			if len(via) >= 5 || !allowedURL(r.URL, true) {
-				return errors.New("更新下载重定向被拒绝")
+				return errors.New("Перенаправление загрузки обновления отклонено")
 			}
 			return nil
 		},
@@ -209,11 +209,11 @@ func allowedURL(u *url.URL, redirect bool) bool {
 func request(ctx context.Context, client *http.Client, raw string) (*http.Response, error) {
 	u, err := url.Parse(raw)
 	if err != nil || !allowedURL(u, false) {
-		return nil, errors.New("更新地址不属于 Cage 的受信发布源")
+		return nil, errors.New("Адрес обновления не относится к доверенным источникам выпусков Cage")
 	}
 	req, err := http.NewRequestWithContext(ctx, "GET", raw, nil)
 	if err != nil {
-		return nil, errors.New("更新请求无效")
+		return nil, errors.New("Недопустимый запрос обновления")
 	}
 	req.Header.Set("User-Agent", "Cage-Updater/"+version.Version)
 	req.Header.Set("Accept", "application/vnd.github+json")
@@ -223,19 +223,19 @@ func request(ctx context.Context, client *http.Client, raw string) (*http.Respon
 	resp, err := client.Do(req)
 	if err != nil {
 		if errors.Is(ctx.Err(), context.Canceled) {
-			return nil, errors.New("更新下载已取消")
+			return nil, errors.New("Загрузка обновления отменена")
 		}
-		return nil, usererror.Wrap("连接应用更新源", errors.Join(ctx.Err(), err), "请在网络与代理设置中确认所选节点可以连接 GitHub，再检查更新。")
+		return nil, usererror.Wrap("Подключение к источнику обновлений приложения", errors.Join(ctx.Err(), err), "В настройках сети и прокси убедитесь, что выбранный узел может подключиться к GitHub, затем проверьте обновления.")
 	}
 	if resp.StatusCode != http.StatusOK {
 		resp.Body.Close()
 		switch resp.StatusCode {
 		case 404:
-			return nil, errors.New("更新源找不到请求的版本或安装包（HTTP 404）。请稍后检查更新；需要手动安装时，请核对 Cage 发布页面中的对应平台文件。")
+			return nil, errors.New("Источник обновлений не находит запрошенную версию или установочный пакет (HTTP 404). Проверьте обновления позже; для ручной установки сверьте файл для нужной платформы на странице выпусков Cage.")
 		case 403, 429:
 			return nil, updateSourceError(resp, time.Now())
 		default:
-			return nil, fmt.Errorf("更新源返回 HTTP %d，请稍后重试", resp.StatusCode)
+			return nil, fmt.Errorf("Источник обновлений вернул HTTP %d; повторите попытку позже", resp.StatusCode)
 		}
 	}
 	return resp, nil
@@ -244,11 +244,11 @@ func request(ctx context.Context, client *http.Client, raw string) (*http.Respon
 func limitedBody(resp *http.Response, limit int64) ([]byte, error) {
 	defer resp.Body.Close()
 	if resp.ContentLength > limit {
-		return nil, errors.New("更新信息超过允许大小")
+		return nil, errors.New("Сведения об обновлении превышают допустимый размер")
 	}
 	b, err := io.ReadAll(io.LimitReader(resp.Body, limit+1))
 	if err != nil || int64(len(b)) > limit {
-		return nil, errors.New("更新信息下载中断或超过允许大小")
+		return nil, errors.New("Загрузка сведений об обновлении прервана или превышает допустимый размер")
 	}
 	return b, nil
 }
@@ -264,7 +264,7 @@ func findRelease(ctx context.Context, client *http.Client, current string) (*can
 	}
 	var releases []release
 	if json.Unmarshal(b, &releases) != nil {
-		return nil, errors.New("更新源返回了无效的版本信息")
+		return nil, errors.New("Источник обновлений вернул недопустимые сведения о версии")
 	}
 	return selectRelease(releases, current)
 }
@@ -280,7 +280,7 @@ func archiveName(version, goos, goarch string) (string, error) {
 	case goos == "windows" && goarch == "amd64":
 		return "Cage-" + version + "-windows-amd64-setup.exe", nil
 	default:
-		return "", errors.New("此平台尚无 Cage 应用内更新发行包")
+		return "", errors.New("Для этой платформы пока нет пакета обновления Cage внутри приложения")
 	}
 }
 
@@ -290,7 +290,7 @@ func selectPlatformRelease(releases []release, current, goos, goarch string) (*c
 	}
 	currentTag := "v" + current
 	if !semver.IsValid(currentTag) || semver.Canonical(currentTag) != currentTag {
-		return nil, errors.New("当前应用版本无效，无法安全比较更新")
+		return nil, errors.New("Текущая версия приложения недопустима, безопасное сравнение обновлений невозможно")
 	}
 	var best *candidate
 	for _, r := range releases {
@@ -335,12 +335,12 @@ func selectPlatformRelease(releases []release, current, goos, goarch string) (*c
 
 func digestValue(raw string) (string, error) {
 	if !strings.HasPrefix(raw, "sha256:") {
-		return "", errors.New("发行包缺少有效的 SHA-256 摘要")
+		return "", errors.New("В пакете выпуска отсутствует действительная контрольная сумма SHA-256")
 	}
 	h := strings.TrimPrefix(raw, "sha256:")
 	b, err := hex.DecodeString(h)
 	if err != nil || len(b) != sha256.Size {
-		return "", errors.New("发行包 SHA-256 摘要无效")
+		return "", errors.New("Недопустимая контрольная сумма SHA-256 пакета выпуска")
 	}
 	return strings.ToLower(h), nil
 }
@@ -359,7 +359,7 @@ func releaseDigest(ctx context.Context, client *http.Client, c candidate) (strin
 	}
 	u, err := url.Parse(c.Checksums.URL)
 	if err != nil || u.Hostname() != "github.com" || !strings.HasPrefix(u.Path, "/"+repository+"/releases/download/v"+c.Version+"/") {
-		return "", errors.New("校验清单不属于同一发行版本")
+		return "", errors.New("Список контрольных сумм относится к другой версии выпуска")
 	}
 	resp, err := request(ctx, client, c.Checksums.URL)
 	if err != nil {
@@ -377,19 +377,19 @@ func releaseDigest(ctx context.Context, client *http.Client, c candidate) (strin
 		}
 		h, err := digestValue("sha256:" + fields[0])
 		if err != nil || found != "" {
-			return "", errors.New("发行包校验清单无效或重复")
+			return "", errors.New("Список контрольных сумм пакета выпуска недопустим или содержит повторы")
 		}
 		found = h
 	}
 	if found == "" || (hash != "" && hash != found) {
-		return "", errors.New("发行包与校验清单的 SHA-256 不一致")
+		return "", errors.New("SHA-256 пакета выпуска не совпадает со списком контрольных сумм")
 	}
 	return found, nil
 }
 
 func download(ctx context.Context, client *http.Client, a asset, digest, path string, progress func(int64)) error {
 	if a.Size <= 0 || a.Size > maxArchive {
-		return errors.New("发行包大小无效或超过 512 MiB")
+		return errors.New("Недопустимый размер пакета выпуска или превышение 512 MiB")
 	}
 	if _, err := digestValue("sha256:" + digest); err != nil {
 		return err
@@ -400,11 +400,11 @@ func download(ctx context.Context, client *http.Client, a asset, digest, path st
 	}
 	defer resp.Body.Close()
 	if resp.ContentLength > 0 && resp.ContentLength != a.Size {
-		return errors.New("发行包大小与发布信息不一致")
+		return errors.New("Размер пакета выпуска не совпадает со сведениями о выпуске")
 	}
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 	if err != nil {
-		return errors.New("无法创建私有更新文件")
+		return errors.New("Не удалось создать закрытый файл обновления")
 	}
 	keep := false
 	defer func() {
@@ -414,22 +414,22 @@ func download(ctx context.Context, client *http.Client, a asset, digest, path st
 		}
 	}()
 	if err := host.ProtectFile(path); err != nil {
-		return errors.New("无法保护更新文件")
+		return errors.New("Не удалось защитить файл обновления")
 	}
 	hash := sha256.New()
 	w := &progressWriter{writer: io.MultiWriter(f, hash), notify: progress}
 	n, err := io.Copy(w, io.LimitReader(resp.Body, a.Size+1))
 	if err != nil || n != a.Size {
-		return errors.New("发行包下载中断或实际大小不匹配")
+		return errors.New("Загрузка пакета выпуска прервана или фактический размер не совпадает")
 	}
 	if hex.EncodeToString(hash.Sum(nil)) != digest {
-		return errors.New("发行包 SHA-256 校验失败，请重新下载")
+		return errors.New("Проверка SHA-256 пакета выпуска не удалась, скачайте заново")
 	}
 	if err = f.Sync(); err != nil {
-		return errors.New("无法保存更新文件")
+		return errors.New("Не удалось сохранить файл обновления")
 	}
 	if err = f.Close(); err != nil {
-		return errors.New("无法保存更新文件")
+		return errors.New("Не удалось сохранить файл обновления")
 	}
 	keep = true
 	progress(n)

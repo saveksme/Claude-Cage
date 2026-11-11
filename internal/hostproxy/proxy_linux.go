@@ -20,7 +20,7 @@ func systemProxy(req *http.Request) (*url.URL, error) {
 	defer cancel()
 	output, err := exec.CommandContext(ctx, "gsettings", "list-recursively", "org.gnome.system.proxy").Output()
 	if err != nil {
-		return nil, errors.New("无法读取主机桌面代理设置，请检查代理软件或设置 HTTPS_PROXY；未切换直连")
+		return nil, errors.New("Не удалось прочитать настройки прокси настольной среды хоста; проверьте прокси-программу или задайте HTTPS_PROXY; переключения на прямое подключение не было")
 	}
 	return gnomeProxy(req, string(output))
 }
@@ -35,7 +35,7 @@ func gnomeProxy(req *http.Request, settings string) (*url.URL, error) {
 	}
 	switch values["org.gnome.system.proxy mode"] {
 	case "auto":
-		return nil, errors.New("此 Linux 构建暂不解析桌面 PAC，请启用主机 TUN 或设置 HTTPS_PROXY 后继续下载")
+		return nil, errors.New("Эта сборка Linux пока не разбирает настольный PAC; включите TUN на хосте или задайте HTTPS_PROXY и продолжите загрузку")
 	case "manual":
 		address := func(protocol string) string {
 			prefix := "org.gnome.system.proxy." + protocol + " "

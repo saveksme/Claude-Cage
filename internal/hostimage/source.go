@@ -61,32 +61,32 @@ func (p Plan) Key() string {
 
 func (p Plan) Validate() error {
 	if p.Host.Arch != "arm64" && p.Host.Arch != "amd64" {
-		return errors.New("本机系统架构暂不支持创建客机")
+		return errors.New("Архитектура локальной системы пока не поддерживает создание гостевой системы")
 	}
 	if p.Version == "" || p.Version != p.Host.Version || p.Bytes < 0 || p.Bytes > 64<<30 {
-		return errors.New("系统镜像与本机版本不匹配")
+		return errors.New("Системный образ не соответствует версии локальной системы")
 	}
 	switch p.Host.System {
 	case "macos":
 		if p.Format != "ipsw" || p.Build != p.Host.Build || p.Host.Arch != "arm64" {
-			return errors.New("macOS 恢复镜像与本机版本不匹配")
+			return errors.New("Образ восстановления macOS не соответствует версии локальной системы")
 		}
 		if !semver.IsValid("v"+p.Version) || semver.Compare("v"+p.Version, "v26.4") < 0 {
-			return errors.New("自动匹配 macOS 镜像需要本机运行 macOS 26.4 或更新版本，以支持当前工作台使用的 FSKit 只读挂载")
+			return errors.New("Для автоматического подбора образа macOS на этом компьютере должна работать macOS 26.4 или новее с поддержкой монтирования FSKit только для чтения, используемого текущей рабочей средой")
 		}
 	case "windows-11":
 		if p.Format != "esd" || p.Host.Arch != "amd64" || p.Host.Edition == "" || p.Host.Language == "" || p.Build == "" {
-			return errors.New("Windows 安装镜像信息不完整")
+			return errors.New("Сведения об установочном образе Windows неполны")
 		}
 	case "debian-12", "debian-13", "ubuntu-22.04", "ubuntu-24.04":
 		if p.Format != "qcow2" {
-			return errors.New("Linux 安装镜像与本机不匹配")
+			return errors.New("Установочный образ Linux не соответствует локальной системе")
 		}
 	default:
-		return errors.New("当前支持的本机系统为 macOS、Windows 11、Debian 12/13 和 Ubuntu 22.04/24.04")
+		return errors.New("Поддерживаемые локальные системы: macOS, Windows 11, Debian 12/13 и Ubuntu 22.04/24.04")
 	}
 	if p.Path != "" && (!filepath.IsAbs(p.Path) || filepath.Clean(p.Path) != p.Path || strings.ContainsAny(p.Path, "\r\n\x00")) {
-		return errors.New("本机系统镜像路径无效")
+		return errors.New("Недопустимый путь образа локальной системы")
 	}
 	if p.URL != "" {
 		if err := trustedURL(p.URL, p.Host.System); err != nil {
@@ -97,7 +97,7 @@ func (p Plan) Validate() error {
 		}
 	}
 	if p.Path == "" && p.URL == "" {
-		return errors.New("缺少系统安装材料")
+		return errors.New("Отсутствуют системные установочные материалы")
 	}
 	return nil
 }
@@ -105,13 +105,13 @@ func (p Plan) Validate() error {
 func trustedURL(raw, system string) error {
 	u, err := url.Parse(raw)
 	if err != nil || u.User != nil || u.Port() != "" || u.Fragment != "" {
-		return errors.New("系统材料下载地址无效")
+		return errors.New("Недопустимый адрес загрузки системных материалов")
 	}
 	// Microsoft's HTTPS catalog publishes ESDs on this HTTP-only CDN route.
 	// Its pinned SHA-256 is mandatory and verified before any image is applied.
 	microsoftESD := system == "windows-11" && u.Scheme == "http" && u.Hostname() == "dl.delivery.mp.microsoft.com"
 	if u.Scheme != "https" && !microsoftESD {
-		return errors.New("系统材料下载协议无效")
+		return errors.New("Недопустимый протокол загрузки системных материалов")
 	}
 	allowed := map[string][]string{
 		"macos":      {"updates.cdn-apple.com", "appldnld.apple.com"},
@@ -125,7 +125,7 @@ func trustedURL(raw, system string) error {
 			return nil
 		}
 	}
-	return errors.New("系统材料下载地址不属于受支持的系统厂商")
+	return errors.New("Адрес загрузки системных материалов не относится к поддерживаемому производителю системы")
 }
 
 func metadata(ctx context.Context, client *http.Client, address string, out any) error {
@@ -140,14 +140,14 @@ func metadata(ctx context.Context, client *http.Client, address string, out any)
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
-		return fmt.Errorf("系统目录返回 HTTP %d", response.StatusCode)
+		return fmt.Errorf("Каталог системы вернул HTTP %d", response.StatusCode)
 	}
 	data, err := io.ReadAll(io.LimitReader(response.Body, (8<<20)+1))
 	if err != nil {
 		return err
 	}
 	if len(data) > 8<<20 {
-		return errors.New("系统目录超过大小限制")
+		return errors.New("Каталог системы превышает ограничение размера")
 	}
 	if strings.HasSuffix(address, ".xml") {
 		return xml.Unmarshal(data, out)
@@ -220,14 +220,14 @@ func macCatalog(ctx context.Context, client *http.Client, host Identity) (Plan, 
 		} `json:"firmwares"`
 	}
 	if err := metadata(ctx, client, "https://api.ipsw.me/v4/device/VirtualMac2,1?type=ipsw", &catalog); err != nil {
-		return Plan{}, fmt.Errorf("查找与本机一致的 Apple 恢复镜像失败，可选择已有 IPSW：%w", err)
+		return Plan{}, fmt.Errorf("Не удалось найти образ восстановления Apple, соответствующий этому компьютеру; можно выбрать существующий IPSW: %w", err)
 	}
 	for _, media := range catalog.Firmware {
 		if media.Version == host.Version && media.Build == host.Build {
 			return Plan{Host: host, Version: media.Version, Build: media.Build, Format: "ipsw", URL: media.URL, Digest: "sha256:" + media.SHA256, Bytes: media.Bytes}, nil
 		}
 	}
-	return Plan{}, fmt.Errorf("未找到 macOS %s（%s）的恢复镜像，请选择已有的对应 IPSW", host.Version, host.Build)
+	return Plan{}, fmt.Errorf("Образ восстановления macOS %s (%s) не найден; выберите существующий подходящий IPSW", host.Version, host.Build)
 }
 
 const windowsCatalogURL = "https://download.microsoft.com/download/eb1cc454-1c9a-4c94-adf8-b30c7f3d03d1/products.xml"
@@ -255,15 +255,15 @@ func windowsCatalog(ctx context.Context, client *http.Client, host Identity) (Pl
 	// published 25H2 catalog as a fallback, without changing the selected release.
 	var catalog windowsMediaCatalog
 	if err := metadata(ctx, client, windowsCatalogURL, &catalog); err != nil {
-		return Plan{}, fmt.Errorf("读取微软安装目录失败，可选择已有 ISO：%w", err)
+		return Plan{}, fmt.Errorf("Не удалось прочитать каталог установки Microsoft; можно выбрать существующий ISO: %w", err)
 	}
 	if plan, ok := selectWindowsMedia(catalog, host); ok {
 		return plan, nil
 	}
 	if currentErr != nil {
-		return Plan{}, fmt.Errorf("无法读取匹配本机版本的微软目录，请检查所选代理后重试：%w", currentErr)
+		return Plan{}, fmt.Errorf("Не удалось прочитать каталог Microsoft для версии этого компьютера; проверьте выбранный прокси и повторите попытку: %w", currentErr)
 	}
-	return Plan{}, fmt.Errorf("微软当前目录没有 Windows 11 %s %s %s 的对应介质，请选择已有 ISO", host.Version, host.Edition, host.Language)
+	return Plan{}, fmt.Errorf("В текущем каталоге Microsoft нет носителя Windows 11 %s %s %s; выберите существующий ISO", host.Version, host.Edition, host.Language)
 }
 
 func selectWindowsMedia(catalog windowsMediaCatalog, host Identity) (Plan, bool) {
@@ -298,7 +298,7 @@ func linuxCatalog(host Identity, template []byte) (Plan, error) {
 			return Plan{Host: host, Version: host.Version, Format: "qcow2", URL: image.Location, Digest: image.Digest, Bytes: image.Bytes}, nil
 		}
 	}
-	return Plan{}, errors.New("此安装包缺少与本机发行版一致的已校验 Linux 镜像")
+	return Plan{}, errors.New("В этом установочном пакете отсутствует проверенный образ Linux, соответствующий дистрибутиву этого компьютера")
 }
 
 func (p Plan) CachedPath(cache string) string {

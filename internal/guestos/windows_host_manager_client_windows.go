@@ -31,7 +31,7 @@ func windowsHostManagerCall(ctx context.Context, id uuid.UUID, operation string,
 func windowsHostManagerRequestCall(ctx context.Context, request windowsHostManagerRequest, result any) error {
 	id := request.VMID
 	if err := request.validate(); err != nil {
-		return errors.New("Windows 客机管理参数无效")
+		return errors.New("Недопустимые параметры управления гостевой системой Windows")
 	}
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
 	defer cancel()
@@ -54,7 +54,7 @@ func windowsHostManagerRequestCall(ctx context.Context, request windowsHostManag
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
-		return errors.New("Windows 系统管理助手尚未连接，请在 Cage 安装流程中完成系统授权或恢复助手；原虚拟机和数据已保留")
+		return errors.New("Помощник системного управления Windows не подключён; завершите системную авторизацию или восстановите помощник в процессе установки Cage; исходная виртуальная машина и данные сохранены")
 	}
 	defer connection.Close()
 	stop := context.AfterFunc(ctx, func() { _ = connection.Close() })
@@ -66,41 +66,41 @@ func windowsHostManagerRequestCall(ctx context.Context, request windowsHostManag
 		return err
 	}
 	if err := json.NewEncoder(connection).Encode(request); err != nil {
-		return errors.New("Windows 系统管理请求没有完整送达")
+		return errors.New("Запрос системного управления Windows доставлен не полностью")
 	}
 	line, err := bufio.NewReaderSize(connection, windowsHostManagerWireLimit).ReadSlice('\n')
 	if err != nil {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
-		return errors.New("Windows 系统管理结果没有完整返回，现有环境已保留")
+		return errors.New("Результат системного управления Windows возвращён не полностью; текущая среда сохранена")
 	}
 	var response windowsHostManagerResponse
 	decoder := json.NewDecoder(bytes.NewReader(line))
 	decoder.DisallowUnknownFields()
 	if decoder.Decode(&response) != nil || decoder.Decode(new(any)) != io.EOF || response.Version != windowsHostManagerVersion || response.VMID != id {
-		return errors.New("Windows 系统管理响应身份或格式不匹配")
+		return errors.New("Идентичность или формат ответа системного управления Windows не совпадают")
 	}
 	if err := verifyWindowsHostManagerPeer(connection, id); err != nil {
 		return err
 	}
 	if !response.OK || response.Error != "" {
 		if response.Error == "storage_pending" {
-			return errors.New("Windows 客机有待恢复的存储迁移，请重新打开原工作台完成恢复")
+			return errors.New("У гостевой системы Windows есть незавершённая миграция хранилища; откройте исходную рабочую среду и завершите восстановление")
 		}
 		if response.Error == "vm_running" {
-			return errors.New("请等待 Windows 客机完整关机，再迁移环境存储")
+			return errors.New("Дождитесь полного выключения гостевой системы Windows, затем переносите хранилище среды")
 		}
 		if response.Error == "unauthorized" || response.Error == "permission_denied" {
-			return errors.New("当前系统用户没有这台 Cage 客机的管理授权")
+			return errors.New("У текущего системного пользователя нет прав управления этой гостевой системой Cage")
 		}
 		if response.Error == "binding_mismatch" || response.Error == "layout_mismatch" || response.Error == "binding_invalid" {
-			return errors.New("Windows 客机的登记配置已变化，请核对原虚拟机；现有数据已保留")
+			return errors.New("Зарегистрированная конфигурация гостевой системы Windows изменилась; сверьтесь с исходной виртуальной машиной; текущие данные сохранены")
 		}
-		return errors.New("Windows 系统管理操作未完成，请重试或在设置中导出诊断包；现有环境已保留")
+		return errors.New("Операция системного управления Windows не завершена; повторите попытку или выгрузите пакет диагностики в настройках; текущая среда сохранена")
 	}
 	if len(response.Result) == 0 || bytes.Equal(bytes.TrimSpace(response.Result), []byte("null")) || result == nil || json.Unmarshal(response.Result, result) != nil {
-		return errors.New("Windows 系统管理响应缺少实际读回结果")
+		return errors.New("В ответе системного управления Windows отсутствует фактический результат чтения")
 	}
 	return nil
 }
@@ -108,30 +108,30 @@ func windowsHostManagerRequestCall(ctx context.Context, request windowsHostManag
 func verifyWindowsHostManagerPeer(connection net.Conn, id uuid.UUID) error {
 	f, ok := connection.(interface{ Fd() uintptr })
 	if !ok {
-		return errors.New("Windows 系统管理通道无法核验")
+		return errors.New("Не удалось проверить канал системного управления Windows")
 	}
 	var pid uint32
 	if windows.GetNamedPipeServerProcessId(windows.Handle(f.Fd()), &pid) != nil || pid == 0 {
-		return errors.New("Windows 系统管理进程无法核验")
+		return errors.New("Не удалось проверить процесс системного управления Windows")
 	}
 	// Query the SCM with read-only rights. A normal user cannot open the
 	// LocalSystem process token; the protected service account and live PID
 	// provide the corresponding identity without requesting that privilege.
 	manager, err := windows.OpenSCManager(nil, nil, windows.SC_MANAGER_CONNECT)
 	if err != nil {
-		return errors.New("Windows 系统管理服务身份无法读取")
+		return errors.New("Не удалось прочитать идентичность службы системного управления Windows")
 	}
 	defer windows.CloseServiceHandle(manager)
 	name, _ := windows.UTF16PtrFromString("CageHV-" + id.String())
 	service, err := windows.OpenService(manager, name, windows.SERVICE_QUERY_CONFIG|windows.SERVICE_QUERY_STATUS)
 	if err != nil {
-		return errors.New("Windows 系统管理服务未登记或当前用户不可读取")
+		return errors.New("Служба системного управления Windows не зарегистрирована или недоступна текущему пользователю")
 	}
 	defer windows.CloseServiceHandle(service)
 	var status windows.SERVICE_STATUS_PROCESS
 	var needed uint32
 	if windows.QueryServiceStatusEx(service, windows.SC_STATUS_PROCESS_INFO, (*byte)(unsafe.Pointer(&status)), uint32(unsafe.Sizeof(status)), &needed) != nil || status.ProcessId != pid || status.CurrentState != windows.SERVICE_RUNNING {
-		return errors.New("Windows 系统管理通道不属于当前已登记服务")
+		return errors.New("Канал системного управления Windows не принадлежит текущей зарегистрированной службе")
 	}
 	return verifyWindowsHostManagerService(service, id)
 }
@@ -139,10 +139,10 @@ func verifyWindowsHostManagerPeer(connection net.Conn, id uuid.UUID) error {
 func verifyWindowsHostManagerService(service windows.Handle, id uuid.UUID) error {
 	binaryPath, account, err := windowsHostServiceConfig(service)
 	if err != nil {
-		return errors.New("Windows 系统管理服务配置无法核验")
+		return errors.New("Не удалось проверить конфигурацию службы системного управления Windows")
 	}
 	if !strings.EqualFold(account, "LocalSystem") && !strings.EqualFold(account, `NT AUTHORITY\SYSTEM`) {
-		return errors.New("Windows 系统管理服务未使用受限系统入口")
+		return errors.New("Служба системного управления Windows не использует ограниченную системную учётную запись")
 	}
 	program, err := windows.KnownFolderPath(windows.FOLDERID_ProgramFiles, 0)
 	if err != nil {
@@ -156,14 +156,14 @@ func verifyWindowsHostManagerService(service windows.Handle, id uuid.UUID) error
 	binding := filepath.Join(data, "Cage", "HyperVManager", id.String(), "binding.json")
 	arguments, err := windows.DecomposeCommandLine(binaryPath)
 	if err != nil || len(arguments) != 4 || !strings.EqualFold(filepath.Clean(arguments[0]), filepath.Clean(expected)) || arguments[1] != "service" || arguments[2] != "--binding" || !strings.EqualFold(filepath.Clean(arguments[3]), filepath.Clean(binding)) {
-		return errors.New("Windows 系统管理程序不属于已登记的安装位置")
+		return errors.New("Программа системного управления Windows находится не в зарегистрированном месте установки")
 	}
 	if err := checkWindowsSystemOwnedObject(binding); err != nil {
 		return err
 	}
 	for current := expected; !strings.EqualFold(current, program); current = filepath.Dir(current) {
 		if current == filepath.Dir(current) {
-			return fmt.Errorf("Windows 系统管理程序路径无效")
+			return fmt.Errorf("Недопустимый путь программы системного управления Windows")
 		}
 		if err := checkWindowsSystemOwnedObject(current); err != nil {
 			return err
@@ -231,7 +231,7 @@ func windowsHostServiceConfig(service windows.Handle) (string, string, error) {
 func checkWindowsSystemOwnedObject(path string) error {
 	info, err := os.Lstat(path)
 	if err != nil {
-		return errors.New("Windows 系统管理程序或目录不可读")
+		return errors.New("Программа или каталог системного управления Windows недоступны для чтения")
 	}
 	ptr, err := windows.UTF16PtrFromString(path)
 	if err != nil {
@@ -239,36 +239,36 @@ func checkWindowsSystemOwnedObject(path string) error {
 	}
 	attributes, err := windows.GetFileAttributes(ptr)
 	if err != nil || attributes&windows.FILE_ATTRIBUTE_REPARSE_POINT != 0 || !info.Mode().IsRegular() && !info.IsDir() {
-		return errors.New("Windows 系统管理程序不能经过目录链接")
+		return errors.New("Программа системного управления Windows не должна проходить через ссылку на каталог")
 	}
 	sd, err := windows.GetNamedSecurityInfo(path, windows.SE_FILE_OBJECT, windows.OWNER_SECURITY_INFORMATION|windows.DACL_SECURITY_INFORMATION)
 	if err != nil {
-		return errors.New("Windows 系统管理程序权限不可读")
+		return errors.New("Не удалось прочитать права программы системного управления Windows")
 	}
 	owner, _, err := sd.Owner()
 	if err != nil || owner == nil || !owner.IsWellKnown(windows.WinLocalSystemSid) && !owner.IsWellKnown(windows.WinBuiltinAdministratorsSid) {
-		return errors.New("Windows 系统管理程序未受系统权限保护")
+		return errors.New("Программа системного управления Windows не защищена системными правами")
 	}
 	acl, _, err := sd.DACL()
 	if err != nil || acl == nil || acl.AceCount == 0 {
-		return errors.New("Windows 系统管理程序没有访问限制")
+		return errors.New("Программа системного управления Windows не имеет ограничений доступа")
 	}
 	const fileDeleteChild = 0x40 // FILE_DELETE_CHILD is absent from x/sys/windows.
 	const writes = windows.FILE_WRITE_DATA | windows.FILE_APPEND_DATA | windows.FILE_WRITE_EA | windows.FILE_WRITE_ATTRIBUTES | fileDeleteChild | windows.DELETE | windows.WRITE_DAC | windows.WRITE_OWNER | windows.GENERIC_WRITE | windows.GENERIC_ALL
 	for i := uint32(0); i < uint32(acl.AceCount); i++ {
 		var ace *windows.ACCESS_ALLOWED_ACE
 		if windows.GetAce(acl, i, &ace) != nil {
-			return errors.New("Windows 系统管理程序权限无法核验")
+			return errors.New("Не удалось проверить права программы системного управления Windows")
 		}
 		if ace.Header.AceType == windows.ACCESS_DENIED_ACE_TYPE {
 			continue
 		}
 		if ace.Header.AceType != windows.ACCESS_ALLOWED_ACE_TYPE {
-			return errors.New("Windows 系统管理程序含未支持的权限规则")
+			return errors.New("Программа системного управления Windows содержит неподдерживаемые правила прав")
 		}
 		principal := (*windows.SID)(unsafe.Pointer(&ace.SidStart))
 		if ace.Mask&writes != 0 && !principal.IsWellKnown(windows.WinLocalSystemSid) && !principal.IsWellKnown(windows.WinBuiltinAdministratorsSid) {
-			return errors.New("Windows 系统管理程序可被普通用户修改")
+			return errors.New("Программа системного управления Windows может быть изменена обычным пользователем")
 		}
 	}
 	return nil

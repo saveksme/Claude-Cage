@@ -31,5 +31,5 @@ func ConfirmStopped(ctx context.Context, profile string) error {
 			return nil
 		} // service not found
 	}
-	return errors.New("无法确认此配置的代理进程已经退出")
+	return errors.New("Не удалось подтвердить, что процесс прокси этой конфигурации завершён")
 }

@@ -41,7 +41,7 @@ type NativeComponentManifest struct {
 func RequiredNativeComponents(kit, system string) (NativeComponentManifest, error) {
 	manifest := NativeComponentManifest{GuestManifest: cage.GuestManifest{Protocol: 1, AppVersion: version.Version}, System: system}
 	if system != MacOS && system != Windows11 {
-		return manifest, errors.New("原生客机系统无效")
+		return manifest, errors.New("Недопустимая нативная гостевая система")
 	}
 	essential := []string{"payload/Cage.GuestClipboard.exe", "payload/cage-guest-files.exe", "payload/cage-guest-boot.exe", "payload/Cage.HyperVManager.exe", "payload/windows-browser.mjs"}
 	if system == MacOS {
@@ -50,7 +50,7 @@ func RequiredNativeComponents(kit, system string) (NativeComponentManifest, erro
 	for _, relative := range essential {
 		info, err := os.Lstat(filepath.Join(kit, filepath.FromSlash(relative)))
 		if err != nil || !info.Mode().IsRegular() {
-			return manifest, fmt.Errorf("原生组件包缺少 %s", relative)
+			return manifest, fmt.Errorf("В пакете нативных компонентов отсутствует %s", relative)
 		}
 	}
 	err := filepath.WalkDir(kit, func(filename string, entry fs.DirEntry, walkErr error) error {
@@ -61,14 +61,14 @@ func RequiredNativeComponents(kit, system string) (NativeComponentManifest, erro
 			return nil
 		}
 		if entry.Type()&os.ModeSymlink != 0 {
-			return errors.New("原生组件目录不能包含文件链接")
+			return errors.New("Каталог нативных компонентов не должен содержать ссылки на файлы")
 		}
 		info, err := entry.Info()
 		if err != nil {
 			return err
 		}
 		if !info.Mode().IsRegular() {
-			return errors.New("原生组件目录包含特殊文件")
+			return errors.New("Каталог нативных компонентов содержит специальные файлы")
 		}
 		relative, err := filepath.Rel(kit, filename)
 		if err != nil {
@@ -97,7 +97,7 @@ func RequiredNativeComponents(kit, system string) (NativeComponentManifest, erro
 			}
 			_, body, found := bytes.Cut(data, []byte("\n"))
 			if !found {
-				return errors.New("账号组件缺少程序正文")
+				return errors.New("В компоненте аккаунта отсутствует тело программы")
 			}
 			rewritten := sha256.Sum256(append([]byte("#!"+MacOSCLIRuntime+"/bin/python3 -I\n"), body...))
 			installed = hex.EncodeToString(rewritten[:])
@@ -112,7 +112,7 @@ func RequiredNativeComponents(kit, system string) (NativeComponentManifest, erro
 		return manifest, err
 	}
 	if len(manifest.Files) == 0 {
-		return manifest, errors.New("此应用缺少原生客机组件")
+		return manifest, errors.New("В этом приложении отсутствуют нативные компоненты гостевой системы")
 	}
 	sort.Slice(manifest.Files, func(i, j int) bool {
 		if manifest.Files[i].Source != manifest.Files[j].Source {
@@ -126,9 +126,9 @@ func RequiredNativeComponents(kit, system string) (NativeComponentManifest, erro
 		fmt.Fprintf(digest, "%s\x00%s\x00%s\x00%s\x00", file.Source, file.Target, file.SHA256, file.InstalledSHA256)
 	}
 	manifest.Revision = hex.EncodeToString(digest.Sum(nil))
-	manifest.Tools = map[string]string{"chromium": "系统维护的 Chrome / Edge", "code_server": "261c84cb1eddf11235f9e2c921425e9663fbe556"}
+	manifest.Tools = map[string]string{"chromium": "Chrome / Edge из состава системы", "code_server": "261c84cb1eddf11235f9e2c921425e9663fbe556"}
 	if system == MacOS {
-		manifest.Tools = map[string]string{"chromium": "Google Chrome 稳定版", "code_server": "4.145.0", "claude": "官方最新版（下载时解析）", "node": "24.22.2", "python": "3.13.18", "git": "2.56.0", "gh": "2.103.3"}
+		manifest.Tools = map[string]string{"chromium": "Google Chrome (стабильная версия)", "code_server": "4.145.0", "claude": "Официальная последняя версия (определяется при загрузке)", "node": "24.22.2", "python": "3.13.18", "git": "2.56.0", "gh": "2.103.3"}
 	} else {
 		var dependencies map[string]struct {
 			Version string `json:"version"`
@@ -141,7 +141,7 @@ func RequiredNativeComponents(kit, system string) (NativeComponentManifest, erro
 		for _, name := range []string{"python", "git", "gh"} {
 			manifest.Tools[name] = dependencies[name].Version
 		}
-		manifest.Tools["claude"] = "官方最新版（下载时解析）"
+		manifest.Tools["claude"] = "Официальная последняя версия (определяется при загрузке)"
 		manifest.Tools["node"] = "24.22.2"
 	}
 	return manifest, manifest.Validate()
@@ -187,34 +187,34 @@ func nativeComponentTarget(source, system string) string {
 
 func (m NativeComponentManifest) Validate() error {
 	if m.Protocol != 1 || (m.System != MacOS && m.System != Windows11) || len(m.Revision) != 64 || len(m.Files) == 0 || len(m.Files) > 10000 {
-		return errors.New("原生组件清单无效")
+		return errors.New("Недопустимый список нативных компонентов")
 	}
 	if _, err := hex.DecodeString(m.Revision); err != nil {
-		return errors.New("原生组件版本摘要无效")
+		return errors.New("Недопустимая контрольная сумма версии нативных компонентов")
 	}
 	seen := map[string]bool{}
 	for _, file := range m.Files {
 		key := file.Source + "\x00" + file.Target
 		if !fs.ValidPath(file.Source) || strings.ContainsAny(file.Source+file.Target, "\x00\r\n") || seen[key] || len(file.SHA256) != 64 || len(file.InstalledSHA256) != 64 {
-			return errors.New("原生组件文件记录无效")
+			return errors.New("Недопустимая запись файла нативных компонентов")
 		}
 		if _, err := hex.DecodeString(file.SHA256 + file.InstalledSHA256); err != nil {
-			return errors.New("原生组件摘要无效")
+			return errors.New("Недопустимая контрольная сумма нативных компонентов")
 		}
 		if file.Target != "" && (path.Clean(file.Target) != file.Target || strings.Contains(file.Target, "\\")) {
-			return errors.New("原生组件安装位置无效")
+			return errors.New("Недопустимое расположение нативных компонентов")
 		}
 		if file.Target != "" && seen["\x00"+file.Target] {
-			return errors.New("原生组件安装位置重复")
+			return errors.New("Расположение нативных компонентов повторяется")
 		}
 		if file.Target != "" && m.System == MacOS && !strings.HasPrefix(file.Target, "/Applications/Cage") && !strings.HasPrefix(file.Target, "/usr/local/libexec/cage-") {
-			return errors.New("macOS 组件安装位置无效")
+			return errors.New("Недопустимое расположение компонентов macOS")
 		}
 		if file.Target != "" && m.System == Windows11 && !strings.HasPrefix(file.Target, "bridge/") && !strings.HasPrefix(file.Target, "network/") {
-			return errors.New("Windows 组件安装位置无效")
+			return errors.New("Недопустимое расположение компонентов Windows")
 		}
 		if m.System == Windows11 && strings.ContainsAny(file.Source+file.Target, ":\\") {
-			return errors.New("Windows 组件文件名无效")
+			return errors.New("Недопустимое имя файла компонента Windows")
 		}
 		seen[key] = true
 		if file.Target != "" {

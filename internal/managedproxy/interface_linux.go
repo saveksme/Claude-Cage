@@ -16,7 +16,7 @@ func linuxPhysicalInterface(ctx context.Context) (string, error) {
 	}
 	routes, err := os.ReadFile("/proc/net/route")
 	if err != nil {
-		return "", errors.New("无法读取 Linux IPv4 路由，请检查主机网络后重试")
+		return "", errors.New("Не удалось прочитать маршруты IPv4 Linux; проверьте сеть хоста и повторите попытку")
 	}
 	interfaces, err := net.Interfaces()
 	if err != nil {
@@ -62,7 +62,7 @@ func selectLinuxPhysicalInterface(routes string, usable map[string]bool) (string
 		}
 	}
 	if selected == "" {
-		return "", errors.New("未找到带 IPv4 默认路由的物理或云主机网卡；Cage 外网保持关闭，请连接网络后重试")
+		return "", errors.New("Не найден физический сетевой интерфейс или интерфейс облачного хоста с маршрутом IPv4 по умолчанию; внешняя сеть Cage остаётся отключённой, подключите сеть и повторите попытку")
 	}
 	return selected, nil
 }

@@ -40,7 +40,7 @@ func downloadRanges(parent context.Context, client *http.Client, address, target
 	}
 	info, err := os.Lstat(root)
 	if err != nil || !info.IsDir() {
-		return errors.New("安装包分段缓存目录无效")
+		return errors.New("Недопустимый каталог сегментного кеша установочного пакета")
 	}
 	flags := os.O_CREATE | os.O_WRONLY
 	if offset == 0 {
@@ -65,7 +65,7 @@ func downloadRanges(parent context.Context, client *http.Client, address, target
 		info, err := os.Lstat(part.path)
 		if err == nil {
 			if !info.Mode().IsRegular() {
-				return errors.New("安装包分段缓存路径无效")
+				return errors.New("Недопустимый путь сегментного кеша установочного пакета")
 			}
 			if info.Size() > end-start+1 {
 				if err := os.Remove(part.path); err != nil {
@@ -89,7 +89,7 @@ func downloadRanges(parent context.Context, client *http.Client, address, target
 		received += int64(n)
 		fmt.Fprintf(out, "CAGE_HOST_BYTES %s %d %d\n", name, received, total)
 	}
-	fmt.Fprintf(out, "%s：最多 4 连接分段下载\n", name)
+	fmt.Fprintf(out, "%s: сегментная загрузка до 4 соединений\n", name)
 	report(0)
 	results := make(chan error, len(parts))
 	for _, part := range parts {
@@ -149,7 +149,7 @@ func downloadRanges(parent context.Context, client *http.Client, address, target
 		return failed
 	}
 	if current != total {
-		return errors.New("安装包分段未收齐")
+		return errors.New("Сегменты установочного пакета получены не полностью")
 	}
 	return nil
 }
@@ -163,7 +163,7 @@ func downloadRangeOnce(parent context.Context, client *http.Client, address, acc
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, address, nil)
 	if err != nil || req.URL.Scheme != "https" || req.URL.User != nil {
-		return errors.New("安装材料必须通过 HTTPS 下载")
+		return errors.New("Установочные материалы должны загружаться по HTTPS")
 	}
 	req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", start, part.end))
 	req.Header.Set("Accept-Encoding", "identity")
@@ -172,7 +172,7 @@ func downloadRangeOnce(parent context.Context, client *http.Client, address, acc
 	}
 	response, err := client.Do(req)
 	if err != nil {
-		return errors.New("分段连接失败或等待响应超时")
+		return errors.New("Сегментное соединение не удалось или истекло время ожидания ответа")
 	}
 	defer response.Body.Close()
 	length := part.end - start + 1

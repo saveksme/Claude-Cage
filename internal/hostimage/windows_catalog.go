@@ -47,7 +47,7 @@ func currentWindowsCatalog(ctx context.Context, client *http.Client, host Identi
 		records = []json.RawMessage{trimmed}
 	}
 	if len(records) != 1 {
-		return catalog, errors.New("微软目录更新返回多个结果")
+		return catalog, errors.New("Обновление каталога Microsoft вернуло несколько результатов")
 	}
 	var update struct {
 		Files []struct {
@@ -68,12 +68,12 @@ func currentWindowsCatalog(ctx context.Context, client *http.Client, host Identi
 		if err != nil || address.User != nil || address.Port() != "" || address.Fragment != "" ||
 			(address.Scheme != "https" && address.Scheme != "http") ||
 			!(strings.HasSuffix(address.Hostname(), ".delivery.mp.microsoft.com") || address.Hostname() == "download.microsoft.com" || address.Hostname() == "download.windowsupdate.com") {
-			return catalog, errors.New("微软目录更新地址无法核验")
+			return catalog, errors.New("Не удалось проверить адрес обновления каталога Microsoft")
 		}
 		digest, err := base64.StdEncoding.DecodeString(file.Digest)
 		size, sizeErr := file.Size.Int64()
 		if err != nil || sizeErr != nil || len(digest) != sha256.Size || size <= 0 || size > 8<<20 {
-			return catalog, errors.New("微软目录更新摘要或大小无效")
+			return catalog, errors.New("Недопустимая контрольная сумма или размер обновления каталога Microsoft")
 		}
 		request, err := http.NewRequestWithContext(ctx, http.MethodGet, file.URL, nil)
 		if err != nil {
@@ -86,7 +86,7 @@ func currentWindowsCatalog(ctx context.Context, client *http.Client, host Identi
 		}
 		actual := sha256.Sum256(compressed)
 		if int64(len(compressed)) != size || !bytes.Equal(actual[:], digest) {
-			return catalog, errors.New("微软目录更新校验失败")
+			return catalog, errors.New("Проверка обновления каталога Microsoft не удалась")
 		}
 		data, err := expandWindowsCatalog(ctx, compressed)
 		if err != nil {
@@ -95,7 +95,7 @@ func currentWindowsCatalog(ctx context.Context, client *http.Client, host Identi
 		err = xml.Unmarshal(data, &catalog)
 		return catalog, err
 	}
-	return catalog, errors.New("微软尚未提供当前系统的安装目录")
+	return catalog, errors.New("Microsoft пока не предоставила каталог установки для текущей системы")
 }
 
 func catalogResponse(client *http.Client, request *http.Request) ([]byte, error) {
@@ -105,14 +105,14 @@ func catalogResponse(client *http.Client, request *http.Request) ([]byte, error)
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("微软目录返回 HTTP %d", response.StatusCode)
+		return nil, fmt.Errorf("Каталог Microsoft вернул HTTP %d", response.StatusCode)
 	}
 	data, err := io.ReadAll(io.LimitReader(response.Body, (8<<20)+1))
 	if err != nil {
 		return nil, err
 	}
 	if len(data) > 8<<20 {
-		return nil, errors.New("微软目录超过大小限制")
+		return nil, errors.New("Каталог Microsoft превышает ограничение размера")
 	}
 	return data, nil
 }

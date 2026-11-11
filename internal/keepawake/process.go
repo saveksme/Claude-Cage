@@ -55,7 +55,7 @@ func holdProcess(ctx context.Context, ready func(), command string, args ...stri
 	case <-ctx.Done():
 		return ctx.Err()
 	case <-timer.C:
-		return errors.New("主机防休眠请求超时")
+		return errors.New("Время запроса на предотвращение сна хоста истекло")
 	case ok := <-ack:
 		if !ok {
 			finish()
@@ -63,7 +63,7 @@ func holdProcess(ctx context.Context, ready func(), command string, args ...stri
 			if len(message) > 512 {
 				message = message[:512]
 			}
-			return errors.New("无法启用主机防休眠：" + message)
+			return errors.New("Не удалось включить предотвращение сна хоста: " + message)
 		}
 	}
 	ready()

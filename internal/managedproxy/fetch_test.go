@@ -121,7 +121,7 @@ func TestInfrastructureDNSAllUnavailableAndCancellation(t *testing.T) {
 	}))
 	defer server.Close()
 	servers := []string{server.URL + "/one", server.URL + "/two"}
-	if ip, err := resolveInfrastructureWith(context.Background(), "example.com", server.Client(), servers); err == nil || ip.IsValid() || !strings.Contains(err.Error(), "未使用系统 DNS 回退") {
+	if ip, err := resolveInfrastructureWith(context.Background(), "example.com", server.Client(), servers); err == nil || ip.IsValid() || !strings.Contains(err.Error(), "системный DNS не использовался") {
 		t.Fatal("all failed resolvers must fail closed", ip, err)
 	}
 	ctx, cancel := context.WithCancel(context.Background())

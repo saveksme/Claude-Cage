@@ -37,7 +37,7 @@ func TestResultRequiresMatchingCompletedSession(t *testing.T) {
 
 func TestIdentityFailureExplainsFirstLaunch(t *testing.T) {
 	result, err := readResult(strings.NewReader(`{"type":"system","subtype":"cage_identity_unverified_start"}`), testSessionID, nil, nil, nil)
-	if result.Started || err == nil || !strings.Contains(err.Error(), "当前 Claude 账号") || strings.Contains(err.Error(), "新建会话") {
+	if result.Started || err == nil || !strings.Contains(err.Error(), "аккаунт Claude") || strings.Contains(err.Error(), "создайте новый сеанс") {
 		t.Fatalf("unexpected first-launch failure: %#v %v", result, err)
 	}
 }

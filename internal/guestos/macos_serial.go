@@ -21,7 +21,7 @@ func MacOSInstallHostKey(profile string) ([]byte, error) {
 		return nil, err
 	}
 	if !info.Mode().IsRegular() || info.Size() > 8<<20 {
-		return nil, errors.New("无效的 macOS 客机首次启动串口记录")
+		return nil, errors.New("Недопустимая запись последовательного порта первого запуска гостевой системы macOS")
 	}
 	file, err := os.Open(path)
 	if err != nil {
@@ -43,11 +43,11 @@ func parseInstallHostKey(input io.Reader) ([]byte, error) {
 		}
 		key, _, opts, rest, err := ssh.ParseAuthorizedKey([]byte(keyLine))
 		if err != nil || key.Type() != ssh.KeyAlgoED25519 || len(opts) != 0 || len(rest) != 0 {
-			return nil, errors.New("虚拟 Mac 首次启动返回了无效的主机公钥")
+			return nil, errors.New("При первом запуске виртуального Mac получен недопустимый открытый ключ хоста")
 		}
 		candidate := ssh.MarshalAuthorizedKey(key)
 		if found != nil && !bytes.Equal(found, candidate) {
-			return nil, errors.New("虚拟 Mac 首次启动返回了不同的主机公钥")
+			return nil, errors.New("При первом запуске виртуального Mac получен другой открытый ключ хоста")
 		}
 		found = candidate
 	}
@@ -55,7 +55,7 @@ func parseInstallHostKey(input io.Reader) ([]byte, error) {
 		return nil, err
 	}
 	if found == nil {
-		return nil, errors.New("尚未从这台虚拟 Mac 的串口取得主机公钥")
+		return nil, errors.New("Открытый ключ хоста ещё не получен через последовательный порт этого виртуального Mac")
 	}
 	return found, nil
 }

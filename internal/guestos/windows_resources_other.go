@@ -8,5 +8,5 @@ import (
 )
 
 func windowsVMResources(context.Context, string, int, int) (WindowsVMResourceState, error) {
-	return WindowsVMResourceState{}, errors.New("Windows 客机资源管理需要Windows Hyper-V主机")
+	return WindowsVMResourceState{}, errors.New("Управление ресурсами гостевой системы Windows требует хоста Windows Hyper-V")
 }

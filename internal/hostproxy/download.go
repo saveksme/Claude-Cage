@@ -27,18 +27,18 @@ func Download(ctx context.Context, address, target, name, accept, cache, digest 
 	resolve := tr.Proxy
 	tr.Proxy = func(req *http.Request) (*url.URL, error) {
 		proxy, err := resolve(req)
-		route := "主机直连"
+		route := "Прямое подключение через хост"
 		if err != nil {
-			route = "主机代理解析失败"
+			route = "Не удалось разрешить прокси хоста"
 		} else if proxy != nil {
-			route = "主机代理"
+			route = "Прокси хоста"
 		}
-		fmt.Fprintf(out, "%s：%s\n", name, route)
+		fmt.Fprintf(out, "%s: %s\n", name, route)
 		return proxy, err
 	}
 	client := &http.Client{Transport: tr, CheckRedirect: func(req *http.Request, previous []*http.Request) error {
 		if req.URL.Scheme != "https" || req.URL.User != nil || len(previous) >= 5 {
-			return errors.New("下载重定向无效")
+			return errors.New("Недопустимое перенаправление загрузки")
 		}
 		return nil
 	}}
@@ -47,7 +47,7 @@ func Download(ctx context.Context, address, target, name, accept, cache, digest 
 	}
 	raw, err := hex.DecodeString(digest)
 	if err != nil || len(raw) != sha256.Size || !filepath.IsAbs(cache) {
-		return errors.New("安装包缓存目录或校验值无效")
+		return errors.New("Недопустимый каталог кеша установочного пакета или контрольная сумма")
 	}
 	digest = hex.EncodeToString(raw)
 	dir := filepath.Join(cache, digest)
@@ -57,7 +57,7 @@ func Download(ctx context.Context, address, target, name, accept, cache, digest 
 	for _, path := range []string{cache, dir} {
 		info, err := os.Lstat(path)
 		if err != nil || !info.IsDir() {
-			return errors.New("安装包缓存目录无效")
+			return errors.New("Недопустимый каталог кеша установочного пакета")
 		}
 	}
 	return withDownloadLock(ctx, dir, func() error {
@@ -83,7 +83,7 @@ func downloadAttempts(ctx context.Context, client *http.Client, address, target,
 		switch {
 		case err == nil:
 			if !info.Mode().IsRegular() {
-				return errors.New("安装包缓存路径无效")
+				return errors.New("Недопустимый путь кеша установочного пакета")
 			}
 			if digest != "" && !restart {
 				offset = info.Size()
@@ -118,13 +118,13 @@ func downloadAttempts(ctx context.Context, client *http.Client, address, target,
 			if err = os.RemoveAll(target + ".ranges"); err != nil {
 				return err
 			}
-			err = errors.New("SHA-256 校验失败")
+			err = errors.New("Проверка SHA-256 не удалась")
 		}
 		if err == nil {
 			return nil
 		}
 		// Only downloadOnce's sanitized errors may reach the job log.
-		fmt.Fprintf(out, "%s 下载第 %d/3 次失败：%s\n", name, attempt, err)
+		fmt.Fprintf(out, "%s: попытка загрузки %d из 3 не удалась: %s\n", name, attempt, err)
 		if attempt < 3 {
 			fmt.Fprintf(out, "CAGE_HOST_RETRY %s %d\n", name, attempt+1)
 			select {
@@ -134,11 +134,11 @@ func downloadAttempts(ctx context.Context, client *http.Client, address, target,
 			}
 		}
 	}
-	return fmt.Errorf("%s 主机下载失败，请检查以上下载方式和网络后继续安装", name)
+	return fmt.Errorf("%s: загрузка через хост не удалась; проверьте способы загрузки и сеть, затем продолжите установку", name)
 }
 
-var errInvalidRange = errors.New("服务器返回的续传范围与现有进度不一致")
-var errRangeExhausted = errors.New("服务器没有更多可续传的数据")
+var errInvalidRange = errors.New("Сервер вернул диапазон продолжения, не совпадающий с текущим прогрессом")
+var errRangeExhausted = errors.New("На сервере больше нет данных для продолжения")
 
 func downloadOnce(parent context.Context, client *http.Client, address, target, name, accept string, out io.Writer, idle time.Duration, offset int64) error {
 	return downloadStream(parent, client, address, target, name, accept, out, idle, offset, false)
@@ -149,7 +149,7 @@ func downloadStream(parent context.Context, client *http.Client, address, target
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, address, nil)
 	if err != nil || req.URL.Scheme != "https" || req.URL.User != nil {
-		return errors.New("主机安装材料必须通过 HTTPS 下载")
+		return errors.New("Установочные материалы хоста должны загружаться по HTTPS")
 	}
 	if accept != "" {
 		req.Header.Set("Accept", accept)
@@ -160,7 +160,7 @@ func downloadStream(parent context.Context, client *http.Client, address, target
 	}
 	response, err := client.Do(req)
 	if err != nil {
-		return errors.New("连接失败或等待响应超时")
+		return errors.New("Соединение не удалось или истекло время ожидания ответа")
 	}
 	defer response.Body.Close()
 	flags := os.O_WRONLY | os.O_CREATE
@@ -185,10 +185,10 @@ func downloadStream(parent context.Context, client *http.Client, address, target
 		}
 		fallthrough
 	default:
-		return fmt.Errorf("下载返回 HTTP %d", response.StatusCode)
+		return fmt.Errorf("Загрузка вернула HTTP %d", response.StatusCode)
 	}
 	if encoding := response.Header.Get("Content-Encoding"); encoding != "" && !strings.EqualFold(encoding, "identity") {
-		return errors.New("下载编码不支持字节校验")
+		return errors.New("Кодировка загрузки не поддерживает побайтовую проверку")
 	}
 	ranges, _ := os.Lstat(target + ".ranges")
 	if parallel && total > offset && (total-offset >= parallelDownloadMinimum || (ranges != nil && ranges.IsDir())) {
@@ -198,7 +198,7 @@ func downloadStream(parent context.Context, client *http.Client, address, target
 		} else if parent.Err() != nil {
 			return parent.Err()
 		}
-		fmt.Fprintf(out, "%s：分段下载未完成，使用单连接继续\n", name)
+		fmt.Fprintf(out, "%s: сегментная загрузка не завершена, продолжение одним соединением\n", name)
 		info, err := os.Stat(target)
 		if err != nil {
 			return err
@@ -207,7 +207,7 @@ func downloadStream(parent context.Context, client *http.Client, address, target
 	}
 	file, err := os.OpenFile(target, flags, 0600)
 	if err != nil {
-		return errors.New("无法写入安装缓存")
+		return errors.New("Не удалось записать кеш установки")
 	}
 	defer file.Close()
 	received := offset
@@ -265,7 +265,7 @@ func copyDownload(ctx context.Context, cancel context.CancelFunc, body io.Reader
 			last = time.Now()
 			mu.Unlock()
 			if _, err := file.Write(buffer[:n]); err != nil {
-				return errors.New("写入安装缓存失败")
+				return errors.New("Запись в кеш установки не удалась")
 			}
 			received += int64(n)
 			pending += n
@@ -280,12 +280,12 @@ func copyDownload(ctx context.Context, cancel context.CancelFunc, body io.Reader
 				return err
 			}
 			if expected >= 0 && received != expected {
-				return errors.New("下载未收到预期的全部字节")
+				return errors.New("Загрузка не получила все ожидаемые байты")
 			}
 			return nil
 		}
 		if readErr != nil {
-			return errors.New("下载中断或长时间未收到数据")
+			return errors.New("Загрузка прервана или данные долго не поступают")
 		}
 	}
 }

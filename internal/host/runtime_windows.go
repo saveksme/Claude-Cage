@@ -32,11 +32,11 @@ func ConfigureWindowsRuntime() error {
 	}
 	version := windows.RtlGetVersion()
 	if runtime.GOARCH != "amd64" || version.MajorVersion < 10 || version.BuildNumber < 19045 {
-		return fmt.Errorf("Cage 需要 64 位 Windows 10 22H2（19045）或 Windows 11")
+		return fmt.Errorf("Cage требует 64-разрядную Windows 10 22H2 (19045) или Windows 11")
 	}
 	var processMachine, nativeMachine uint16
 	if err := windows.IsWow64Process2(windows.CurrentProcess(), &processMachine, &nativeMachine); err != nil || nativeMachine != 0x8664 {
-		return fmt.Errorf("Cage Windows 版本需要 Intel 或 AMD 的 x64 处理器，暂不支持 Windows on ARM")
+		return fmt.Errorf("Версия Cage для Windows требует процессор Intel или AMD x64; Windows on ARM пока не поддерживается")
 	}
 	exe, err := os.Executable()
 	if err != nil {
@@ -69,12 +69,12 @@ func ConfigureWindowsRuntime() error {
 func windowsHypervisorReady() error {
 	proc := windows.NewLazySystemDLL("WinHvPlatform.dll").NewProc("WHvGetCapability")
 	if err := proc.Find(); err != nil {
-		return fmt.Errorf("请启用 Windows Hypervisor Platform（Windows 虚拟机监控程序平台）并重启后再启动环境")
+		return fmt.Errorf("Включите Windows Hypervisor Platform (платформа гипервизора Windows) и перезагрузитесь, затем запустите среду")
 	}
 	var present, written uint32
 	result, _, _ := proc.Call(0, uintptr(unsafe.Pointer(&present)), unsafe.Sizeof(present), uintptr(unsafe.Pointer(&written)))
 	if result != 0 || written != 4 || present == 0 {
-		return fmt.Errorf("Windows 虚拟化尚未就绪：请在固件中启用 CPU 虚拟化，启用 Windows Hypervisor Platform 并重启")
+		return fmt.Errorf("Виртуализация Windows не готова: включите виртуализацию CPU в прошивке, включите Windows Hypervisor Platform и перезагрузитесь")
 	}
 	return nil
 }

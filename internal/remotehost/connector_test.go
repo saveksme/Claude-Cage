@@ -531,7 +531,7 @@ func TestExpiredHTTPServerSessionInvalidatesLiveSSHConnectionWithoutReplay(t *te
 		t.Fatalf("session expiry = %v", err)
 	}
 	failed := waitState(t, manager, "failed")
-	if failed.Message != "远程连接已中断，请重新连接并核对云端任务" {
+	if failed.Message != "Удалённое подключение прервано; подключитесь заново и сверьте облачные задачи" {
 		t.Fatalf("misleading recovery message: %s", failed.Message)
 	}
 	if requests.Load() != before+1 {

@@ -130,7 +130,7 @@ func TestMaintenancePasswordRejectsChangedPanelAndSecureFocus(t *testing.T) {
 
 func TestMaintenanceProbeDistinguishesBlockedWindow(t *testing.T) {
 	w := maintenanceWindow{Error: "maintenance_window_obscured", BlockingPID: 42, BlockingWindow: 7, BlockingBundle: "com.apple.notificationcenterui"}
-	if message := w.probeMessage(); !strings.Contains(message, "通知中心 PID 42 窗口 7") {
+	if message := w.probeMessage(); !strings.Contains(message, "Центр уведомлений PID 42 окно 7") {
 		t.Fatal(message)
 	}
 	w.BlockingBundle = "unexpected\nwindow title"
@@ -138,7 +138,7 @@ func TestMaintenanceProbeDistinguishesBlockedWindow(t *testing.T) {
 		t.Fatal("invalid bundle identifier reported")
 	}
 	w.Error = "maintenance_window_unavailable"
-	if strings.Contains(w.probeMessage(), "遮挡") {
+	if strings.Contains(w.probeMessage(), "перекрыт") {
 		t.Fatal("a missing window was attributed to an obstruction")
 	}
 }

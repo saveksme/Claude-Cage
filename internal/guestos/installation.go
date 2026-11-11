@@ -50,32 +50,32 @@ func WindowsCloneCleanupPending(profile string) (bool, error) {
 
 func (i Installation) Validate() error {
 	if i.Version != 1 || i.ID == uuid.Nil || (i.System != MacOS && i.System != Windows11 && !hostimage.IsLinux(i.System)) {
-		return errors.New("客户机安装记录无效")
+		return errors.New("Недопустимая запись установки гостевой системы")
 	}
 	if i.SourceKind != "" && (i.SourceKind != LinuxImageSource || i.System != Ubuntu2204 || i.Source.Host.System != i.System) {
-		return errors.New("客户机镜像选择方式无效")
+		return errors.New("Недопустимый способ выбора образа гостевой системы")
 	}
 	if i.Media != "" && (!filepath.IsAbs(i.Media) || strings.ContainsAny(i.Media, "\r\n\x00") || filepath.Clean(i.Media) != i.Media) {
-		return errors.New("请选择本机的安装镜像")
+		return errors.New("Выберите установочный образ на этом компьютере")
 	}
 	if i.Source.Host.System != "" {
 		if i.System != i.Source.Host.System || (i.System == Windows11 && !i.EditorTerms) {
-			return errors.New("本机系统安装选择无效，请重新检查")
+			return errors.New("Недопустимый выбор установки локальной системы; проверьте заново")
 		}
 		if i.Media != "" && i.Media != i.Source.Path {
-			return errors.New("安装介质与已选择的本机系统来源不一致")
+			return errors.New("Установочный носитель не соответствует выбранному источнику локальной системы")
 		}
 		return i.Source.Validate()
 	}
 	if hostimage.IsLinux(i.System) {
-		return errors.New("缺少 Linux 本机系统安装来源")
+		return errors.New("Отсутствует источник установки локальной системы Linux")
 	}
 	if i.System == MacOS {
 		if i.SHA256 != "" || (i.Media != "" && !strings.EqualFold(filepath.Ext(i.Media), ".ipsw")) {
-			return errors.New("请选择 Apple 的 .ipsw 恢复镜像")
+			return errors.New("Выберите образ восстановления Apple в формате .ipsw")
 		}
 	} else if hash, err := hex.DecodeString(i.SHA256); i.Media == "" || !i.EditorTerms || err != nil || len(hash) != 32 || !strings.EqualFold(filepath.Ext(i.Media), ".iso") {
-		return errors.New("请选择 Windows 11 x64 ISO，并填写这份镜像的完整 SHA-256")
+		return errors.New("Выберите ISO-образ Windows 11 x64 и укажите полную контрольную сумму SHA-256 этого образа")
 	}
 	return nil
 }
@@ -90,7 +90,7 @@ func LoadInstallation(profile string) (*Installation, error) {
 		return nil, err
 	}
 	if !info.Mode().IsRegular() || info.Size() > 32<<10 {
-		return nil, errors.New("客户机安装记录无法读取")
+		return nil, errors.New("Не удалось прочитать запись установки гостевой системы")
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -100,7 +100,7 @@ func LoadInstallation(profile string) (*Installation, error) {
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
 	if decoder.Decode(&i) != nil || decoder.Decode(new(any)) != io.EOF {
-		return nil, errors.New("客户机安装记录格式无效")
+		return nil, errors.New("Недопустимый формат записи установки гостевой системы")
 	}
 	if err := i.Validate(); err != nil {
 		return nil, err
@@ -114,11 +114,11 @@ func LoadInstallation(profile string) (*Installation, error) {
 		info, err := os.Lstat(mediaPath)
 		if err == nil {
 			if !info.Mode().IsRegular() || info.Size() > 32<<10 {
-				return nil, errors.New("已校验的安装材料记录无效")
+				return nil, errors.New("Недопустимая запись проверенных установочных материалов")
 			}
 			data, readErr := os.ReadFile(mediaPath)
 			if readErr != nil || json.Unmarshal(data, &ready) != nil || ready.ID != i.ID {
-				return nil, errors.New("无法读取已校验的安装材料")
+				return nil, errors.New("Не удалось прочитать проверенные установочные материалы")
 			}
 			if err := matchPreparedMedia(i.Source, ready.Source); err != nil {
 				return nil, err
@@ -142,7 +142,7 @@ func SaveInstallation(profile string, i Installation) error {
 		if *current == i {
 			return nil
 		}
-		return errors.New("已有其他安装选择，请继续原安装")
+		return errors.New("Уже есть другой выбор установки; продолжите исходную установку")
 	}
 	data, err := json.Marshal(i)
 	if err != nil {
@@ -159,7 +159,7 @@ func matchPreparedMedia(chosen, ready hostimage.Plan) error {
 		ready.Format != chosen.Format || ready.URL != chosen.URL || (chosen.Digest != "" && ready.Digest != chosen.Digest) ||
 		(chosen.Bytes != 0 && ready.Bytes != chosen.Bytes) || (chosen.Path != "" && ready.Path != chosen.Path) ||
 		(chosen.Modified != 0 && ready.Modified != chosen.Modified) {
-		return errors.New("已校验的系统材料与原安装选择不一致")
+		return errors.New("Проверенные системные материалы не соответствуют исходному выбору установки")
 	}
 	return nil
 }
@@ -172,7 +172,7 @@ func RecordPreparedMedia(profile string, id uuid.UUID, ready hostimage.Plan) err
 		return err
 	}
 	if current == nil || current.ID != id {
-		return errors.New("安装选择已变化")
+		return errors.New("Выбор установки изменился")
 	}
 	if err := matchPreparedMedia(current.Source, ready); err != nil {
 		return err
@@ -193,7 +193,7 @@ func FinishLinuxInstallation(profile string, id uuid.UUID) error {
 		return err
 	}
 	if installed == nil || installed.ID != id || !hostimage.IsLinux(installed.System) {
-		return errors.New("Linux 安装记录已变化")
+		return errors.New("Запись установки Linux изменилась")
 	}
 	// Keep recovery information until the persistent image choice can be read.
 	system, err := hostimage.LinuxSystem(filepath.Join(profile, "state"))
@@ -201,7 +201,7 @@ func FinishLinuxInstallation(profile string, id uuid.UUID) error {
 		return err
 	}
 	if system != installed.System {
-		return errors.New("Linux 安装尚未保存所选系统，保留安装记录以便继续")
+		return errors.New("Установка Linux ещё не сохранила выбранную систему; запись установки сохранена для продолжения")
 	}
 	return os.Remove(filepath.Join(profile, installRecord))
 }
@@ -230,14 +230,14 @@ func ClearUnstartedInstallation(profile string, id uuid.UUID) error {
 		return err
 	}
 	if pending == nil || pending.ID != id {
-		return errors.New("客户机安装选择已改变")
+		return errors.New("Выбор установки гостевой системы изменился")
 	}
 	canClear, err := UnstartedInstallation(profile, *pending)
 	if err != nil {
 		return err
 	}
 	if !canClear {
-		return errors.New("已开始创建客户机，请继续原安装")
+		return errors.New("Создание гостевой системы уже начато; продолжите исходную установку")
 	}
 	if hostimage.IsLinux(pending.System) {
 		if err := hostimage.ClearLinuxTemplate(filepath.Join(profile, "state"), pending.Source); err != nil {

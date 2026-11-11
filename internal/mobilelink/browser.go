@@ -22,7 +22,7 @@ const bootstrapJS = `(async()=>{try {
  const token=location.hash.slice(1); history.replaceState(null,"",location.pathname);
  const res=await fetch("/link-session",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token})});
  if (!res.ok) throw Error(); location.replace(destination);
-}catch{document.body.textContent="连接入口已失效，请使用本机新生成的入口。";}})();`
+}catch{document.body.textContent="Ссылка для подключения устарела; используйте новую ссылку, созданную на этом компьютере.";}})();`
 
 type Browser struct {
 	mu        sync.Mutex
@@ -82,7 +82,7 @@ func (b *Browser) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/link-bootstrap":
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			_, _ = w.Write([]byte(`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>Cage</title><body>正在连接 Cage…<script src="/link-bootstrap.js"></script></body></html>`))
+			_, _ = w.Write([]byte(`<!doctype html><html lang="ru"><meta charset="utf-8"><title>Cage</title><body>Подключение к Cage…<script src="/link-bootstrap.js"></script></body></html>`))
 			return
 		case "/link-bootstrap.js":
 			w.Header().Set("Content-Type", "text/javascript; charset=utf-8")

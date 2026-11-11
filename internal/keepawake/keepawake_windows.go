@@ -23,7 +23,7 @@ type reasonContext struct {
 }
 
 func hold(ctx context.Context, ready func()) error {
-	reason, err := windows.UTF16PtrFromString("Cage 远程连接待机")
+	reason, err := windows.UTF16PtrFromString("Удалённое подключение Cage")
 	if err != nil {
 		return err
 	}
@@ -31,7 +31,7 @@ func hold(ctx context.Context, ready func()) error {
 	handle, _, callErr := powerCreate.Call(uintptr(unsafe.Pointer(&value)))
 	runtime.KeepAlive(reason)
 	if handle == ^uintptr(0) || handle == 0 {
-		return fmt.Errorf("无法创建主机防休眠请求：%w", callErr)
+		return fmt.Errorf("Не удалось создать запрос на предотвращение сна хоста: %w", callErr)
 	}
 	defer windows.CloseHandle(windows.Handle(handle))
 	// POWER_REQUEST_TYPE: SystemRequired=1, ExecutionRequired=3. No display or
@@ -39,7 +39,7 @@ func hold(ctx context.Context, ready func()) error {
 	for _, kind := range []uintptr{1, 3} {
 		ok, _, err := powerSet.Call(handle, kind)
 		if ok == 0 {
-			return fmt.Errorf("无法启用主机防休眠请求：%w", err)
+			return fmt.Errorf("Не удалось включить запрос на предотвращение сна хоста: %w", err)
 		}
 		defer powerClear.Call(handle, kind)
 	}

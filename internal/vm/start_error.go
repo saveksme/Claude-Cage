@@ -73,9 +73,9 @@ func vmStartError(cause error, instanceDir string, since time.Time) error {
 	if len(messages) == 0 {
 		return cause
 	}
-	summary := strings.Join(messages, "；")
+	summary := strings.Join(messages, "; ")
 	if len(summary) > 2048 {
 		summary = strings.ToValidUTF8(summary[:2048], "")
 	}
-	return fmt.Errorf("QEMU 启动失败：%s；%w", summary, cause)
+	return fmt.Errorf("Запуск QEMU не удался: %s; %w", summary, cause)
 }

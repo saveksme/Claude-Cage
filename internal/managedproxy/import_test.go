@@ -139,7 +139,7 @@ func TestAllSkippedImportPreservesLastGoodSourceAndReportsWithoutValues(t *testi
  - {name: second, type: http, server: example.com, port: 80, INTERFACE_NAME: private-field}
 `
 	err := s.Import("test", "", []byte(data), "test", 0, "")
-	if err == nil || !strings.Contains(err.Error(), "2 个") || !strings.Contains(err.Error(), "first") || !strings.Contains(err.Error(), "pinSHA256") || !strings.Contains(err.Error(), "网络接口") {
+	if err == nil || !strings.Contains(err.Error(), "пропущено 2") || !strings.Contains(err.Error(), "first") || !strings.Contains(err.Error(), "pinSHA256") || !strings.Contains(err.Error(), "сетевые интерфейсы") {
 		t.Fatal("all-skipped import did not identify the failed nodes", err)
 	}
 	if strings.Contains(err.Error(), "private-") {

@@ -22,7 +22,7 @@ func WriteLinuxTemplate(state string, plan Plan) error {
 		return err
 	}
 	if !IsLinux(plan.Host.System) || plan.Path == "" || plan.Digest == "" {
-		return errors.New("Linux 系统材料尚未准备好")
+		return errors.New("Системные материалы Linux ещё не готовы")
 	}
 	data, err := linuxTemplateData(plan)
 	if err != nil {
@@ -35,7 +35,7 @@ func WriteLinuxTemplate(state string, plan Plan) error {
 	path := filepath.Join(dir, "host-system.yaml")
 	if current, err := os.ReadFile(path); err == nil {
 		if string(current) != string(data) {
-			return errors.New("Linux 安装已绑定另一份系统材料")
+			return errors.New("Установка Linux уже привязана к другим системным материалам")
 		}
 		return Save(dir, plan)
 	} else if !errors.Is(err, os.ErrNotExist) {
@@ -69,7 +69,7 @@ func ClearLinuxTemplate(state string, plan Plan) error {
 	}
 	expected, err := linuxTemplateData(plan)
 	if err != nil || string(expected) != string(data) {
-		return errors.New("本机系统模板归属已变化")
+		return errors.New("Принадлежность шаблона локальной системы изменилась")
 	}
 	if err := os.Remove(path); err != nil {
 		return err
@@ -85,7 +85,7 @@ func LinuxTemplate(state string) (string, error) {
 	info, err := os.Lstat(path)
 	if errors.Is(err, os.ErrNotExist) {
 		if _, recordErr := os.Lstat(filepath.Join(state, "guest-media", sourceRecord)); !errors.Is(recordErr, os.ErrNotExist) {
-			return "", errors.New("所选 Linux 系统的安装模板缺失，请恢复原环境资料；不会改用其他系统")
+			return "", errors.New("Отсутствует шаблон установки выбранной системы Linux; восстановите исходные материалы среды. Другая система использоваться не будет")
 		}
 		return "template:debian-13", nil
 	}
@@ -93,16 +93,16 @@ func LinuxTemplate(state string) (string, error) {
 		return "", err
 	}
 	if !info.Mode().IsRegular() || info.Size() > 32<<10 {
-		return "", errors.New("本机系统安装模板无效")
+		return "", errors.New("Недопустимый шаблон установки локальной системы")
 	}
 	plan, err := Load(filepath.Join(state, "guest-media"))
 	if err != nil || !IsLinux(plan.Host.System) {
-		return "", errors.New("所选 Linux 系统来源记录无效，请恢复原环境资料")
+		return "", errors.New("Недопустимая запись источника выбранной системы Linux; восстановите исходные материалы среды")
 	}
 	expected, err := linuxTemplateData(plan)
 	data, readErr := os.ReadFile(path)
 	if err != nil || readErr != nil || string(data) != string(expected) {
-		return "", errors.New("所选 Linux 系统的模板与来源不一致，请核对原环境资料")
+		return "", errors.New("Шаблон выбранной системы Linux не соответствует источнику; сверьтесь с исходными материалами среды")
 	}
 	return path, nil
 }

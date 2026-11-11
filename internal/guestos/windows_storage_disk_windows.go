@@ -70,7 +70,7 @@ func readWindowsStorageDisk(path string) (storageVirtualDiskMetadata, error) {
 		uintptr(unsafe.Pointer(&parameters)), uintptr(unsafe.Pointer(&handle)))
 	runtime.KeepAlive(name)
 	if status != 0 {
-		return metadata, fmt.Errorf("读取 Windows 客机磁盘失败：%w", windows.Errno(status))
+		return metadata, fmt.Errorf("Не удалось прочитать диск гостевой системы Windows: %w", windows.Errno(status))
 	}
 	defer windows.CloseHandle(handle)
 	for _, version := range []uint32{1, 2, 7, 10} {
@@ -83,7 +83,7 @@ func readWindowsStorageDisk(path string) (storageVirtualDiskMetadata, error) {
 		status, _, _ = storageVirtualDiskDLL.NewProc("GetVirtualDiskInformation").Call(
 			uintptr(handle), uintptr(unsafe.Pointer(&size)), uintptr(unsafe.Pointer(&information)), uintptr(unsafe.Pointer(&used)))
 		if status != 0 {
-			return metadata, fmt.Errorf("读取 Windows 客机磁盘属性失败：%w", windows.Errno(status))
+			return metadata, fmt.Errorf("Не удалось прочитать свойства диска гостевой системы Windows: %w", windows.Errno(status))
 		}
 		switch version {
 		case 1:
@@ -136,7 +136,7 @@ func createWindowsStorageDisk(ctx context.Context, path string, parameters *stor
 		defer func() { err = errors.Join(err, windows.CloseHandle(handle)) }()
 	}
 	if status != 0 && status != uintptr(windows.ERROR_IO_PENDING) {
-		return fmt.Errorf("创建独立 Windows 客机磁盘失败：%w", windows.Errno(status))
+		return fmt.Errorf("Не удалось создать независимый диск гостевой системы Windows: %w", windows.Errno(status))
 	}
 	if status == 0 {
 		return ctx.Err()
@@ -156,7 +156,7 @@ func createWindowsStorageDisk(ctx context.Context, path string, parameters *stor
 		_ = windows.CancelIoEx(handle, overlapped)
 		var transferred uint32
 		drainErr := windows.GetOverlappedResult(handle, overlapped, &transferred, true)
-		return errors.Join(fmt.Errorf("等待 Windows 磁盘复制完成失败 (%d)", wait), waitErr, drainErr)
+		return errors.Join(fmt.Errorf("Не удалось дождаться завершения копирования диска Windows (%d)", wait), waitErr, drainErr)
 	}
 	if errors.Is(cancelErr, windows.ERROR_NOT_FOUND) {
 		cancelErr = nil // Completion can win the cancellation race.
@@ -171,10 +171,10 @@ func createWindowsStorageDisk(ctx context.Context, path string, parameters *stor
 	status, _, _ = storageVirtualDiskDLL.NewProc("GetVirtualDiskOperationProgress").Call(
 		uintptr(handle), uintptr(unsafe.Pointer(overlapped)), uintptr(unsafe.Pointer(&progress)))
 	if status != 0 {
-		return fmt.Errorf("查询 Windows 磁盘复制结果失败：%w", windows.Errno(status))
+		return fmt.Errorf("Не удалось запросить результат копирования диска Windows: %w", windows.Errno(status))
 	}
 	if progress.Status != 0 {
-		return fmt.Errorf("Windows 磁盘复制失败：%w", windows.Errno(progress.Status))
+		return fmt.Errorf("Копирование диска Windows не удалось: %w", windows.Errno(progress.Status))
 	}
 	return nil
 }
@@ -191,7 +191,7 @@ func prepareWindowsStorageDisk(ctx context.Context, source, copied string) (err 
 		return nil
 	}
 	if before.Subtype != 4 {
-		return fmt.Errorf("Windows 客机磁盘类型无效 (%d)", before.Subtype)
+		return fmt.Errorf("Недопустимый тип диска гостевой системы Windows (%d)", before.Subtype)
 	}
 	original, err := os.Stat(source)
 	if err != nil {
@@ -202,7 +202,7 @@ func prepareWindowsStorageDisk(ctx context.Context, source, copied string) (err 
 		return err
 	}
 	if os.SameFile(original, destination) {
-		return errors.New("独立磁盘副本与原磁盘必须使用不同文件")
+		return errors.New("Независимая копия диска и исходный диск должны быть разными файлами")
 	}
 	folder, err := os.MkdirTemp(filepath.Dir(copied), ".windows-disk-*")
 	if err != nil {
@@ -229,7 +229,7 @@ func prepareWindowsStorageDisk(ctx context.Context, source, copied string) (err 
 	expected := before
 	expected.Subtype = 3
 	if after != expected {
-		return errors.New("独立磁盘副本的标识或磁盘参数不一致")
+		return errors.New("Идентификатор или параметры независимой копии диска не совпадают")
 	}
 	if err := ctx.Err(); err != nil {
 		return err

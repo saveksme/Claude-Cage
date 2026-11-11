@@ -57,7 +57,7 @@ func pairPin(pin string) bool {
 }
 func (p PairCode) identity() (*remotelink.Identity, error) {
 	if len(p.Seed) != ed25519.SeedSize || !pairPin(p.Host) || !validCapability(p.Room) || !validCapability(p.Token) || !time.Now().Before(time.Unix(p.Expires, 0)) {
-		return nil, errors.New("配对码无效或已过期")
+		return nil, errors.New("Код сопряжения недопустим или истёк")
 	}
 	return remotelink.IdentityFromKey(ed25519.NewKeyFromSeed(p.Seed))
 }
@@ -86,7 +86,7 @@ func AcceptPair(ctx context.Context, p PairCode, hostToken string, host *remotel
 	defer pairDeadline(ctx, conn)()
 	var pin string
 	if err = json.NewDecoder(io.LimitReader(conn, 256)).Decode(&pin); err != nil || !pairPin(pin) {
-		return errors.New("手机身份无效")
+		return errors.New("Недопустимая идентичность телефона")
 	}
 	record, err := save(pin)
 	if err != nil {
@@ -100,15 +100,15 @@ func RedeemPair(ctx context.Context, raw, selectedRelay, phonePin string) (strin
 	if len(raw) <= 4096 && strings.HasPrefix(raw, "CAGE-") {
 		b, err := base64.RawURLEncoding.DecodeString(raw[5:])
 		if err != nil {
-			return "", errors.New("配对码格式无效")
+			return "", errors.New("Недопустимый формат кода сопряжения")
 		}
 		raw = string(b)
 	}
 	if len(raw) > 4096 || !strings.HasPrefix(raw, "CAGE1:") || json.Unmarshal([]byte(raw[6:]), &p) != nil || !pairPin(phonePin) {
-		return "", errors.New("请扫描 Cage 电脑端的配对码")
+		return "", errors.New("Отсканируйте код сопряжения на компьютере с Cage")
 	}
 	if p.origin() != selectedRelay || !ValidRelayOrigin(selectedRelay) {
-		return "", errors.New("中继与当前设置不符，请检查自建中继地址")
+		return "", errors.New("Ретранслятор не соответствует текущим настройкам; проверьте адрес собственного ретранслятора")
 	}
 	id, err := p.identity()
 	if err != nil {
@@ -130,7 +130,7 @@ func RedeemPair(ctx context.Context, raw, selectedRelay, phonePin string) (strin
 	}
 	var record PairedHost
 	if json.NewDecoder(io.LimitReader(conn, 4096)).Decode(&record) != nil || record.Version != 1 || record.HostPin != p.Host || record.Relay != selectedRelay || !validCapability(record.Lookup) {
-		return "", errors.New("电脑未完成配对，请刷新二维码")
+		return "", errors.New("Компьютер не завершил сопряжение; обновите QR-код")
 	}
 	b, err := json.Marshal(record)
 	return string(b), err

@@ -56,7 +56,7 @@ func NewNetwork(cfg cage.Config) (*Network, error) {
 	configuration := networkConfiguration(gate)
 	stack, err := virtualnetwork.New(&configuration)
 	if err != nil {
-		gate.Close("容器网络初始化失败")
+		gate.Close("Не удалось инициализировать сеть контейнера")
 		return nil, err
 	}
 	return &Network{Gate: gate, stack: stack}, nil
@@ -67,7 +67,7 @@ func NewNetwork(cfg cage.Config) (*Network, error) {
 func (n *Network) Run(ctx context.Context, endpoint net.Conn) error {
 	stop := context.AfterFunc(ctx, func() { _ = endpoint.Close() })
 	defer stop()
-	defer n.Gate.Close("容器网络连接已断开")
+	defer n.Gate.Close("Сетевое подключение контейнера разорвано")
 	defer endpoint.Close()
 	return n.stack.AcceptQemu(ctx, &boundedFrameConnection{Conn: endpoint})
 }
@@ -77,7 +77,7 @@ func (n *Network) Run(ctx context.Context, endpoint net.Conn) error {
 func (n *Network) ServeSSH(ctx context.Context, listener net.Listener) error {
 	address, ok := listener.Addr().(*net.TCPAddr)
 	if !ok || !address.IP.IsLoopback() {
-		return errors.New("容器 SSH 入口必须监听本机回环地址")
+		return errors.New("Вход SSH контейнера должен прослушивать локальный адрес обратной петли")
 	}
 	ctx, cancel := context.WithCancel(ctx)
 	stop := context.AfterFunc(ctx, func() { _ = listener.Close() })

@@ -37,7 +37,7 @@ func RunTAP(ctx context.Context, input io.Reader, output io.Writer) error {
 			if iface.Name == TapName {
 				oldTap = true
 			} else if iface.Name != "lo" {
-				return errors.New("容器存在额外网络接口，拒绝启动 TAP")
+				return errors.New("В контейнере есть лишние сетевые интерфейсы; запуск TAP отклонён")
 			}
 		}
 		if !oldTap {
@@ -45,7 +45,7 @@ func RunTAP(ctx context.Context, input io.Reader, output io.Writer) error {
 		}
 		select {
 		case <-waitCtx.Done():
-			return errors.New("旧容器网络接口仍未退出，请稍后重连")
+			return errors.New("Сетевой интерфейс старого контейнера ещё не завершён; переподключитесь позже")
 		case <-time.After(100 * time.Millisecond):
 		}
 	}
@@ -69,7 +69,7 @@ func RunTAP(ctx context.Context, input io.Reader, output io.Writer) error {
 	file := os.NewFile(uintptr(fd), "/dev/net/tun")
 	if file == nil {
 		_ = unix.Close(fd)
-		return errors.New("无法管理容器 TAP 文件描述符")
+		return errors.New("Не удалось управлять файловым дескриптором TAP контейнера")
 	}
 	defer file.Close()
 	for _, arguments := range [][]string{
@@ -87,7 +87,7 @@ func RunTAP(ctx context.Context, input io.Reader, output io.Writer) error {
 	// the engine's resolv.conf mount; do not replace the mount or a symlink.
 	info, err := os.Lstat("/etc/resolv.conf")
 	if err != nil || !info.Mode().IsRegular() {
-		return errors.New("容器 DNS 配置必须是普通文件")
+		return errors.New("Конфигурация DNS контейнера должна быть обычным файлом")
 	}
 	if err = os.WriteFile("/etc/resolv.conf", []byte("nameserver "+GatewayIP+"\noptions timeout:2 attempts:2\n"), 0644); err != nil {
 		return err
@@ -135,7 +135,7 @@ func RunTAP(ctx context.Context, input io.Reader, output io.Writer) error {
 
 func requirePrivateGuestNetwork() error {
 	if os.Geteuid() != 0 {
-		return errors.New("容器 TAP helper 必须以容器内 root 运行")
+		return errors.New("TAP helper контейнера должен работать от root внутри контейнера")
 	}
 	uidMap, err := os.ReadFile("/proc/self/uid_map")
 	if err != nil {
@@ -143,11 +143,11 @@ func requirePrivateGuestNetwork() error {
 	}
 	fields := strings.Fields(string(uidMap))
 	if len(fields) == 3 && fields[0] == "0" && fields[1] == "0" && fields[2] == "4294967295" {
-		return errors.New("容器 TAP helper 拒绝在宿主用户命名空间运行")
+		return errors.New("TAP helper контейнера отказывается работать в пространстве имён пользователей хоста")
 	}
 	if _, first := os.Stat("/run/.containerenv"); first != nil {
 		if _, second := os.Stat("/.dockerenv"); second != nil {
-			return errors.New("容器 TAP helper 只能在 Cage 容器内运行")
+			return errors.New("TAP helper контейнера может работать только внутри контейнера Cage")
 		}
 	}
 	return nil
