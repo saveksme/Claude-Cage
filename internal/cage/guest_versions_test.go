@@ -303,7 +303,7 @@ esac
 				}
 				retry := exec.Command("bash", "-c", prelude+"cage_install_tool claude")
 				retry.Env = cmd.Env
-				if out, err := retry.CombinedOutput(); err == nil || !strings.Contains(string(out), "требует SSE4.2") {
+				if out, err := retry.CombinedOutput(); err == nil || !strings.Contains(string(out), "требует инструкцию SSE4.2") {
 					t.Fatalf("missing guest CPU feature should stop Claude setup: %v %s", err, out)
 				}
 			}
