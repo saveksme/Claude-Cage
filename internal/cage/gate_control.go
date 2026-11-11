@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/sylvinus/agent-vm/internal/host"
 )
@@ -103,7 +104,7 @@ func StartGateControl(configPath, instanceDir string, gate *EgressGate) (func(),
 			var command gateCommand
 			decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64<<10))
 			decoder.DisallowUnknownFields()
-			if decoder.Decode(&command) != nil || len(command.Reason) > 200 {
+			if decoder.Decode(&command) != nil || utf8.RuneCountInString(command.Reason) > 200 {
 				w.WriteHeader(400)
 				return
 			}

@@ -326,3 +326,27 @@ func TestGateControlAuthenticationAndConfigInvalidation(t *testing.T) {
 		t.Fatal("changed configuration retained network authorization")
 	}
 }
+
+func TestGateControlMeasuresReasonInRunes(t *testing.T) {
+	g := fixtureGate(t)
+	dir := t.TempDir()
+	stop, err := StartGateControl(filepath.Join(t.TempDir(), "config.json"), dir, g)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer stop()
+	client, err := OpenGateClient(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reason := strings.Repeat("я", 200)
+	if _, err = client.Close(context.Background(), reason); err != nil {
+		t.Fatalf("200-rune localized reason was rejected as oversized: %v", err)
+	}
+	if got := g.Status().Reason; got != reason {
+		t.Fatalf("localized close reason was not preserved: %q", got)
+	}
+	if _, err = client.Close(context.Background(), reason+"я"); err == nil {
+		t.Fatal("reason beyond 200 runes was accepted")
+	}
+}
