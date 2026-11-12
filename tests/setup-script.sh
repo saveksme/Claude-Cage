@@ -61,6 +61,49 @@ else
   pass "no remote script runs as root"
 fi
 
+# A truncated package index must be rebuilt once, without hiding other APT
+# failures or deleting the package cache.
+apt_update_fn="$(sed -n '/^apt_update() {/,/^}/p' "$SETUP_SH")"
+run_apt_update() (
+  set -e
+  local error="$1" failures="$2" count_file
+  count_file="$(mktemp "$SB/apt-update.XXXXXX")"
+  eval "$apt_update_fn"
+  apt_get() {
+    local count
+    count="$(wc -l < "$count_file")"
+    printf 'apt_get %s\n' "$*"
+    printf 'call\n' >> "$count_file"
+    if [ "$count" -lt "$failures" ]; then
+      printf '%s\n' "$error" >&2
+      return 100
+    fi
+  }
+  sudo() { printf 'sudo %s\n' "$*"; }
+  apt_update
+)
+check "damaged APT indexes are cleared and downloaded again" \
+  "$(run_apt_update 'E: Unable to parse package file /var/lib/apt/lists/example_Packages (1)' 1 2>&1)" \
+  "apt_get update
+E: Unable to parse package file /var/lib/apt/lists/example_Packages (1)
+APT package index is damaged; rebuilding package lists...
+sudo rm -rf /var/lib/apt/lists/*
+sudo mkdir -p /var/lib/apt/lists/partial
+apt_get update"
+apt_status=0
+apt_output="$(run_apt_update 'E: Failed to fetch https://example.test/Packages  Connection failed' 1 2>&1)" || apt_status=$?
+check "an unrelated APT error keeps its exit status" "$apt_status" "100"
+check "an unrelated APT error does not clear package indexes" "$apt_output" \
+  "apt_get update
+E: Failed to fetch https://example.test/Packages  Connection failed"
+apt_status=0
+apt_output="$(run_apt_update 'E: Unable to parse package file /var/lib/apt/lists/example_Packages (1)' 2 2>&1)" || apt_status=$?
+check "a failed retry still fails setup" "$apt_status" "100"
+check "index recovery runs at most once" \
+  "$(grep -cF 'sudo rm -rf /var/lib/apt/lists/*' <<< "$apt_output")" "1"
+check "every package index update uses the recovery wrapper" \
+  "$(awk '/^apt_update\(\) \{/,/^}/ {next} /^[[:space:]]*apt_get update[[:space:]]*$/ {n++} END {print n+0}' "$SETUP_SH")" "0"
+
 # Exercise the real package transaction without installing on the host.
 chromium_block="$(awk '/^if \[\[ "\$INSTALL_CHROMIUM" == "1" \]\]; then/,/^fi$/' "$SETUP_SH")"
 chromium_install="$(
@@ -81,7 +124,7 @@ esac
 # visudo first, since a broken sudoers file breaks sudo.
 proxy_line="$(grep -n '/etc/sudoers.d/10-agent-vm-proxy' "$SETUP_SH" | head -1 | cut -d: -f1)"
 visudo_line="$(grep -n 'sudo visudo -cqf /tmp/agent-vm-proxy.sudoers' "$SETUP_SH" | head -1 | cut -d: -f1)"
-apt_line="$(grep -nE '^[^#]*apt_get (update|install)' "$SETUP_SH" | head -1 | cut -d: -f1)"
+apt_line="$(grep -nE '^apt_update$' "$SETUP_SH" | head -1 | cut -d: -f1)"
 if [ -n "$proxy_line" ] && [ -n "$visudo_line" ] && [ "$visudo_line" -lt "$proxy_line" ] && [ "$proxy_line" -lt "$apt_line" ]; then
   pass "sudo keeps the proxy settings from before the first apt call, checked by visudo"
 else

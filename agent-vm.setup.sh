@@ -48,6 +48,27 @@ apt_get() {
   return "$status"
 }
 
+# A damaged package index survives APT's own retries. Rebuild only the lists,
+# preserving the downloaded package cache and other sources of APT failures.
+apt_update() {
+  local output status
+  if output=$(apt_get update 2>&1); then
+    printf '%s\n' "$output"
+    return 0
+  else
+    status=$?
+  fi
+  printf '%s\n' "$output"
+  if [[ "$output" == *"Unable to parse package file"* ]]; then
+    printf 'APT package index is damaged; rebuilding package lists...\n' >&2
+    sudo rm -rf /var/lib/apt/lists/*
+    sudo mkdir -p /var/lib/apt/lists/partial
+    apt_get update
+    return $?
+  fi
+  return "$status"
+}
+
 # Download completely before replacing a repository key. A failed request must
 # leave the previously trusted key usable on the next setup attempt.
 install_repository_key() (
@@ -165,7 +186,7 @@ if [[ "${CLAUDE_CAGE:-}" == 1 ]]; then
     exit 1
   fi
 fi
-apt_get update
+apt_update
 apt_get install -y --no-install-recommends \
   git curl jq zsh \
   wget build-essential pkgconf patch \
@@ -267,7 +288,7 @@ if [[ "$INSTALL_DOCKER" == "1" ]]; then
   install_repository_key "https://download.docker.com/linux/$docker_distribution/gpg" /etc/apt/keyrings/docker.asc
   sudo chmod a+r /etc/apt/keyrings/docker.asc
   echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/$docker_distribution $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-  apt_get update
+  apt_update
   # buildx and pigz are Recommends: `docker build` needs buildx, pigz speeds
   # up layer decompression. docker-ce-rootless-extras is left out: the user is
   # in the docker group of the rootful daemon.
@@ -288,7 +309,7 @@ if [[ "$INSTALL_NODE" == "1" ]]; then
   sudo chmod a+r /etc/apt/keyrings/nodesource.asc
   echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/nodesource.asc] https://deb.nodesource.com/node_24.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list > /dev/null
   printf 'Package: nodejs\nPin: origin deb.nodesource.com\nPin-Priority: 600\n' | sudo tee /etc/apt/preferences.d/nodejs > /dev/null
-  apt_get update
+  apt_update
   apt_get install -y --no-install-recommends nodejs
 fi
 
@@ -325,7 +346,7 @@ if [[ "$INSTALL_GH" == "1" ]]; then
     install_repository_key https://cli.github.com/packages/githubcli-archive-keyring.gpg /etc/apt/keyrings/githubcli-archive-keyring.gpg
     sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-    apt_get update
+    apt_update
     apt_get install -y --no-install-recommends gh
   fi
 fi
